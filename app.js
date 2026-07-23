@@ -587,13 +587,17 @@ function yesterdayKey() {
 
 // One exact question per date, picked deterministically from our own bank —
 // every player gets the same daily, and the content is fully owned (no license).
-// DAILY_POOL_SIZE is pinned so appending new bank questions later never
-// reshuffles which question lands on which date. Only ever append to the bank.
-const DAILY_POOL_SIZE = 60;
+// The category hops pseudo-randomly day to day (hash, not rotation). Pool
+// sizes are pinned so appending bank questions never reshuffles past or future
+// dailies — only ever append to the bank, and bump a pool size deliberately.
+const DAILY_POOLS = [["logic", 45], ["numbers", 15], ["flags", 80]];
 function dailyQuestion() {
   const d = new Date();
   const seed = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-  const q = QUIZRUSH_BANK[seed % Math.min(DAILY_POOL_SIZE, QUIZRUSH_BANK.length)];
+  const h = (seed * 2654435761) >>> 0; // scramble so categories don't cycle predictably
+  const [dayCat, poolSize] = DAILY_POOLS[h % DAILY_POOLS.length];
+  const pool = QUIZRUSH_BANK.filter((q2) => q2.cat === dayCat).slice(0, poolSize);
+  const q = pool[(h >>> 8) % pool.length];
   const cat = CATEGORIES.find((c) => c.id === q.cat);
   return {
     question: {

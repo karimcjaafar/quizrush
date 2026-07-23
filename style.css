@@ -951,7 +951,7 @@ select {
   border: 1.5px solid var(--border);
   border-radius: 12px;
   color: var(--text);
-  font-size: 15px;
+  font-size: 16px; /* below 16px, iOS zooms the page on focus */
   padding: 11px 14px;
   font-family: inherit;
   outline: none;
