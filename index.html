@@ -14,12 +14,26 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- Animated intro splash -->
+  <!-- Animated intro: tap gate, then the 10-second show -->
   <div class="splash" id="splash">
-    <div class="splash-inner">
-      <div class="splash-bolt">⚡<span class="splash-ring"><i></i><i></i><i></i></span></div>
-      <h1 class="splash-title"><span class="splash-quiz">Quiz</span><span class="splash-rush">Rush</span></h1>
-      <p class="splash-tag">Pick a mode. Beat your best.</p>
+    <div class="splash-gate" id="splash-gate">
+      <div class="gate-bolt">⚡</div>
+      <h1 class="gate-title"><span class="splash-quiz">Quiz</span><span class="splash-rush">Rush</span></h1>
+      <p class="gate-tap">TAP TO START</p>
+    </div>
+    <div class="splash-show" id="splash-show" hidden>
+      <div class="emoji-storm" aria-hidden="true">
+        <i>🧠</i><i>⚽</i><i>🎬</i><i>🌍</i><i>🎵</i><i>🦁</i><i>🚀</i><i>🧩</i><i>🍕</i><i>⭐</i><i>👑</i><i>🎯</i><i>🎸</i><i>🐼</i>
+      </div>
+      <div class="show-rings"><i></i><i></i><i></i><i></i></div>
+      <div class="splash-inner">
+        <div class="splash-bolt">⚡</div>
+        <h1 class="splash-title show-title">
+          <span class="lq">Q</span><span class="lq">u</span><span class="lq">i</span><span class="lq">z</span><span class="lq lr">R</span><span class="lq lr">u</span><span class="lq lr">s</span><span class="lq lr">h</span>
+        </h1>
+        <p class="splash-tag">Pick a mode. Beat your best.</p>
+      </div>
+      <div class="whiteout"></div>
     </div>
   </div>
 

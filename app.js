@@ -125,15 +125,16 @@ const Music = (() => {
     if (ctx.state === "suspended") ctx.resume();
   }
 
-  function note(freq, when, dur, vol, type = "triangle", attack = 0.05) {
+  function note(freq, when, dur, vol, type = "triangle", attack = 0.05, out = null, slideTo = null) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = type;
     osc.frequency.value = freq;
+    if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, when + dur);
     gain.gain.setValueAtTime(0.0001, when);
     gain.gain.linearRampToValueAtTime(vol, when + attack);
     gain.gain.exponentialRampToValueAtTime(0.001, when + dur);
-    osc.connect(gain).connect(master);
+    osc.connect(gain).connect(out || master);
     osc.start(when);
     osc.stop(when + dur + 0.1);
   }
@@ -240,6 +241,24 @@ const Music = (() => {
         playMelody(t, bar, mel, { vol: 0.03, wave: "sine", attack: 0.5 });
         if (Math.random() < 0.35) note(c[Math.floor(Math.random() * c.length)] * 4, t + Math.random() * bar * 0.6, 0.9, 0.014, "sine", 0.1);
       } },
+    // The QuizRush anthem: the menu theme the intro resolves into. Upbeat but
+    // easy to live with on loop. Not selectable — it belongs to the home screen.
+    anthem: { bar: 2.0, lp: 2200, chords: [C, G, Am, F],
+      theme: [
+        E8(["E5", "G5", "C6", "G5", "A5", null, "G5", "E5"]),
+        E8(["D5", "G5", "B5", "G5", "D5", null, "B4", "D5"]),
+        E8(["C5", "E5", "A5", "E5", "C5", null, "E5", "G5"]),
+        [["F5", 0, 0.11], ["E5", 0.125, 0.11], ["D5", 0.25, 0.22], ["E5", 0.5, 0.2], ["C5", 0.72, 0.26]],
+      ],
+      render(t, c, bar, mel) {
+        note(75, t, 0.14, 0.09, "sine", 0.005);                        // soft kick 1
+        note(75, t + bar / 2, 0.14, 0.07, "sine", 0.005);              // soft kick 3
+        note(c[0] / 2, t, bar * 0.45, 0.045, "sine", 0.02);            // bass
+        note(c[0] / 2, t + bar / 2, bar * 0.45, 0.04, "sine", 0.02);
+        c.forEach((f) => note(f, t, bar * 0.96, 0.012, "sine", 0.15)); // pad
+        playMelody(t, bar, mel, { vol: 0.04, wave: "triangle", attack: 0.012 });
+        playMelody(t, bar, mel, { vol: 0.016, wave: "sine", attack: 0.012 });
+      } },
   };
 
   function currentStyle() {
@@ -259,35 +278,104 @@ const Music = (() => {
     }
   }
 
+  let activeKey = null, introGain = null, introTimer = null;
+
   return {
     get enabled() { return enabled; },
     get playing() { return playing; },
+    get activeKey() { return activeKey; },
     toggle() {
       enabled = !enabled;
       try { localStorage.setItem("quizrush-music", enabled ? "on" : "off"); } catch { /* play on */ }
       if (!enabled) this.stop();
       return enabled;
     },
-    start() {
-      if (!enabled || playing) return;
+    // which: a style key ("anthem"), or omit for the player's selected track.
+    // Switches live if something else is already playing.
+    start(which) {
+      if (!enabled) return;
+      const key = which || (localStorage.getItem("quizrush-music-track") || "breeze");
+      if (playing && activeKey === key) return;
       try {
         ensureCtx();
+        const switching = playing;
+        clearInterval(timer);
         playing = true;
-        style = currentStyle();
+        activeKey = key;
+        style = STYLES[key] || STYLES.breeze;
         lp.frequency.value = style.lp;
-        master.gain.cancelScheduledValues(ctx.currentTime);
-        master.gain.setValueAtTime(0.0001, ctx.currentTime);
         const target = Math.max(Number(localStorage.getItem("quizrush-vol-music") ?? 100) / 100, 0.0001);
-        master.gain.linearRampToValueAtTime(target, ctx.currentTime + 1.4); // gentle fade in
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        if (switching) {
+          // brief dip so the old track's tail ducks under the new one
+          master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+          master.gain.linearRampToValueAtTime(target * 0.25, ctx.currentTime + 0.2);
+          master.gain.linearRampToValueAtTime(target, ctx.currentTime + 1.0);
+        } else {
+          master.gain.setValueAtTime(0.0001, ctx.currentTime);
+          master.gain.linearRampToValueAtTime(target, ctx.currentTime + 1.4);
+        }
         nextBarTime = ctx.currentTime + 0.05;
         barIndex = 0;
         tick();
         timer = setInterval(tick, 200);
       } catch { playing = false; /* music is never worth an error */ }
     },
+    // The 10-second intro score: boom → riser → four beat hits → build → drop,
+    // resolving into the anthem. Routed through its own gain so a skip can
+    // silence it instantly.
+    intro() {
+      if (!enabled) return;
+      try {
+        ensureCtx();
+        introGain = ctx.createGain();
+        introGain.gain.value = 1;
+        introGain.connect(ctx.destination);
+        const g = introGain;
+        const t = ctx.currentTime + 0.05;
+        note(55, t, 1.4, 0.22, "sine", 0.005, g);                       // opening boom
+        note(110, t, 0.9, 0.1, "sine", 0.005, g);
+        note(80, t + 0.4, 3.6, 0.028, "sawtooth", 1.6, g, 900);         // long riser
+        note(160, t + 0.4, 3.6, 0.02, "sawtooth", 1.6, g, 1800);
+        // bolt impact at 1.0s
+        note(70, t + 1.0, 0.5, 0.2, "sine", 0.004, g);
+        [N("A3"), N("E4"), N("A4")].forEach((f) => note(f, t + 1.0, 0.5, 0.05, "square", 0.006, g));
+        // letter slams: four rising hits 2.0 → 4.1s
+        [N("A3"), N("C4"), N("E4"), N("G4")].forEach((f, i) => {
+          const w = t + 2.0 + i * 0.7;
+          note(120, w, 0.16, 0.18, "sine", 0.004, g, 45);
+          note(f, w, 0.3, 0.06, "square", 0.006, g);
+          note(f * 2, w, 0.3, 0.03, "square", 0.006, g);
+        });
+        // build 5.0 → 7.9s: driving eighth-note bass + climbing arps + riser
+        for (let i = 0; i < 13; i++) {
+          note(N("A2"), t + 5.0 + i * 0.22, 0.14, 0.08, "square", 0.005, g);
+          note(4200, t + 5.0 + i * 0.22 + 0.11, 0.03, 0.012, "triangle", 0.004, g);
+        }
+        ["A4", "C5", "E5", "A5", "C6", "E6"].forEach((n, i) =>
+          note(N(n), t + 5.4 + i * 0.42, 0.3, 0.045, "sawtooth", 0.01, g));
+        note(100, t + 5.0, 2.9, 0.025, "sawtooth", 2.4, g, 1400);
+        // the drop at 8.0s
+        note(40, t + 8.0, 1.4, 0.3, "sine", 0.004, g);
+        [N("C5"), N("E5"), N("G5"), N("C6")].forEach((f) => note(f, t + 8.0, 1.6, 0.05, "triangle", 0.01, g));
+        introTimer = setTimeout(() => this.start("anthem"), 8300);
+      } catch { /* the show goes on silently */ }
+    },
+    skipIntro() {
+      clearTimeout(introTimer);
+      try {
+        if (introGain) {
+          introGain.gain.cancelScheduledValues(ctx.currentTime);
+          introGain.gain.setValueAtTime(introGain.gain.value, ctx.currentTime);
+          introGain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
+        }
+      } catch { /* already gone */ }
+      if (activeKey !== "anthem") this.start("anthem");
+    },
     stop() {
       if (!playing) return;
       playing = false;
+      activeKey = null;
       clearInterval(timer);
       try {
         master.gain.cancelScheduledValues(ctx.currentTime);
@@ -305,16 +393,15 @@ const Music = (() => {
         }
       } catch { /* mixer is cosmetic */ }
     },
-    // Called after the selected track changes: crossfade in-round, or play a
-    // short preview when browsing from the home screen
+    // Called after the selected track changes: switch live in a round, or play
+    // a short preview from the menu before the anthem returns
     applyTrackChange() {
       clearTimeout(previewTimer);
-      if (playing) {
-        this.stop();
-        setTimeout(() => this.start(), 900);
-      } else if (!state) {
-        this.start();
-        previewTimer = setTimeout(() => { if (!state) this.stop(); }, 3400);
+      if (state && !state.ended) {
+        this.start(); // live switch to the newly selected track
+      } else {
+        this.start(localStorage.getItem("quizrush-music-track") || "breeze");
+        previewTimer = setTimeout(() => { if (!state) this.start("anthem"); }, 3400);
       }
     },
   };
@@ -1977,7 +2064,7 @@ function endGame() {
   state.ended = true;
   clearInterval(state.qTimer);
   clearInterval(state.blitzTimer);
-  Music.stop();
+  Music.start("anthem"); // hand the stage back to the menu theme
   flushAnswerStats();
   if (state.mode === "party") return endParty();
   state.awaitingContinue = false;
@@ -2273,7 +2360,7 @@ function quitGame() {
   flushAnswerStats();
   clearInterval(state?.qTimer);
   clearInterval(state?.blitzTimer);
-  Music.stop();
+  Music.start("anthem"); // back to the menu theme
   state = null;
   showScreen("home");
 }
@@ -2704,20 +2791,37 @@ document.addEventListener("pointerdown", () => Sound.unlock(), { once: true });
 // Offline + instant loads
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => { /* optional */ });
 
-// Intro splash: plays ~2.3s (tap to skip), then the home screen cascades in
+// Intro: tap gate (also the browser's audio unlock) → 10-second show with the
+// intro score → whiteout → home, where the anthem loops. Tap again to skip.
 {
   const splash = $("splash");
-  let done = false;
-  const finish = () => {
-    if (done) return;
-    done = true;
+  let phase = "gate"; // gate → show → done
+  let showTimer = null;
+  const finish = (skipped) => {
+    if (phase === "done") return;
+    phase = "done";
+    clearTimeout(showTimer);
+    if (skipped) Music.skipIntro();
     splash.classList.add("out");
     setTimeout(() => splash.remove(), 700);
     document.body.classList.add("intro-done");
   };
-  splash.addEventListener("click", finish);
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) finish();
-  else setTimeout(finish, 4600);
+  splash.addEventListener("click", () => {
+    if (phase === "gate") {
+      Sound.unlock();
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        Music.start("anthem");
+        return finish(false);
+      }
+      phase = "show";
+      $("splash-gate").hidden = true;
+      $("splash-show").hidden = false;
+      Music.intro();
+      showTimer = setTimeout(() => finish(false), 10000);
+    } else {
+      finish(true); // impatient tap mid-show
+    }
+  });
 }
 
 // First visit (or missing profile): orientation + profile setup in one card.

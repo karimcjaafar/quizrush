@@ -82,64 +82,146 @@ button, .chip, .mode-card, .daily-card, .theme-swatch {
   display: flex; align-items: center; justify-content: center;
   background: radial-gradient(ellipse at 50% 40%, #171a2e 0%, var(--bg) 70%);
   cursor: pointer;
+  overflow: hidden;
 }
 .splash.out { animation: splashOut 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 @keyframes splashOut { to { opacity: 0; transform: scale(1.12); } }
-.splash-inner { text-align: center; }
-.splash-bolt {
-  position: relative;
-  font-size: 110px;
-  line-height: 1;
-  animation: splashBolt 1.5s cubic-bezier(0.22, 1, 0.36, 1) both,
-             splashGlow 1.7s 1.5s ease-in-out infinite alternate;
+
+/* --- Phase 0: the tap gate --- */
+.splash-gate { text-align: center; }
+.gate-bolt {
+  font-size: 90px; line-height: 1;
+  animation: gatePulse 1.6s ease-in-out infinite alternate;
 }
-.splash-ring {
-  position: absolute; inset: 0;
-  display: grid; place-items: center;
-  pointer-events: none;
+@keyframes gatePulse {
+  from { transform: scale(1); filter: drop-shadow(0 0 14px rgba(255, 206, 84, 0.3)); }
+  to   { transform: scale(1.12); filter: drop-shadow(0 0 44px rgba(255, 206, 84, 0.8)); }
 }
-.splash-ring i {
-  position: absolute;
-  width: 160px; height: 160px;
-  border: 2px solid rgba(255, 206, 84, 0.6);
-  border-radius: 50%;
-  opacity: 0;
-  animation: luRing 1.6s ease-out both;
-}
-.splash-ring i:nth-child(1) { animation-delay: 1.35s; }
-.splash-ring i:nth-child(2) { animation-delay: 2.5s; border-color: rgba(124, 92, 255, 0.6); }
-.splash-ring i:nth-child(3) { animation-delay: 3.4s; border-color: rgba(255, 92, 158, 0.6); }
-@keyframes splashBolt {
-  0% { opacity: 0; transform: translateY(-45vh) scale(2.6) rotate(-16deg); }
-  45% { opacity: 1; transform: translateY(4px) scale(0.9) rotate(4deg); }
-  65% { transform: translateY(-16px) scale(1.08) rotate(-3deg); }
-  82% { transform: translateY(0) scale(0.98) rotate(1deg); }
-  100% { transform: translateY(0) scale(1) rotate(0deg); }
-}
-@keyframes splashGlow {
-  from { filter: drop-shadow(0 0 18px rgba(255, 206, 84, 0.35)); }
-  to   { filter: drop-shadow(0 0 50px rgba(255, 206, 84, 0.8)); }
-}
-.splash-title {
-  font-size: 64px; font-weight: 800; letter-spacing: -2px;
-  margin-top: 10px;
-}
+.gate-title { font-size: 52px; font-weight: 800; letter-spacing: -2px; margin-top: 8px; }
 .splash-quiz, .splash-rush { display: inline-block; }
-.splash-quiz { animation: splashWord 0.7s 1.15s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .splash-rush {
+  background: var(--gradient);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.gate-tap {
+  margin-top: 26px;
+  font-size: 15px; font-weight: 800; letter-spacing: 4px;
+  color: var(--text-dim);
+  animation: tapBlink 1.1s ease-in-out infinite alternate;
+}
+@keyframes tapBlink { from { opacity: 0.35; } to { opacity: 1; } }
+
+/* --- Phases 1–4: the ten-second show --- */
+.splash-show { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.splash-show[hidden] { display: none; }
+.splash-inner { text-align: center; animation: showShake 10s linear both; }
+@keyframes showShake { /* impact jolts synced to the score */
+  9.5%, 10.5% { transform: translate(0, 0); }
+  10% { transform: translate(6px, -5px) rotate(0.6deg); }
+  20% { transform: translate(-5px, 4px) rotate(-0.5deg); }
+  27% { transform: translate(5px, 3px) rotate(0.5deg); }
+  34% { transform: translate(-5px, -4px) rotate(-0.5deg); }
+  41% { transform: translate(5px, -3px) rotate(0.4deg); }
+  80% { transform: translate(-7px, 6px) rotate(-0.8deg); }
+  81.5% { transform: translate(7px, -5px) rotate(0.8deg); }
+  83% { transform: translate(0, 0); }
+}
+.splash-show .splash-bolt {
+  font-size: 120px; line-height: 1;
+  animation: boltSlam 1.2s cubic-bezier(0.16, 1.3, 0.3, 1) both,
+             boltRage 0.9s 1.2s ease-in-out infinite alternate;
+}
+@keyframes boltSlam {
+  0% { opacity: 0; transform: translateY(-60vh) scale(4) rotate(-25deg); }
+  70% { opacity: 1; transform: translateY(6px) scale(0.85) rotate(6deg); }
+  100% { transform: translateY(0) scale(1) rotate(0); }
+}
+@keyframes boltRage {
+  from { filter: drop-shadow(0 0 20px rgba(255, 206, 84, 0.5)); transform: scale(1) rotate(-1.5deg); }
+  to   { filter: drop-shadow(0 0 60px rgba(255, 206, 84, 1)); transform: scale(1.07) rotate(1.5deg); }
+}
+.show-title { font-size: 68px; font-weight: 800; letter-spacing: -2px; margin-top: 8px; }
+.lq {
+  display: inline-block;
+  animation: letterSlam 0.4s cubic-bezier(0.16, 1.4, 0.3, 1) both,
+             letterBounce 0.55s 5s cubic-bezier(0.22, 1, 0.36, 1) infinite alternate;
+}
+.lr {
   background: var(--gradient);
   background-size: 220% 100%;
   -webkit-background-clip: text; background-clip: text; color: transparent;
-  animation: splashWord 0.7s 1.4s cubic-bezier(0.22, 1, 0.36, 1) both,
-             splashShimmer 1.8s 2.1s linear infinite;
 }
-@keyframes splashWord { from { opacity: 0; transform: translateY(38px) scale(0.82); } }
-@keyframes splashShimmer { from { background-position: 0% 0; } to { background-position: 220% 0; } }
-.splash-tag {
-  color: var(--text-dim);
-  font-size: 16px;
-  margin-top: 8px;
-  animation: splashWord 0.7s 1.95s cubic-bezier(0.22, 1, 0.36, 1) both;
+.lq:nth-child(1) { animation-delay: 2.0s, 5.0s; }
+.lq:nth-child(2) { animation-delay: 2.35s, 5.07s; }
+.lq:nth-child(3) { animation-delay: 2.7s, 5.14s; }
+.lq:nth-child(4) { animation-delay: 3.05s, 5.21s; }
+.lq:nth-child(5) { animation-delay: 3.4s, 5.28s; }
+.lq:nth-child(6) { animation-delay: 3.75s, 5.35s; }
+.lq:nth-child(7) { animation-delay: 4.1s, 5.42s; }
+.lq:nth-child(8) { animation-delay: 4.45s, 5.49s; }
+@keyframes letterSlam {
+  0% { opacity: 0; transform: translateY(-90px) scale(2.6) rotate(-14deg); }
+  70% { opacity: 1; transform: translateY(4px) scale(0.9); }
+  100% { transform: translateY(0) scale(1) rotate(0); }
+}
+@keyframes letterBounce { from { transform: translateY(0); } to { transform: translateY(-7px); } }
+.splash-show .splash-tag {
+  color: var(--text-dim); font-size: 16px; margin-top: 10px;
+  animation: pieceIn 0.6s 6.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.show-rings { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.show-rings i {
+  position: absolute;
+  width: 200px; height: 200px;
+  border: 3px solid var(--gold);
+  border-radius: 50%;
+  opacity: 0;
+  animation: luRing 1.5s ease-out both;
+}
+.show-rings i:nth-child(1) { animation-delay: 1.0s; }
+.show-rings i:nth-child(2) { animation-delay: 2.7s; border-color: var(--accent); }
+.show-rings i:nth-child(3) { animation-delay: 4.4s; border-color: var(--accent-2); }
+.show-rings i:nth-child(4) { animation-delay: 8.0s; border-width: 5px; }
+.emoji-storm { position: absolute; inset: 0; pointer-events: none; }
+.emoji-storm i {
+  position: absolute;
+  font-style: normal;
+  font-size: 34px;
+  left: -60px;
+  opacity: 0;
+  animation: stormFly 2.6s linear both;
+}
+@keyframes stormFly {
+  0% { opacity: 0; transform: translateX(0) rotate(0); }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(120vw) rotate(360deg); }
+}
+.emoji-storm i:nth-child(1)  { top: 12%; animation-delay: 1.2s; }
+.emoji-storm i:nth-child(2)  { top: 78%; animation-delay: 1.7s; font-size: 44px; }
+.emoji-storm i:nth-child(3)  { top: 30%; animation-delay: 2.2s; }
+.emoji-storm i:nth-child(4)  { top: 64%; animation-delay: 2.6s; font-size: 28px; }
+.emoji-storm i:nth-child(5)  { top: 8%;  animation-delay: 3.1s; font-size: 40px; }
+.emoji-storm i:nth-child(6)  { top: 85%; animation-delay: 3.5s; }
+.emoji-storm i:nth-child(7)  { top: 22%; animation-delay: 4.0s; font-size: 46px; }
+.emoji-storm i:nth-child(8)  { top: 70%; animation-delay: 4.5s; }
+.emoji-storm i:nth-child(9)  { top: 40%; animation-delay: 5.0s; font-size: 30px; }
+.emoji-storm i:nth-child(10) { top: 90%; animation-delay: 5.4s; }
+.emoji-storm i:nth-child(11) { top: 16%; animation-delay: 5.9s; font-size: 42px; }
+.emoji-storm i:nth-child(12) { top: 55%; animation-delay: 6.3s; }
+.emoji-storm i:nth-child(13) { top: 75%; animation-delay: 6.8s; font-size: 36px; }
+.emoji-storm i:nth-child(14) { top: 35%; animation-delay: 7.2s; }
+.whiteout {
+  position: absolute; inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  animation: whiteFlash 1.4s 8.0s ease-out both;
+}
+@keyframes whiteFlash {
+  0% { opacity: 0; }
+  12% { opacity: 0.9; }
+  100% { opacity: 0; }
 }
 
 /* Home screen cascades in after the splash */
