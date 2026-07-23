@@ -96,6 +96,100 @@ const Sound = (() => {
   };
 })();
 
+// ---------- Background music (generative, no audio files) ----------
+// A faint loop: soft bass + sustained pad + plucked arpeggio over C–G–Am–F.
+// Light randomization keeps it from feeling mechanical on repeat.
+const Music = (() => {
+  let ctx = null, master = null, timer = null, nextBarTime = 0, barIndex = 0, playing = false;
+  let enabled = localStorage.getItem("quizrush-music") !== "off";
+  const CHORDS = [
+    [261.63, 329.63, 392.0],  // C
+    [196.0, 246.94, 293.66],  // G
+    [220.0, 261.63, 329.63],  // Am
+    [174.61, 220.0, 261.63],  // F
+  ];
+  const BAR = 2.0; // seconds per bar
+
+  function ensureCtx() {
+    if (!ctx) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch { /* older iOS */ }
+      master = ctx.createGain();
+      const lp = ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = 1600;
+      master.connect(lp).connect(ctx.destination);
+    }
+    if (ctx.state === "suspended") ctx.resume();
+  }
+
+  function note(freq, when, dur, vol, type = "triangle") {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.linearRampToValueAtTime(vol, when + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, when + dur);
+    osc.connect(gain).connect(master);
+    osc.start(when);
+    osc.stop(when + dur + 0.1);
+  }
+
+  function scheduleBar(t, chord) {
+    note(chord[0] / 2, t, BAR * 0.95, 0.05, "sine");            // bass root
+    chord.forEach((f) => note(f, t, BAR * 0.98, 0.016, "sine")); // pad
+    for (let i = 0; i < 8; i++) {                                // eighth-note plucks
+      if (Math.random() < 0.22) continue;                        // breathing room
+      const f = chord[i % 3] * (i % 4 === 3 ? 2 : 1);
+      note(f, t + i * (BAR / 8) + (Math.random() - 0.5) * 0.015, 0.22, 0.038);
+    }
+  }
+
+  function tick() {
+    while (nextBarTime < ctx.currentTime + 0.5) {
+      scheduleBar(nextBarTime, CHORDS[barIndex % CHORDS.length]);
+      nextBarTime += BAR;
+      barIndex++;
+    }
+  }
+
+  return {
+    get enabled() { return enabled; },
+    get playing() { return playing; },
+    toggle() {
+      enabled = !enabled;
+      try { localStorage.setItem("quizrush-music", enabled ? "on" : "off"); } catch { /* play on */ }
+      if (!enabled) this.stop();
+      return enabled;
+    },
+    start() {
+      if (!enabled || playing) return;
+      try {
+        ensureCtx();
+        playing = true;
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setValueAtTime(0.0001, ctx.currentTime);
+        master.gain.linearRampToValueAtTime(1, ctx.currentTime + 1.4); // gentle fade in
+        nextBarTime = ctx.currentTime + 0.05;
+        barIndex = 0;
+        tick();
+        timer = setInterval(tick, 200);
+      } catch { playing = false; /* music is never worth an error */ }
+    },
+    stop() {
+      if (!playing) return;
+      playing = false;
+      clearInterval(timer);
+      try {
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+        master.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.8); // fade out
+      } catch { /* already gone */ }
+    },
+  };
+})();
+
 const OTDB_API = "https://opentdb.com";
 const TTA_API = "https://the-trivia-api.com/v2";
 // The Trivia API is CC BY-NC (non-commercial). Flip this to false for a
@@ -778,6 +872,7 @@ async function startGame(mode, overrides = {}) {
   updateScoreUI();
   showScreen("game");
   Sound.start();
+  Music.start();
 
   if (mode === "blitz") {
     // 3… 2… 1… GO! before the clock starts running
@@ -1187,6 +1282,7 @@ function startWhoami() {
   };
   showScreen("whoami");
   Sound.start();
+  Music.start();
   renderWhoamiCharacter();
 }
 
@@ -1342,6 +1438,7 @@ async function startParty(names) {
   updateScoreUI();
   showScreen("game");
   Sound.start();
+  Music.start();
   showPassOverlay();
 }
 
@@ -1450,6 +1547,7 @@ function startDingbats() {
   };
   showScreen("dingbats");
   Sound.start();
+  Music.start();
   renderDingbat();
 }
 
@@ -1557,6 +1655,7 @@ function endGame() {
   state.ended = true;
   clearInterval(state.qTimer);
   clearInterval(state.blitzTimer);
+  Music.stop();
   flushAnswerStats();
   if (state.mode === "party") return endParty();
   state.awaitingContinue = false;
@@ -1851,6 +1950,7 @@ function quitGame() {
   flushAnswerStats();
   clearInterval(state?.qTimer);
   clearInterval(state?.blitzTimer);
+  Music.stop();
   state = null;
   showScreen("home");
 }
@@ -2095,6 +2195,18 @@ $("btn-sound").addEventListener("click", () => {
   Sound.click(); // audible confirmation when turning sound on
 });
 
+function paintMusicButton() {
+  const btn = $("btn-music");
+  btn.classList.toggle("off", !Music.enabled);
+  btn.title = Music.enabled ? "Mute music" : "Unmute music";
+}
+$("btn-music").addEventListener("click", () => {
+  Music.toggle();
+  paintMusicButton();
+  // turning it back on mid-round should resume immediately
+  if (Music.enabled && state && !state.ended) Music.start();
+});
+
 $("btn-quit").addEventListener("click", () => { Sound.click(); quitGame(); });
 $("btn-home").addEventListener("click", () => {
   Sound.click();
@@ -2131,6 +2243,7 @@ applyTheme(THEMES.some((t) => t.id === player.theme && player.bestDailyStreak >=
   applyAppIcon(icon);
 }
 paintSoundButton();
+paintMusicButton();
 renderHome();
 
 // Prime the audio engine on the first touch anywhere (iOS gesture requirement)

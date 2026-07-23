@@ -289,6 +289,17 @@ body.intro-done #screen-home > :nth-child(n+9) { animation-delay: 0.6s; }
 }
 .btn-sound:hover { border-color: rgba(124, 92, 255, 0.55); }
 .btn-sound:active { transform: scale(0.92); }
+.btn-music { right: 66px; }
+.btn-music.off { opacity: 0.4; }
+.btn-music.off::after {
+  content: "";
+  position: absolute;
+  width: 26px; height: 2px;
+  background: var(--text-dim);
+  transform: rotate(-45deg);
+  border-radius: 2px;
+}
+.btn-music { position: fixed; }
 
 /* ============ Background orbs ============ */
 .bg-orbs { position: fixed; inset: 0; z-index: -1; overflow: hidden; }
