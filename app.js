@@ -842,7 +842,7 @@ function composeMix(pool, mix, amount) {
   return shuffle(picked).slice(0, amount);
 }
 
-async function getQuestions({ catId = "", difficulty = "", amount = 10, mix = null }) {
+async function getQuestions({ catId = "", difficulty = "", amount = 10, mix = null, exclude = null }) {
   if (difficulty === "smart") {
     // fetch at the tier the player's record points to, so the difficulty is
     // real rather than whatever mix the sources happened to return
@@ -856,9 +856,10 @@ async function getQuestions({ catId = "", difficulty = "", amount = 10, mix = nu
   // Mixed levels over-fetch an unfiltered pool so every tier is well stocked
   const srcAmount = mix ? 50 : amount;
   const srcDifficulty = mix ? "" : difficulty;
-  // Bank-backed categories get the full bank; "Any" games get a light sprinkle
-  // so riddles season mixed rounds without dominating them.
-  const bankAmount = cat?.bank ? srcAmount : cat ? 0 : Math.ceil(amount * 0.15);
+  // Bank-backed categories get the full bank (all of it for blended levels, so
+  // the no-repeat filter has the whole pool to draw on); "Any" games get a
+  // light sprinkle so riddles season mixed rounds without dominating them.
+  const bankAmount = cat?.bank ? (mix ? 500 : srcAmount) : cat ? 0 : Math.ceil(amount * 0.15);
 
   const [otdb, tta] = await Promise.allSettled([
     useOtdb ? fetchFromOTDB({ amount: srcAmount, otdbCats: cat?.otdb, difficulty: srcDifficulty }) : Promise.resolve([]),
@@ -883,8 +884,13 @@ async function getQuestions({ catId = "", difficulty = "", amount = 10, mix = nu
   // Tag with our taxonomy id so mastery stats can attribute every answer
   merged.forEach((q) => { q.catId = catId || NAME_TO_CAT[q.category.toLowerCase()] || ""; });
 
+  // No-repeat memory: skip questions this run has already served, unless that
+  // would leave the round short — better an occasional repeat than a thin level
+  let available = exclude?.size ? merged.filter((q) => !exclude.has(nemesisKey(q))) : merged;
+  if (available.length < amount) available = merged;
+
   // For blended levels, shape the pool to the requested tier proportions
-  const shaped = mix ? composeMix(merged, mix, amount) : merged;
+  const shaped = mix ? composeMix(available, mix, amount) : available;
 
   // Sprinkle in up to two nemesis questions seeking revenge
   const nemeses = pickNemeses(catId, mix ? "" : difficulty);
@@ -967,6 +973,7 @@ async function startGame(mode, overrides = {}) {
     difficulty: opts.difficulty || "",
     catId: opts.catId || "",
     level: 1,
+    usedQKeys: new Set(questions.map((q) => nemesisKey(q))), // run-scoped no-repeat memory
     levelCorrect: 0,
     maxLevelCorrect: 0,
     awaitingContinue: false,
@@ -1635,7 +1642,7 @@ async function continueClassicRun() {
   setLoading(true, `Loading Level ${nextLevel}…`);
   let questions;
   try {
-    questions = await getQuestions({ catId: state.catId, mix: levelMix(nextLevel), amount: 10 });
+    questions = await getQuestions({ catId: state.catId, mix: levelMix(nextLevel), amount: 10, exclude: state.usedQKeys });
   } catch {
     setLoading(false);
     alert("Couldn't load the next level — ending the run here so your score counts.");
@@ -1643,6 +1650,7 @@ async function continueClassicRun() {
   }
   setLoading(false);
 
+  questions.forEach((q) => state.usedQKeys?.add(nemesisKey(q)));
   Object.assign(state, {
     questions,
     index: 0,
