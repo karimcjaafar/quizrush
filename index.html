@@ -17,11 +17,26 @@
   <!-- Animated intro splash -->
   <div class="splash" id="splash">
     <div class="splash-inner">
-      <div class="splash-bolt">⚡</div>
+      <div class="splash-bolt">⚡<span class="splash-ring"><i></i><i></i><i></i></span></div>
       <h1 class="splash-title"><span class="splash-quiz">Quiz</span><span class="splash-rush">Rush</span></h1>
       <p class="splash-tag">Pick a mode. Beat your best.</p>
     </div>
   </div>
+
+  <!-- Celebration overlay (daily solved, big wins) -->
+  <div class="levelup-overlay celebrate-overlay" id="celebrate-overlay" hidden>
+    <div class="lu-rings"><i></i><i></i><i></i></div>
+    <div class="lu-big" id="cel-big">DAILY SOLVED!</div>
+    <div class="cel-sub" id="cel-sub"></div>
+  </div>
+
+  <!-- Blitz countdown -->
+  <div class="countdown-overlay" id="countdown-overlay" hidden>
+    <span class="countdown-num" id="countdown-num">3</span>
+  </div>
+
+  <!-- Badge toast -->
+  <div class="badge-toast" id="badge-toast" hidden></div>
 
   <!-- Level-up cinematic -->
   <div class="levelup-overlay" id="levelup-overlay" hidden>

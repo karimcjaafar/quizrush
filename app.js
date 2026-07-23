@@ -462,8 +462,20 @@ function shuffle(arr) {
 }
 
 function showScreen(name) {
-  Object.values(screens).forEach((s) => s.classList.remove("active"));
-  screens[name].classList.add("active");
+  const target = screens[name];
+  const current = Object.values(screens).find((s) => s.classList.contains("active"));
+  if (current === target) return;
+  // Two-phase transition: outgoing screen glides away, then the new one enters
+  if (!current || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    Object.values(screens).forEach((s) => s.classList.remove("active", "screen-exit"));
+    target.classList.add("active");
+    return;
+  }
+  current.classList.add("screen-exit");
+  setTimeout(() => {
+    Object.values(screens).forEach((s) => s.classList.remove("active", "screen-exit"));
+    target.classList.add("active");
+  }, 290);
 }
 
 function setLoading(on, text) {
@@ -737,8 +749,15 @@ async function startGame(mode, overrides = {}) {
   showScreen("game");
   Sound.start();
 
-  if (mode === "blitz") startBlitzClock();
-  renderQuestion();
+  if (mode === "blitz") {
+    // 3… 2… 1… GO! before the clock starts running
+    playCountdown(() => {
+      startBlitzClock();
+      renderQuestion();
+    });
+  } else {
+    renderQuestion();
+  }
 }
 
 function renderQuestion() {
@@ -1620,10 +1639,20 @@ function endGame() {
 
   $("btn-share").hidden = mode !== "daily";
   renderHome();
-  showScreen("results");
-  if (isBest || dailyWon || ((mode === "classic" || mode === "custom") && state.maxLevelCorrect >= 10)) confetti();
-  if (isBest || newBadges.length) Sound.best();
-  else Sound.fanfare();
+
+  const reveal = () => {
+    showScreen("results");
+    showBadgeToast(newBadges);
+  };
+  if (mode === "daily" && dailyWon) {
+    // the emotional peak of a streak day gets the full cinematic
+    playCelebration({ big: "DAILY SOLVED!", sub: `🔥 ${liveDailyStreak()}-day streak` }, reveal);
+  } else {
+    reveal();
+    if (isBest || ((mode === "classic" || mode === "custom") && state.maxLevelCorrect >= 10)) confetti();
+    if (isBest || newBadges.length) Sound.best();
+    else Sound.fanfare();
+  }
 }
 
 // ---------- Daily share card ----------
@@ -1695,6 +1724,65 @@ function playLevelUpCinematic(nextLevel, then) {
   };
   ov.onclick = finish; // tap to skip
   setTimeout(finish, 3400);
+}
+
+// ---------- Celebration overlay (daily solved and other big wins) ----------
+function playCelebration({ big, sub = "" }, then) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { Sound.best(); return then(); }
+  const ov = $("celebrate-overlay");
+  $("cel-big").textContent = big;
+  $("cel-sub").textContent = sub;
+  ov.hidden = false;
+  ov.classList.remove("play");
+  void ov.offsetWidth;
+  ov.classList.add("play");
+  confetti();
+  Sound.best();
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    ov.hidden = true;
+    then();
+  };
+  ov.onclick = finish;
+  setTimeout(finish, 3400);
+}
+
+// ---------- Badge toast ----------
+function showBadgeToast(badges) {
+  if (!badges.length) return;
+  const toast = $("badge-toast");
+  toast.textContent = `🏆 Badge earned: ${badges.map((b) => `${b.emoji} ${b.name}`).join(" · ")}`;
+  toast.hidden = false;
+  toast.classList.remove("show");
+  void toast.offsetWidth;
+  toast.classList.add("show");
+  setTimeout(() => { toast.hidden = true; }, 3100);
+}
+
+// ---------- Blitz countdown ----------
+function playCountdown(then) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return then();
+  const ov = $("countdown-overlay");
+  const num = $("countdown-num");
+  ov.hidden = false;
+  const steps = ["3", "2", "1", "GO!"];
+  let i = 0;
+  const tick = () => {
+    if (i >= steps.length) {
+      ov.hidden = true;
+      return then();
+    }
+    num.textContent = steps[i];
+    num.classList.remove("tick");
+    void num.offsetWidth;
+    num.classList.add("tick");
+    if (steps[i] === "GO!") Sound.start(); else Sound.tick();
+    i++;
+    setTimeout(tick, i >= steps.length ? 650 : 720);
+  };
+  tick();
 }
 
 // ---------- Confetti ----------
@@ -2015,7 +2103,7 @@ renderHome();
   };
   splash.addEventListener("click", finish);
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) finish();
-  else setTimeout(finish, 2300);
+  else setTimeout(finish, 4600);
 }
 
 // First visit (or missing profile): orientation + profile setup in one card.
