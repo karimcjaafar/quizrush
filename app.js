@@ -382,6 +382,15 @@ const CATEGORIES = [
   { id: "logic",     name: "Logic & Riddles",      emoji: "🧩", otdb: [],                             tta: [], bank: true },
   { id: "numbers",   name: "Number Games",         emoji: "🔢", otdb: [],                             tta: [], bank: true },
   { id: "flags",     name: "Flags",                emoji: "🚩", otdb: [],                             tta: [], bank: true },
+  // Specialist packs: bank-only, live on the Specials shelf, hidden from the
+  // Your Rules category chips so the core quiz stays uncluttered.
+  { id: "animals",   name: "Animals & Nature",     emoji: "🐾", otdb: [], tta: [], bank: true, special: true },
+  { id: "myth",      name: "Mythology",            emoji: "🔱", otdb: [], tta: [], bank: true, special: true },
+  { id: "decades",   name: "Music Decades",        emoji: "🎸", otdb: [], tta: [], bank: true, special: true },
+  { id: "space",     name: "Space",                emoji: "🚀", otdb: [], tta: [], bank: true, special: true },
+  { id: "worldcup",  name: "World Cup",            emoji: "⚽", otdb: [], tta: [], bank: true, special: true },
+  { id: "starwars",  name: "Star Wars",            emoji: "🛸", otdb: [], tta: [], bank: true, special: true },
+  { id: "british",   name: "British Quiz",         emoji: "🇬🇧", otdb: [], tta: [], bank: true, special: true },
 ];
 
 // Maps source-category display names back to our taxonomy, so mastery stats
@@ -595,6 +604,9 @@ const DAILY_POOLS = [
   ["sport", 10], ["science", 10], ["history", 10], ["geography", 10],
   ["politics", 10], ["entertainment", 10], ["arts", 10], ["celebs", 10],
   ["food", 10], ["general", 10],
+  // broad specialist packs join the rotation; fandom packs (worldcup,
+  // starwars, british) stay pack-only so dailies remain universal
+  ["animals", 24], ["myth", 24], ["decades", 24], ["space", 24],
 ];
 function dailyQuestion() {
   const d = new Date();
@@ -630,6 +642,7 @@ const screens = {
   home: $("screen-home"),
   brainmenu: $("screen-brainmenu"),
   picturemenu: $("screen-picturemenu"),
+  specialsmenu: $("screen-specialsmenu"),
   partysetup: $("screen-partysetup"),
   game: $("screen-game"),
   whoami: $("screen-whoami"),
@@ -2088,7 +2101,7 @@ function paintCategoryChips() {
   const active = document.querySelector("#chips-category .chip.active")?.dataset.value ?? "";
   $("chips-category").innerHTML =
     `<button class="chip ${active === "" ? "active" : ""}" data-value="">🎲 Any</button>` +
-    CATEGORIES.map((c) => {
+    CATEGORIES.filter((c) => !c.special).map((c) => {
       const medal = medalFor(c.id);
       return `<button class="chip ${active === c.id ? "active" : ""}" data-value="${c.id}">` +
         `${c.emoji} ${c.name}${medal ? " " + medal : ""}</button>`;
@@ -2199,6 +2212,7 @@ document.querySelectorAll(".mode-card").forEach((card) => {
     if (card.disabled) return;
     if (card.dataset.action === "brainmenu") { Sound.click(); return showScreen("brainmenu"); }
     if (card.dataset.action === "picturemenu") { Sound.click(); return showScreen("picturemenu"); }
+    if (card.dataset.action === "specialsmenu") { Sound.click(); paintSpecials(); return showScreen("specialsmenu"); }
     if (card.dataset.action === "partysetup") { Sound.click(); renderPartyNames(); return showScreen("partysetup"); }
     if (card.dataset.mode === "whoami") return startWhoami();
     if (card.dataset.mode === "dingbats") return startDingbats();
@@ -2208,6 +2222,34 @@ document.querySelectorAll(".mode-card").forEach((card) => {
 
 $("btn-brain-back").addEventListener("click", () => { Sound.click(); showScreen("home"); });
 $("btn-picture-back").addEventListener("click", () => { Sound.click(); showScreen("home"); });
+$("btn-specials-back").addEventListener("click", () => { Sound.click(); showScreen("home"); });
+
+const SPECIAL_DESCS = {
+  animals: "From cheetahs to axolotls — the whole animal kingdom.",
+  myth: "Gods, monsters and heroes of Greece, Egypt and the North.",
+  decades: "Six decades of music, from Elvis to the 27 Club.",
+  space: "Planets, missions and the far edges of the universe.",
+  worldcup: "Every final, legend and Maracanazo since 1930.",
+  starwars: "A long time ago, in a galaxy far, far away…",
+  british: "Lochs, castles, scones and saints — quintessentially UK.",
+};
+
+function paintSpecials() {
+  $("specials-grid").innerHTML = CATEGORIES.filter((c) => c.special).map((c) => {
+    const medal = medalFor(c.id);
+    return `<button class="mode-card" data-mode="classic" data-cat="${c.id}">
+      <div class="mode-icon">${c.emoji}</div>
+      <div class="mode-info"><h2>${c.name}${medal ? " " + medal : ""}</h2><p>${SPECIAL_DESCS[c.id] || ""}</p></div>
+    </button>`;
+  }).join("");
+}
+
+// pack cards are re-rendered (for mastery medals), so clicks go via delegation
+$("specials-grid").addEventListener("click", (e) => {
+  const card = e.target.closest(".mode-card");
+  if (!card) return;
+  startGame("classic", { catId: card.dataset.cat });
+});
 $("btn-party-back").addEventListener("click", () => { Sound.click(); showScreen("home"); });
 
 function partyPlayerCount() {
