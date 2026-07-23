@@ -150,6 +150,123 @@ FLAG_SET.forEach(([flag, name, diff]) => {
   });
 });
 
+// Daily pools for the API-backed categories — original questions written for
+// this app so the Daily Challenge can be ANY category while staying identical
+// for every player. Appended after flags; DAILY_POOLS in app.js pins counts.
+const DAILY_EXTRA = [
+  // sport
+  { cat: "sport", difficulty: "easy", text: "How many players does a football (soccer) team have on the pitch?", correct: "11", wrong: ["10", "12", "9"] },
+  { cat: "sport", difficulty: "easy", text: "In which sport would you perform a slam dunk?", correct: "Basketball", wrong: ["Volleyball", "Tennis", "Rugby"] },
+  { cat: "sport", difficulty: "easy", text: "Which sport is played at Wimbledon?", correct: "Tennis", wrong: ["Golf", "Cricket", "Polo"] },
+  { cat: "sport", difficulty: "easy", text: "How many rings are on the Olympic flag?", correct: "5", wrong: ["4", "6", "7"] },
+  { cat: "sport", difficulty: "medium", text: "Which country has won the most FIFA World Cups?", correct: "Brazil", wrong: ["Germany", "Argentina", "Italy"] },
+  { cat: "sport", difficulty: "medium", text: "In tennis, what is the score called when both players are on 40?", correct: "Deuce", wrong: ["Advantage", "Love-all", "Break point"] },
+  { cat: "sport", difficulty: "medium", text: "How many balls are bowled in a cricket over?", correct: "6", wrong: ["5", "8", "10"] },
+  { cat: "sport", difficulty: "medium", text: "In golf, what is one stroke under par called?", correct: "A birdie", wrong: ["An eagle", "A bogey", "An albatross"] },
+  { cat: "sport", difficulty: "hard", text: "Olympic gold medals are mostly made of which metal?", correct: "Silver", wrong: ["Gold", "Bronze", "Copper"] },
+  { cat: "sport", difficulty: "hard", text: "Which of these is not a fencing weapon?", correct: "Rapier", wrong: ["Foil", "Épée", "Sabre"] },
+  // science
+  { cat: "science", difficulty: "easy", text: "Which planet is known as the Red Planet?", correct: "Mars", wrong: ["Venus", "Jupiter", "Mercury"] },
+  { cat: "science", difficulty: "easy", text: "What gas do plants absorb from the air?", correct: "Carbon dioxide", wrong: ["Oxygen", "Nitrogen", "Hydrogen"] },
+  { cat: "science", difficulty: "easy", text: "How many legs does a spider have?", correct: "8", wrong: ["6", "10", "12"] },
+  { cat: "science", difficulty: "easy", text: "What is H₂O better known as?", correct: "Water", wrong: ["Salt", "Hydrogen peroxide", "Air"] },
+  { cat: "science", difficulty: "medium", text: "What is the largest organ of the human body?", correct: "The skin", wrong: ["The liver", "The lungs", "The brain"] },
+  { cat: "science", difficulty: "medium", text: "Which part of the cell contains its DNA?", correct: "The nucleus", wrong: ["The membrane", "The cytoplasm", "The ribosome"] },
+  { cat: "science", difficulty: "medium", text: "What is the chemical symbol for gold?", correct: "Au", wrong: ["Go", "Gd", "Ag"] },
+  { cat: "science", difficulty: "medium", text: "Which particle in an atom carries a negative charge?", correct: "The electron", wrong: ["The proton", "The neutron", "The photon"] },
+  { cat: "science", difficulty: "hard", text: "Roughly how fast does light travel?", correct: "300,000 km per second", wrong: ["30,000 km per second", "3 million km per second", "300 km per second"] },
+  { cat: "science", difficulty: "hard", text: "Which blood type is the universal donor?", correct: "O negative", wrong: ["AB positive", "A negative", "O positive"] },
+  // history
+  { cat: "history", difficulty: "easy", text: "Whose Egyptian tomb was discovered nearly intact in 1922?", correct: "Tutankhamun", wrong: ["Ramesses II", "Cleopatra", "Nefertiti"] },
+  { cat: "history", difficulty: "easy", text: "Which famous ship sank on its maiden voyage in 1912?", correct: "The Titanic", wrong: ["The Lusitania", "The Britannic", "The Queen Mary"] },
+  { cat: "history", difficulty: "easy", text: "The Great Wall is found in which country?", correct: "China", wrong: ["India", "Mongolia", "Japan"] },
+  { cat: "history", difficulty: "medium", text: "In which year did World War II end?", correct: "1945", wrong: ["1944", "1946", "1943"] },
+  { cat: "history", difficulty: "medium", text: "Who was the first person to walk on the Moon?", correct: "Neil Armstrong", wrong: ["Buzz Aldrin", "Yuri Gagarin", "John Glenn"] },
+  { cat: "history", difficulty: "medium", text: "What language did the ancient Romans speak?", correct: "Latin", wrong: ["Greek", "Italian", "Etruscan"] },
+  { cat: "history", difficulty: "medium", text: "Which civilization built Machu Picchu?", correct: "The Inca", wrong: ["The Maya", "The Aztec", "The Olmec"] },
+  { cat: "history", difficulty: "hard", text: "The Hundred Years' War was fought mainly between which two countries?", correct: "England and France", wrong: ["Spain and Portugal", "France and Germany", "England and Scotland"] },
+  { cat: "history", difficulty: "hard", text: "Which of the Seven Wonders stood at Alexandria?", correct: "The Lighthouse", wrong: ["The Colossus", "The Hanging Gardens", "The Mausoleum"] },
+  { cat: "history", difficulty: "hard", text: "In which year did the Berlin Wall fall?", correct: "1989", wrong: ["1991", "1987", "1985"] },
+  // geography
+  { cat: "geography", difficulty: "easy", text: "What is the largest ocean on Earth?", correct: "The Pacific", wrong: ["The Atlantic", "The Indian", "The Arctic"] },
+  { cat: "geography", difficulty: "easy", text: "What is the capital of France?", correct: "Paris", wrong: ["Lyon", "Marseille", "Nice"] },
+  { cat: "geography", difficulty: "easy", text: "The Sahara Desert is on which continent?", correct: "Africa", wrong: ["Asia", "Australia", "South America"] },
+  { cat: "geography", difficulty: "easy", text: "What is the capital of Japan?", correct: "Tokyo", wrong: ["Osaka", "Kyoto", "Nagoya"] },
+  { cat: "geography", difficulty: "medium", text: "Which river is traditionally considered the world's longest?", correct: "The Nile", wrong: ["The Amazon", "The Yangtze", "The Mississippi"] },
+  { cat: "geography", difficulty: "medium", text: "What is the smallest country in the world?", correct: "Vatican City", wrong: ["Monaco", "San Marino", "Liechtenstein"] },
+  { cat: "geography", difficulty: "medium", text: "Istanbul spans which two continents?", correct: "Europe and Asia", wrong: ["Asia and Africa", "Europe and Africa", "It's only in Europe"] },
+  { cat: "geography", difficulty: "hard", text: "Which country observes the most time zones, counting territories?", correct: "France", wrong: ["Russia", "The USA", "China"] },
+  { cat: "geography", difficulty: "hard", text: "Which two countries share the longest land border?", correct: "Canada and the USA", wrong: ["Russia and China", "Chile and Argentina", "Kazakhstan and Russia"] },
+  { cat: "geography", difficulty: "hard", text: "What is the capital of Australia?", correct: "Canberra", wrong: ["Sydney", "Melbourne", "Perth"] },
+  // politics & society
+  { cat: "politics", difficulty: "easy", text: "How many stars are on the flag of the United States?", correct: "50", wrong: ["48", "51", "52"] },
+  { cat: "politics", difficulty: "easy", text: "What address is the official home of the UK Prime Minister?", correct: "10 Downing Street", wrong: ["Buckingham Palace", "Westminster Abbey", "1 Whitehall"] },
+  { cat: "politics", difficulty: "easy", text: "What does \"UN\" stand for?", correct: "United Nations", wrong: ["Union of Nations", "United Networks", "Universal Nations"] },
+  { cat: "politics", difficulty: "easy", text: "The White House is in which city?", correct: "Washington, D.C.", wrong: ["New York", "Philadelphia", "Boston"] },
+  { cat: "politics", difficulty: "medium", text: "What are the three branches of government usually called?", correct: "Executive, legislative, judicial", wrong: ["Federal, state, local", "Crown, court, commons", "Senate, house, cabinet"] },
+  { cat: "politics", difficulty: "medium", text: "Which animal represents the U.S. Democratic Party?", correct: "The donkey", wrong: ["The elephant", "The eagle", "The bear"] },
+  { cat: "politics", difficulty: "medium", text: "How many permanent members sit on the UN Security Council?", correct: "5", wrong: ["7", "10", "3"] },
+  { cat: "politics", difficulty: "hard", text: "What is the minimum age to be President of the United States?", correct: "35", wrong: ["30", "40", "45"] },
+  { cat: "politics", difficulty: "hard", text: "Which country was first to give women the national vote, in 1893?", correct: "New Zealand", wrong: ["The UK", "The USA", "Finland"] },
+  { cat: "politics", difficulty: "hard", text: "The European Parliament's official seat is in which city?", correct: "Strasbourg", wrong: ["Brussels", "Geneva", "Luxembourg"] },
+  // music & entertainment
+  { cat: "entertainment", difficulty: "easy", text: "Which wizard attends Hogwarts School of Witchcraft and Wizardry?", correct: "Harry Potter", wrong: ["Gandalf", "Merlin", "Doctor Strange"] },
+  { cat: "entertainment", difficulty: "easy", text: "In The Lion King, what kind of animal is Simba?", correct: "A lion", wrong: ["A tiger", "A leopard", "A cheetah"] },
+  { cat: "entertainment", difficulty: "easy", text: "Which film franchise features Darth Vader?", correct: "Star Wars", wrong: ["Star Trek", "Dune", "The Matrix"] },
+  { cat: "entertainment", difficulty: "easy", text: "How many keys does a standard piano have?", correct: "88", wrong: ["76", "92", "100"] },
+  { cat: "entertainment", difficulty: "medium", text: "Which band recorded \"Hey Jude\"?", correct: "The Beatles", wrong: ["The Rolling Stones", "The Beach Boys", "Queen"] },
+  { cat: "entertainment", difficulty: "medium", text: "Who directed both Jaws and E.T.?", correct: "Steven Spielberg", wrong: ["George Lucas", "James Cameron", "Ridley Scott"] },
+  { cat: "entertainment", difficulty: "medium", text: "How many strings does a standard violin have?", correct: "4", wrong: ["5", "6", "7"] },
+  { cat: "entertainment", difficulty: "medium", text: "Which composer continued writing music after losing his hearing?", correct: "Beethoven", wrong: ["Mozart", "Bach", "Chopin"] },
+  { cat: "entertainment", difficulty: "hard", text: "In the acronym EGOT, what does the T stand for?", correct: "Tony", wrong: ["Turner", "TIFF", "Telly"] },
+  { cat: "entertainment", difficulty: "hard", text: "Counting both end notes, how many notes span an octave?", correct: "8", wrong: ["7", "10", "12"] },
+  // arts & literature
+  { cat: "arts", difficulty: "easy", text: "Who painted the Mona Lisa?", correct: "Leonardo da Vinci", wrong: ["Michelangelo", "Raphael", "Botticelli"] },
+  { cat: "arts", difficulty: "easy", text: "Who wrote Romeo and Juliet?", correct: "William Shakespeare", wrong: ["Charles Dickens", "Jane Austen", "Oscar Wilde"] },
+  { cat: "arts", difficulty: "easy", text: "What do you call a painting of a person?", correct: "A portrait", wrong: ["A landscape", "A still life", "A mural"] },
+  { cat: "arts", difficulty: "medium", text: "Which Dutch painter famously lost part of an ear?", correct: "Vincent van Gogh", wrong: ["Rembrandt", "Vermeer", "Mondrian"] },
+  { cat: "arts", difficulty: "medium", text: "What are the three primary colors of paint?", correct: "Red, yellow, blue", wrong: ["Red, green, blue", "Red, yellow, green", "Blue, yellow, purple"] },
+  { cat: "arts", difficulty: "medium", text: "Who wrote Pride and Prejudice?", correct: "Jane Austen", wrong: ["Charlotte Brontë", "Emily Brontë", "George Eliot"] },
+  { cat: "arts", difficulty: "medium", text: "Who sculpted the statue of David?", correct: "Michelangelo", wrong: ["Donatello", "Bernini", "Rodin"] },
+  { cat: "arts", difficulty: "hard", text: "Salvador Dalí belonged to which art movement?", correct: "Surrealism", wrong: ["Cubism", "Impressionism", "Expressionism"] },
+  { cat: "arts", difficulty: "hard", text: "Who wrote the novel 1984?", correct: "George Orwell", wrong: ["Aldous Huxley", "Ray Bradbury", "H.G. Wells"] },
+  { cat: "arts", difficulty: "hard", text: "How many syllables does a traditional haiku have in total?", correct: "17", wrong: ["14", "15", "21"] },
+  // celebrity culture
+  { cat: "celebs", difficulty: "easy", text: "Which boxer said he could \"float like a butterfly, sting like a bee\"?", correct: "Muhammad Ali", wrong: ["Mike Tyson", "Joe Frazier", "Sugar Ray Leonard"] },
+  { cat: "celebs", difficulty: "easy", text: "What was the name of Elvis Presley's Memphis mansion?", correct: "Graceland", wrong: ["Neverland", "Dollywood", "Monticello"] },
+  { cat: "celebs", difficulty: "easy", text: "Who is known as the King of Pop?", correct: "Michael Jackson", wrong: ["Prince", "Elvis Presley", "Freddie Mercury"] },
+  { cat: "celebs", difficulty: "medium", text: "Which actress starred in Breakfast at Tiffany's?", correct: "Audrey Hepburn", wrong: ["Marilyn Monroe", "Grace Kelly", "Elizabeth Taylor"] },
+  { cat: "celebs", difficulty: "medium", text: "Charlie Chaplin rose to fame in which era of film?", correct: "The silent era", wrong: ["The talkies", "The Technicolor era", "The New Wave"] },
+  { cat: "celebs", difficulty: "medium", text: "Which Beatle played the drums?", correct: "Ringo Starr", wrong: ["John Lennon", "Paul McCartney", "George Harrison"] },
+  { cat: "celebs", difficulty: "medium", text: "Harry Houdini was world-famous as what?", correct: "An escape artist", wrong: ["A ventriloquist", "A tightrope walker", "A lion tamer"] },
+  { cat: "celebs", difficulty: "hard", text: "What was Marilyn Monroe's real first name?", correct: "Norma", wrong: ["Mary", "Dorothy", "Betty"] },
+  { cat: "celebs", difficulty: "hard", text: "Grace Kelly became princess of which country?", correct: "Monaco", wrong: ["Luxembourg", "Belgium", "Liechtenstein"] },
+  { cat: "celebs", difficulty: "hard", text: "What was Frank Sinatra's famous nickname?", correct: "Ol' Blue Eyes", wrong: ["The Duke", "The King", "Mr. Smooth"] },
+  // food & drink
+  { cat: "food", difficulty: "easy", text: "Sushi originally comes from which country?", correct: "Japan", wrong: ["China", "Thailand", "Korea"] },
+  { cat: "food", difficulty: "easy", text: "Which fruit is dried to make raisins?", correct: "Grapes", wrong: ["Plums", "Apricots", "Figs"] },
+  { cat: "food", difficulty: "easy", text: "Pizza originated in which country?", correct: "Italy", wrong: ["Greece", "France", "Spain"] },
+  { cat: "food", difficulty: "easy", text: "What is the main ingredient in guacamole?", correct: "Avocado", wrong: ["Cucumber", "Green pepper", "Peas"] },
+  { cat: "food", difficulty: "medium", text: "Which spice is the most expensive in the world by weight?", correct: "Saffron", wrong: ["Vanilla", "Cardamom", "Truffle salt"] },
+  { cat: "food", difficulty: "medium", text: "Paella comes from which country?", correct: "Spain", wrong: ["Portugal", "Mexico", "Italy"] },
+  { cat: "food", difficulty: "medium", text: "Besides tahini, what is the main ingredient of hummus?", correct: "Chickpeas", wrong: ["Lentils", "White beans", "Peanuts"] },
+  { cat: "food", difficulty: "medium", text: "What grain is risotto made from?", correct: "Rice", wrong: ["Barley", "Couscous", "Quinoa"] },
+  { cat: "food", difficulty: "hard", text: "Which cheese is traditional in tiramisu?", correct: "Mascarpone", wrong: ["Ricotta", "Cream cheese", "Mozzarella"] },
+  { cat: "food", difficulty: "hard", text: "Croissants are made from which kind of dough?", correct: "Laminated (layered) dough", wrong: ["Shortcrust", "Choux", "Filo"] },
+  // general knowledge
+  { cat: "general", difficulty: "easy", text: "How many days are in a leap year?", correct: "366", wrong: ["365", "364", "367"] },
+  { cat: "general", difficulty: "easy", text: "Traditionally, how many colors are in a rainbow?", correct: "7", wrong: ["6", "8", "5"] },
+  { cat: "general", difficulty: "easy", text: "What is the largest mammal on Earth?", correct: "The blue whale", wrong: ["The elephant", "The giraffe", "The orca"] },
+  { cat: "general", difficulty: "easy", text: "How many sides does a hexagon have?", correct: "6", wrong: ["5", "7", "8"] },
+  { cat: "general", difficulty: "medium", text: "What currency is used in Japan?", correct: "The yen", wrong: ["The won", "The yuan", "The ringgit"] },
+  { cat: "general", difficulty: "medium", text: "Which language has the most native speakers?", correct: "Mandarin Chinese", wrong: ["English", "Spanish", "Hindi"] },
+  { cat: "general", difficulty: "medium", text: "What is the tallest animal in the world?", correct: "The giraffe", wrong: ["The elephant", "The ostrich", "The moose"] },
+  { cat: "general", difficulty: "hard", text: "Which letter appears in no U.S. state name?", correct: "Q", wrong: ["Z", "X", "J"] },
+  { cat: "general", difficulty: "hard", text: "How many dots are on a standard die in total?", correct: "21", wrong: ["24", "18", "20"] },
+  { cat: "general", difficulty: "hard", text: "What is a group of crows called?", correct: "A murder", wrong: ["A parliament", "A gaggle", "A conspiracy"] },
+];
+DAILY_EXTRA.forEach((q) => QUIZRUSH_BANK.push(q));
+
 // "Who Am I?" bank — 4 clues per character, ordered obscure → obvious.
 // Original clue phrasings written for this app. `aliases` are the accepted
 // short forms; fuzzy matching adds misspelling tolerance on top.

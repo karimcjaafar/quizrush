@@ -590,7 +590,12 @@ function yesterdayKey() {
 // The category hops pseudo-randomly day to day (hash, not rotation). Pool
 // sizes are pinned so appending bank questions never reshuffles past or future
 // dailies — only ever append to the bank, and bump a pool size deliberately.
-const DAILY_POOLS = [["logic", 45], ["numbers", 15], ["flags", 80]];
+const DAILY_POOLS = [
+  ["logic", 45], ["numbers", 15], ["flags", 80],
+  ["sport", 10], ["science", 10], ["history", 10], ["geography", 10],
+  ["politics", 10], ["entertainment", 10], ["arts", 10], ["celebs", 10],
+  ["food", 10], ["general", 10],
+];
 function dailyQuestion() {
   const d = new Date();
   const seed = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
