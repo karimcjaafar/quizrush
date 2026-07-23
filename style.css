@@ -757,6 +757,18 @@ select {
   font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums;
 }
 
+/* Final five seconds: heartbeat pulse with the tick-tock */
+.timer-ring-wrap.urgent { animation: urgentPulse 0.5s ease-in-out infinite; }
+.timer-ring-wrap.urgent .timer-num { color: var(--red); }
+.timer-ring-wrap.urgent .ring-fill { filter: drop-shadow(0 0 9px rgba(255, 92, 108, 0.75)); }
+.blitz-timer.urgent { animation: urgentPulse 0.5s ease-in-out infinite; }
+@keyframes urgentPulse {
+  50% { transform: scale(1.1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .timer-ring-wrap.urgent, .blitz-timer.urgent { animation: none; }
+}
+
 .question-text {
   font-size: 21px; font-weight: 700; line-height: 1.4;
   text-align: center;

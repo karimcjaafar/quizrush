@@ -76,7 +76,11 @@ const Sound = (() => {
       tone(659.25, { dur: 0.5, vol: 0.1, when: 0.09, attack: 0.03 });       // E5
     },
     wrong()   { tone(196, { dur: 0.5, vol: 0.1, slide: 165, attack: 0.04 }); }, // soft low sigh, no buzz
-    tick()    { tone(880, { dur: 0.05, vol: 0.03, attack: 0.008 }); },
+    tick() {
+      // alternating tick-tock, like a clock counting you down
+      this._tock = !this._tock;
+      tone(this._tock ? 1150 : 870, { type: "square", dur: 0.028, vol: 0.045, attack: 0.002 });
+    },
     fanfare() {
       [523.25, 659.25, 783.99].forEach((f, i) =>
         tone(f, { dur: 0.45, vol: 0.09, when: i * 0.15, attack: 0.03 }));
@@ -412,7 +416,7 @@ const TTA_API = "https://the-trivia-api.com/v2";
 // The Trivia API is CC BY-NC (non-commercial). Flip this to false for a
 // commercial build: the broker then runs on Open Trivia DB + our own bank only.
 const INCLUDE_NC_SOURCES = true;
-const QUESTION_TIME = 15;      // seconds per question (classic / sudden)
+const QUESTION_TIME = 20;      // seconds per question (classic / custom / sudden)
 const DAILY_TIME = { easy: 10, medium: 15, hard: 20 }; // daily: thinking time scales with difficulty
 const BLITZ_TIME = 60;         // seconds total (blitz)
 const RING_CIRC = 213.6;       // 2πr of the timer ring
@@ -553,9 +557,10 @@ const CATEGORIES = [
   { id: "worldcup",  name: "World Cup",            emoji: "⚽", otdb: [], tta: [], bank: true, special: true },
   { id: "starwars",  name: "Star Wars",            emoji: "🛸", otdb: [], tta: [], bank: true, special: true },
   { id: "british",   name: "British Quiz",         emoji: "🇬🇧", otdb: [], tta: [], bank: true, special: true },
-  // Picture rounds beyond flags: menu-only (hidden from Your Rules chips)
-  { id: "shapes",    name: "Country Shapes",       emoji: "🗺️", otdb: [], tta: [], bank: true, special: true },
-  { id: "emovies",   name: "Emoji Films",          emoji: "🎬", otdb: [], tta: [], bank: true, special: true },
+  // Picture rounds beyond flags: hidden from Your Rules chips (special) but
+  // they live in the Picture Round menu, not the Specialist Packs menu
+  { id: "shapes",    name: "Country Shapes",       emoji: "🗺️", otdb: [], tta: [], bank: true, special: true, picture: true },
+  { id: "emovies",   name: "Emoji Films",          emoji: "🎬", otdb: [], tta: [], bank: true, special: true, picture: true },
 ];
 
 // Maps source-category display names back to our taxonomy, so mastery stats
@@ -1322,6 +1327,8 @@ function paintRing() {
   ring.style.strokeDashoffset = String(RING_CIRC * (1 - frac));
   ring.classList.toggle("warn", frac <= 0.5 && frac > 0.25);
   ring.classList.toggle("danger", frac <= 0.25);
+  // final five seconds: the ring pulses along with the tick-tock
+  $("timer-ring-wrap").classList.toggle("urgent", state.qTimeLeft <= 5 && state.qTimeLeft > 0);
   $("timer-num").textContent = String(Math.ceil(state.qTimeLeft));
 }
 
@@ -1350,6 +1357,7 @@ function paintBlitz() {
   const frac = state.blitzTimeLeft / BLITZ_TIME;
   $("blitz-timer-fill").style.transform = `scaleX(${frac})`;
   $("blitz-timer-fill").classList.toggle("danger", frac <= 0.2);
+  $("blitz-timer").classList.toggle("urgent", state.blitzTimeLeft <= 5 && state.blitzTimeLeft > 0);
   $("blitz-timer-label").textContent = String(Math.ceil(state.blitzTimeLeft));
 }
 
@@ -2594,7 +2602,7 @@ const SPECIAL_DESCS = {
 };
 
 function paintSpecials() {
-  $("specials-grid").innerHTML = CATEGORIES.filter((c) => c.special).map((c) => {
+  $("specials-grid").innerHTML = CATEGORIES.filter((c) => c.special && !c.picture).map((c) => {
     const medal = medalFor(c.id);
     return `<button class="mode-card" data-mode="classic" data-cat="${c.id}">
       <div class="mode-icon">${c.emoji}</div>
