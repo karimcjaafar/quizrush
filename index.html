@@ -36,6 +36,7 @@
         <span class="xp-label" id="xp-label"></span>
       </div>
       <div class="player-sub">
+        <button class="player-name" id="player-name" title="Edit profile"></button>
         <span class="player-title" id="player-title">Trivia Novice</span>
         <span class="player-tokens" id="player-tokens" title="Earn tokens from dailies and Classic levels — spend them on lifeline refills and Sudden Death revives">🪙 0</span>
       </div>
@@ -305,6 +306,7 @@
         <div class="q-visual" id="q-visual" hidden></div>
         <h2 class="question-text" id="question-text">Loading…</h2>
         <div class="answers" id="answers"></div>
+        <p class="global-stat" id="global-stat" hidden></p>
         <div class="revive-offer" id="revive-offer" hidden>
           <p class="revive-text">💔 Wrong answer — but you can buy a second chance.</p>
           <p class="revive-balance" id="revive-balance"></p>
@@ -403,6 +405,7 @@
       <div class="results-xp" id="results-xp"></div>
       <div class="results-badges" id="results-badges" hidden></div>
       <div class="party-podium" id="party-podium" hidden></div>
+      <div class="party-podium daily-board" id="daily-board"></div>
       <div class="results-stats">
         <div class="stat">
           <span class="stat-value" id="stat-correct">0</span>
@@ -443,7 +446,11 @@
         <li><span>🪙</span><div><b>Tokens</b> — earned from Classic levels and dailies. Spend them on lifeline refills and Sudden Death revives.</div></li>
         <li><span>🧠</span><div><b>Brain Games</b> — riddles, emoji puzzles and Who Am I?, for when trivia isn't enough.</div></li>
       </ul>
-      <button class="btn btn-primary" id="btn-welcome">Let's go</button>
+      <label class="profile-label" for="profile-name">Your player name</label>
+      <input id="profile-name" type="text" maxlength="16" placeholder="What should we call you?" autocomplete="off" />
+      <label class="profile-label">Pick your avatar</label>
+      <div class="avatar-grid" id="avatar-grid"></div>
+      <button class="btn btn-primary btn-full" id="btn-welcome">Save &amp; play</button>
     </div>
   </div>
 

@@ -252,7 +252,11 @@ const player = {
   set soundPack(v) { localStorage.setItem("quizrush-soundpack", v); },
   get appIcon() { return localStorage.getItem("quizrush-appicon") || "bolt"; },
   set appIcon(v) { localStorage.setItem("quizrush-appicon", v); },
+  get profile() { return getJSON("quizrush-profile", null); }, // { name, avatar }
+  set profile(v) { setJSON("quizrush-profile", v); },
 };
+
+const AVATARS = ["😀","😎","🤓","🥸","🦊","🐼","🐸","🦁","🐯","🦉","🐙","🦄","🐢","👾","🤖","🚀","🌟","🍕","🎸","🧠"];
 
 function recordCatStat(catId, wasCorrect) {
   if (!catId) return;
@@ -268,6 +272,73 @@ function medalFor(catId) {
   const s = player.catStats[catId];
   if (!s) return "";
   return MASTERY.find((m) => s.correct >= m.at)?.medal || "";
+}
+
+// ---------- Backend (leaderboards + global answer stats) ----------
+// Points at the Cloudflare Worker in backend/. Empty string = offline mode:
+// every Net call silently no-ops, so the game never depends on the server.
+const BACKEND_URL = localStorage.getItem("quizrush-backend") || "";
+
+const Net = {
+  deviceId() {
+    let id = localStorage.getItem("quizrush-device");
+    if (!id) {
+      id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem("quizrush-device", id);
+    }
+    return id;
+  },
+  async post(path, body) {
+    if (!BACKEND_URL) return null;
+    try {
+      const res = await fetch(BACKEND_URL + path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return res.ok ? res.json() : null;
+    } catch { return null; }
+  },
+  async get(path) {
+    if (!BACKEND_URL) return null;
+    try {
+      const res = await fetch(BACKEND_URL + path);
+      return res.ok ? res.json() : null;
+    } catch { return null; }
+  },
+};
+
+// Stable anonymous key for a question (text + visual)
+function qHash(q) {
+  const s = q.text + (q.big || "");
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+function queueAnswerStat(q, wasCorrect) {
+  if (!BACKEND_URL || !state) return;
+  (state.pendingAnswers = state.pendingAnswers || []).push({ k: qHash(q), c: wasCorrect ? 1 : 0 });
+}
+
+function flushAnswerStats() {
+  if (state?.pendingAnswers?.length) {
+    Net.post("/answers", state.pendingAnswers);
+    state.pendingAnswers = [];
+  }
+}
+
+// After the reveal, show how the world did on this question
+async function showGlobalStat(q) {
+  const el = $("global-stat");
+  el.hidden = true;
+  if (!BACKEND_URL) return;
+  const stats = await Net.get(`/stats?k=${qHash(q)}`);
+  const total = (stats?.right || 0) + (stats?.wrong || 0);
+  if (total >= 5 && state && state.questions[state.index] === q) {
+    el.textContent = `🌍 ${Math.round((stats.right / total) * 100)}% of players got this right`;
+    el.hidden = false;
+  }
 }
 
 // ---------- Nemesis questions ----------
@@ -373,6 +444,12 @@ function decodeHTML(str) {
   const el = document.createElement("textarea");
   el.innerHTML = str;
   return el.value;
+}
+
+// Server-sourced strings (other players' names) must never reach innerHTML raw
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 function shuffle(arr) {
@@ -697,6 +774,7 @@ function renderQuestion() {
   paintLifelines();
 
   $("revive-offer").hidden = true;
+  $("global-stat").hidden = true;
   const answersEl = $("answers");
   answersEl.innerHTML = "";
   q.answers.forEach((ans) => {
@@ -850,6 +928,8 @@ function selectAnswer(btn, answer) {
   const isCorrect = answer === q.correct;
   state.answered++;
   if (state.mode !== "party") recordCatStat(q.catId, isCorrect); // guests don't write the owner's stats
+  queueAnswerStat(q, isCorrect);
+  showGlobalStat(q);
 
   const buttons = [...document.querySelectorAll(".answer-btn")];
   buttons.forEach((b) => {
@@ -932,6 +1012,8 @@ function onTimeout() {
   const q = state.questions[state.index];
   if (state.mode !== "party") recordCatStat(q.catId, false);
   recordNemesis(q);
+  queueAnswerStat(q, false);
+  showGlobalStat(q);
   document.querySelectorAll(".answer-btn").forEach((b) => {
     b.disabled = true;
     if (b.textContent === q.correct) b.classList.add("correct");
@@ -1416,6 +1498,7 @@ function nextDingbat() {
 function endGame() {
   clearInterval(state.qTimer);
   clearInterval(state.blitzTimer);
+  flushAnswerStats();
   if (state.mode === "party") return endParty();
   state.awaitingContinue = false;
   state.maxLevelCorrect = Math.max(state.maxLevelCorrect || 0, state.levelCorrect || 0);
@@ -1424,6 +1507,7 @@ function endGame() {
   $("btn-home").textContent = "Home";
   $("results-score-label").textContent = "points";
   $("party-podium").hidden = true;
+  if (state.mode !== "daily") $("daily-board").innerHTML = "";
   document.querySelector(".results-stats").style.display = "";
 
   const { mode, score, correct, answered, bestStreak } = state;
@@ -1454,6 +1538,24 @@ function endGame() {
     } else {
       player.dailyStreak = { count: 0, last: "" };
     }
+
+    // Global board: submit this result, then show today's top scores
+    $("daily-board").innerHTML = "";
+    const solveTime = Number(state.dailySolveTime) || 0;
+    (async () => {
+      const prof = player.profile || { name: "Player", avatar: "😀" };
+      await Net.post("/daily", {
+        date: todayKey(), id: Net.deviceId(), name: prof.name, avatar: prof.avatar,
+        score, time: solveTime, won: dailyWon,
+      });
+      const board = await Net.get(`/leaderboard?date=${todayKey()}`);
+      if (!board?.top?.length) return;
+      $("daily-board").innerHTML =
+        `<h4>🌍 Today's daily — ${Number(board.players)} played, ${Number(board.solved)} solved</h4>` +
+        board.top.slice(0, 5).map((r, i) =>
+          `<div class="podium-row"><span>${["🥇", "🥈", "🥉", "4️⃣", "5️⃣"][i]} ${escapeHtml(r.avatar)} ${escapeHtml(r.name)}</span>` +
+          `<span>${r.won ? "✅" : "❌"} ${Number(r.score).toLocaleString()}${r.time ? " · " + Number(r.time) + "s" : ""}</span></div>`).join("");
+    })();
   }
 
   // XP + level
@@ -1533,9 +1635,10 @@ function dailyShareText() {
   const { cat, difficulty } = dailyQuestion();
   const num = Math.round((new Date(todayKey()) - DAILY_EPOCH) / 86400000) + 1;
   const diffLabel = difficulty[0].toUpperCase() + difficulty.slice(1);
+  const who = player.profile ? `${player.profile.avatar} ${player.profile.name}` : "";
   const lines = [`⚡ QuizRush Daily #${num} — ${cat?.emoji || "🧠"} ${diffLabel}`];
   if (d?.status === "right") {
-    lines.push(`✅ Solved${d.time ? ` in ${d.time}s` : ""} · ${d.score.toLocaleString()} pts` +
+    lines.push(`✅ ${who ? who + " solved" : "Solved"}${d.time ? ` in ${d.time}s` : ""} · ${d.score.toLocaleString()} pts` +
       (liveDailyStreak() > 1 ? ` · 🔥 ${liveDailyStreak()}-day streak` : ""));
   } else {
     lines.push("❌ Not today… back tomorrow!");
@@ -1577,6 +1680,7 @@ function confetti() {
 
 function quitGame() {
   if (state?.mode === "daily") return endGame(); // quitting the daily counts as a loss
+  flushAnswerStats();
   clearInterval(state?.qTimer);
   clearInterval(state?.blitzTimer);
   state = null;
@@ -1589,6 +1693,8 @@ function paintPlayerBar() {
   $("lvl-num").textContent = String(lvl);
   $("xp-fill").style.width = `${Math.min((into / needed) * 100, 100)}%`;
   $("xp-label").textContent = `${into} / ${needed} XP`;
+  const p = player.profile;
+  $("player-name").textContent = p ? `${p.avatar} ${p.name}` : "";
   $("player-title").textContent = "🎖 " + titleForLevel(lvl);
   $("player-tokens").textContent = "🪙 " + player.tokens;
 }
@@ -1717,7 +1823,7 @@ function renderPartyNames() {
   const existing = [...document.querySelectorAll(".party-name-input")].map((i) => i.value);
   $("party-names").innerHTML = Array.from({ length: count }, (_, i) =>
     `<input class="party-name-input" type="text" maxlength="14" placeholder="Player ${i + 1}"
-      value="${(existing[i] || "").replace(/"/g, "&quot;")}" autocomplete="off" />`).join("");
+      value="${(existing[i] || (i === 0 && player.profile?.name) || "").replace(/"/g, "&quot;")}" autocomplete="off" />`).join("");
 }
 
 $("chips-players").addEventListener("click", (e) => {
@@ -1859,10 +1965,36 @@ applyTheme(THEMES.some((t) => t.id === player.theme && player.bestDailyStreak >=
 paintSoundButton();
 renderHome();
 
-// First visit: a one-time orientation card
-if (!localStorage.getItem("quizrush-welcomed")) $("welcome-overlay").hidden = false;
+// First visit (or missing profile): orientation + profile setup in one card.
+// Tapping your name on the home screen reopens it for edits.
+function openProfileSetup() {
+  const p = player.profile;
+  $("profile-name").value = p?.name || "";
+  const current = p?.avatar || AVATARS[0];
+  $("avatar-grid").innerHTML = AVATARS.map((a) =>
+    `<button class="avatar-chip ${a === current ? "active" : ""}" data-avatar="${a}">${a}</button>`).join("");
+  $("welcome-overlay").hidden = false;
+}
+
+$("avatar-grid").addEventListener("click", (e) => {
+  const chip = e.target.closest(".avatar-chip");
+  if (!chip) return;
+  document.querySelectorAll(".avatar-chip").forEach((c) => c.classList.remove("active"));
+  chip.classList.add("active");
+  Sound.click();
+});
+
 $("btn-welcome").addEventListener("click", () => {
+  player.profile = {
+    name: $("profile-name").value.trim().slice(0, 16) || "Player",
+    avatar: document.querySelector(".avatar-chip.active")?.dataset.avatar || AVATARS[0],
+  };
   localStorage.setItem("quizrush-welcomed", "1");
   $("welcome-overlay").hidden = true;
+  paintPlayerBar();
   Sound.start();
 });
+
+$("player-name").addEventListener("click", () => { Sound.click(); openProfileSetup(); });
+
+if (!player.profile) openProfileSetup();

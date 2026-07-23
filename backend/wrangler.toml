@@ -1,0 +1,8 @@
+name = "quizrush-api"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "quizrush"
+database_id = "placeholder-set-after-d1-create"

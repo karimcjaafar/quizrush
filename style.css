@@ -778,6 +778,22 @@ select {
   font-size: 14.5px; font-weight: 700;
 }
 .podium-row:first-child { border-color: rgba(255, 206, 84, 0.5); background: rgba(255, 206, 84, 0.08); }
+.daily-board h4 {
+  font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+.daily-board .podium-row:first-child { border-color: var(--border); background: rgba(255, 255, 255, 0.05); }
+.daily-board:empty { display: none; }
+
+.global-stat {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 12px;
+  animation: clueIn 0.4s;
+}
 
 /* ============ Picture questions ============ */
 .q-visual { font-size: 84px; text-align: center; line-height: 1.15; margin-bottom: 6px; }
@@ -829,6 +845,39 @@ select {
 .welcome-card li span { font-size: 22px; flex-shrink: 0; }
 .welcome-card li b { color: var(--text); }
 .welcome-card .btn { width: 100%; }
+.profile-label {
+  display: block;
+  font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-dim);
+  margin: 14px 0 8px;
+}
+#profile-name {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 16px;
+  padding: 12px 14px;
+  font-family: inherit;
+  outline: none;
+}
+#profile-name:focus { border-color: var(--accent); }
+.avatar-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.avatar-chip {
+  width: 42px; height: 42px;
+  display: grid; place-items: center;
+  font-size: 21px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  transition: transform 0.12s, border-color 0.12s;
+}
+.avatar-chip:hover { transform: scale(1.12); }
+.avatar-chip.active { border-color: var(--accent); background: rgba(124, 92, 255, 0.18); }
+.player-name { font-size: 13px; font-weight: 800; color: var(--text); }
+.player-name:hover { text-decoration: underline; }
 
 /* ============ Loading overlay ============ */
 .loading-overlay {
