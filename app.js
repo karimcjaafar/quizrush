@@ -556,6 +556,38 @@ async function showGlobalStat(q) {
   }
 }
 
+// ---------- "Tell me more": inline learning via Wikipedia ----------
+// Free, CORS-friendly, no key. Falls back to a search link when a topic has
+// no clean summary page.
+async function renderLearn(panel, topic) {
+  panel.hidden = false;
+  panel.innerHTML = `<p class="learn-loading">Looking it up…</p>`;
+  const searchLink = `<a href="https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(topic)}" target="_blank" rel="noopener">Search Wikipedia →</a>`;
+  try {
+    const res = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(topic));
+    const d = res.ok ? await res.json() : null;
+    if (d?.extract && d.type === "standard") {
+      const url = d.content_urls?.desktop?.page || `https://en.wikipedia.org/wiki/${encodeURIComponent(topic)}`;
+      panel.innerHTML =
+        `<h4>${escapeHtml(d.title)}</h4><p>${escapeHtml(d.extract)}</p>` +
+        `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">Read more on Wikipedia →</a>`;
+    } else {
+      panel.innerHTML = `<p>No quick summary for this one.</p>${searchLink}`;
+    }
+  } catch {
+    panel.innerHTML = searchLink;
+  }
+}
+
+// Eligible when pausing is fair: not blitz (global clock), not party (shared
+// device pacing), and not a reveal that ends the game anyway.
+function offerLearnMore() {
+  const eligible = ["classic", "custom", "sudden"].includes(state.mode);
+  $("learn-row").hidden = !eligible;
+  $("btn-learn").hidden = !eligible;
+  $("btn-learn-continue").hidden = true;
+}
+
 // ---------- Nemesis questions ----------
 // Questions you miss come back in later games (tagged 😈, worth 1.5×) until
 // you beat them. Capped so the list stays a grudge, not a graveyard.
@@ -1047,6 +1079,7 @@ async function startGame(mode, overrides = {}) {
 }
 
 function renderQuestion() {
+  if (!state || state.ended) return; // quit landed inside the dissolve window
   const q = state.questions[state.index];
   if (!q) return endGame(); // pool exhausted (sudden/blitz)
 
@@ -1081,6 +1114,8 @@ function renderQuestion() {
 
   $("revive-offer").hidden = true;
   $("global-stat").hidden = true;
+  $("learn-row").hidden = true;
+  $("learn-panel").hidden = true;
   const answersEl = $("answers");
   answersEl.innerHTML = "";
   q.answers.forEach((ans) => {
@@ -1292,8 +1327,9 @@ function selectAnswer(btn, answer) {
   }
 
   updateScoreUI();
+  offerLearnMore();
   const delay = state.mode === "blitz" ? 550 : 1000;
-  setTimeout(nextQuestion, delay);
+  state.advanceTimer = setTimeout(nextQuestion, delay);
 }
 
 function scoreFor(q) {
@@ -1333,7 +1369,8 @@ function onTimeout() {
   if (state.mode === "sudden") {
     setTimeout(() => (player.tokens >= 3 ? showReviveOffer() : endGame()), 1100);
   } else {
-    setTimeout(nextQuestion, 1000);
+    offerLearnMore();
+    state.advanceTimer = setTimeout(nextQuestion, 1000);
   }
 }
 
@@ -1473,6 +1510,8 @@ function renderWhoamiCharacter() {
   setTimeout(() => card.classList.remove("assemble"), 1100);
   $("whoami-progress").textContent = `${state.index + 1} / ${WHOAMI_ROUND}`;
   $("whoami-reveal").hidden = true;
+  $("btn-learn-who").hidden = true;
+  $("learn-panel-who").hidden = true;
   $("whoami-input-row").style.display = "";
   $("whoami-actions").style.display = "";
   $("btn-next-char").hidden = true;
@@ -1565,6 +1604,7 @@ function resolveWhoami(text, won) {
   const next = $("btn-next-char");
   next.hidden = false;
   next.textContent = state.index + 1 >= WHOAMI_ROUND ? "See results" : "Next character";
+  $("btn-learn-who").hidden = false; // flow is already paused here — free to read
   paintWhoami();
   $("whoami-stage").textContent = won ? "Solved!" : "Missed";
 }
@@ -2320,6 +2360,25 @@ document.querySelectorAll(".tabbar button").forEach((btn) => {
     renderHome(); // repaint whichever tab we're entering
     showScreen(btn.dataset.tab);
   });
+});
+
+$("btn-learn").addEventListener("click", () => {
+  clearTimeout(state?.advanceTimer); // pause the game while reading
+  Sound.click();
+  $("btn-learn").hidden = true;
+  $("btn-learn-continue").hidden = false;
+  renderLearn($("learn-panel"), state.questions[state.index].correct);
+});
+$("btn-learn-continue").addEventListener("click", () => {
+  Sound.click();
+  $("learn-row").hidden = true;
+  $("learn-panel").hidden = true;
+  nextQuestion();
+});
+$("btn-learn-who").addEventListener("click", () => {
+  Sound.click();
+  $("btn-learn-who").hidden = true;
+  renderLearn($("learn-panel-who"), state.characters[state.index].answer);
 });
 
 $("btn-rules-back").addEventListener("click", () => { Sound.click(); showScreen("home"); });

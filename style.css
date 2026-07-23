@@ -1073,6 +1073,26 @@ select {
 .daily-board .podium-row:first-child { border-color: var(--border); background: rgba(255, 255, 255, 0.05); }
 .daily-board:empty { display: none; }
 
+/* "Tell me more" learning panel */
+.learn-row { display: flex; gap: 10px; margin-top: 12px; }
+.learn-row .lifeline { flex: 1; }
+.btn-learn-continue { flex: 1; padding: 11px; font-size: 14.5px; }
+.learn-panel {
+  margin-top: 12px;
+  padding: 16px;
+  background: rgba(124, 92, 255, 0.08);
+  border: 1px solid rgba(124, 92, 255, 0.35);
+  border-radius: 14px;
+  animation: clueIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.learn-panel[hidden] { display: none; }
+.learn-panel h4 { font-size: 15px; margin-bottom: 6px; }
+.learn-panel p { font-size: 13.5px; line-height: 1.55; color: var(--text-dim); margin-bottom: 8px; }
+.learn-panel a { color: var(--accent); font-size: 13px; font-weight: 700; text-decoration: none; }
+.learn-panel a:hover { text-decoration: underline; }
+.learn-loading { color: var(--text-dim); font-style: italic; }
+#btn-learn-who { width: 100%; margin-bottom: 12px; }
+
 .global-stat {
   text-align: center;
   font-size: 13px;
