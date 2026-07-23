@@ -1082,6 +1082,7 @@ function onTimeout() {
 
 // Sudden Death second chance: spend 3 tokens to survive a wrong answer
 function showReviveOffer() {
+  if (!state || state.ended) return; // player quit during the reveal delay
   $("revive-offer").hidden = false;
   $("revive-balance").textContent = `You have ${player.tokens} 🪙`;
   // on small screens the offer can render below the fold — bring it into view
@@ -1090,6 +1091,7 @@ function showReviveOffer() {
 
 
 function nextQuestion() {
+  if (!state || state.ended) return; // late timeout after the game already ended
   state.index++;
   if (state.mode === "party") {
     if (state.index >= state.questions.length) return endGame();
@@ -1550,6 +1552,9 @@ function nextDingbat() {
 
 // ---------- End of game ----------
 function endGame() {
+  // a stray double-fire (frantic taps, late timeouts) must never award twice
+  if (!state || state.ended) return;
+  state.ended = true;
   clearInterval(state.qTimer);
   clearInterval(state.blitzTimer);
   flushAnswerStats();
@@ -1802,10 +1807,12 @@ function playCountdown(then) {
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return then();
   const ov = $("countdown-overlay");
   const num = $("countdown-num");
+  const forState = state; // if the player quits mid-countdown, stop cold
   ov.hidden = false;
   const steps = ["3", "2", "1", "GO!"];
   let i = 0;
   const tick = () => {
+    if (state !== forState) { ov.hidden = true; return; }
     if (i >= steps.length) {
       ov.hidden = true;
       return then();
