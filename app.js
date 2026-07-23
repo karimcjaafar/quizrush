@@ -273,14 +273,25 @@ const DINGBAT_FLOOR = 100;    // a solve is never worth less than this
 const WHOAMI_ROUND = 5;                    // characters per round
 const WHOAMI_POINTS = [400, 300, 200, 100]; // payout by clue stage when solved
 
-// Classic ladder: intensity climbs through Level 10 on three axes — question
-// tier, clock, and pass bar — then holds at maximum for endless play beyond.
-const LEVEL_RULES = (lvl) => ({
-  difficulty: lvl <= 2 ? "easy" : lvl <= 4 ? "medium" : "hard",
-  time: Math.max(15 - Math.max(lvl - 5, 0), 10), // 15s, tightening to 10s from L6→L10
-  need: lvl <= 6 ? 7 : lvl <= 8 ? 8 : 9,         // out of 10, rising from L7
-});
-const levelDifficulty = (lvl) => LEVEL_RULES(lvl).difficulty;
+// Classic ladder: every level is a 10-question blend that tilts harder as you
+// climb — mostly easy at L1, nearly all hard at L10, all hard beyond. The
+// clock stays constant; the pass bar rises near the top.
+const LEVEL_MIXES = [
+  { easy: 8, medium: 2, hard: 0 },  // L1
+  { easy: 6, medium: 4, hard: 0 },  // L2
+  { easy: 4, medium: 5, hard: 1 },  // L3
+  { easy: 3, medium: 5, hard: 2 },  // L4
+  { easy: 2, medium: 5, hard: 3 },  // L5
+  { easy: 1, medium: 4, hard: 5 },  // L6
+  { easy: 1, medium: 3, hard: 6 },  // L7
+  { easy: 0, medium: 3, hard: 7 },  // L8
+  { easy: 0, medium: 2, hard: 8 },  // L9
+  { easy: 0, medium: 1, hard: 9 },  // L10
+];
+const levelMix = (lvl) => (lvl <= 10 ? LEVEL_MIXES[lvl - 1] : { easy: 0, medium: 0, hard: 10 });
+const LEVEL_RULES = (lvl) => ({ mix: levelMix(lvl), need: lvl <= 6 ? 7 : lvl <= 8 ? 8 : 9 });
+const mixLabel = (m) =>
+  ["easy", "medium", "hard"].filter((d) => m[d]).map((d) => `${m[d]} ${d}`).join(" · ");
 
 const BADGES = [
   { id: "first",      emoji: "🎬", name: "Opening Night",   desc: "Play your first game" },
@@ -797,7 +808,19 @@ function smartWeights(catId) {
   return { easy: 0.5, medium: 0.35, hard: 0.15 };
 }
 
-async function getQuestions({ catId = "", difficulty = "", amount = 10 }) {
+// Compose a level's blend from an unfiltered pool: take the requested count
+// of each tier, then fill any shortfall starting from medium (adjacent to both).
+function composeMix(pool, mix, amount) {
+  const by = { easy: [], medium: [], hard: [] };
+  pool.forEach((q) => (by[q.difficulty] || by.medium).push(q));
+  const picked = [];
+  for (const d of ["hard", "medium", "easy"]) picked.push(...by[d].splice(0, mix[d] || 0));
+  const leftovers = [...by.medium, ...by.easy, ...by.hard];
+  while (picked.length < amount && leftovers.length) picked.push(leftovers.shift());
+  return shuffle(picked).slice(0, amount);
+}
+
+async function getQuestions({ catId = "", difficulty = "", amount = 10, mix = null }) {
   if (difficulty === "smart") {
     // fetch at the tier the player's record points to, so the difficulty is
     // real rather than whatever mix the sources happened to return
@@ -807,18 +830,21 @@ async function getQuestions({ catId = "", difficulty = "", amount = 10 }) {
   }
   const cat = CATEGORIES.find((c) => c.id === catId);
   const useOtdb = !cat || cat.otdb.length > 0;
-  const useTta = !cat || cat.tta.length > 0 || cat.ttaTags?.length > 0;
+  const useTta = INCLUDE_NC_SOURCES && (!cat || cat.tta.length > 0 || cat.ttaTags?.length > 0);
+  // Mixed levels over-fetch an unfiltered pool so every tier is well stocked
+  const srcAmount = mix ? 50 : amount;
+  const srcDifficulty = mix ? "" : difficulty;
   // Bank-backed categories get the full bank; "Any" games get a light sprinkle
   // so riddles season mixed rounds without dominating them.
-  const bankAmount = cat?.bank ? amount : cat ? 0 : Math.ceil(amount * 0.15);
+  const bankAmount = cat?.bank ? srcAmount : cat ? 0 : Math.ceil(amount * 0.15);
 
   const [otdb, tta] = await Promise.allSettled([
-    useOtdb ? fetchFromOTDB({ amount, otdbCats: cat?.otdb, difficulty }) : Promise.resolve([]),
-    useTta ? fetchFromTTA({ amount, ttaCats: cat?.tta, ttaTags: cat?.ttaTags, difficulty }) : Promise.resolve([]),
+    useOtdb ? fetchFromOTDB({ amount: srcAmount, otdbCats: cat?.otdb, difficulty: srcDifficulty }) : Promise.resolve([]),
+    useTta ? fetchFromTTA({ amount: srcAmount, ttaCats: cat?.tta, ttaTags: cat?.ttaTags, difficulty: srcDifficulty }) : Promise.resolve([]),
   ]);
 
   const pool = [otdb, tta].flatMap((r) => (r.status === "fulfilled" ? r.value : []))
-    .concat(bankAmount ? fetchFromBank({ amount: bankAmount, catId, difficulty }) : []);
+    .concat(bankAmount ? fetchFromBank({ amount: bankAmount, catId, difficulty: srcDifficulty }) : []);
   const seen = new Set();
   const merged = shuffle(pool).filter((q) => {
     // picture questions share their prompt text, so the visual is part of identity
@@ -835,15 +861,18 @@ async function getQuestions({ catId = "", difficulty = "", amount = 10 }) {
   // Tag with our taxonomy id so mastery stats can attribute every answer
   merged.forEach((q) => { q.catId = catId || NAME_TO_CAT[q.category.toLowerCase()] || ""; });
 
+  // For blended levels, shape the pool to the requested tier proportions
+  const shaped = mix ? composeMix(merged, mix, amount) : merged;
+
   // Sprinkle in up to two nemesis questions seeking revenge
-  const nemeses = pickNemeses(catId, difficulty);
+  const nemeses = pickNemeses(catId, mix ? "" : difficulty);
   if (nemeses.length) {
     const qKey = (q) => q.text + (q.big || "");
     const nemesisKeys = new Set(nemeses.map(qKey));
-    const base = merged.filter((q) => !nemesisKeys.has(qKey(q))).slice(0, Math.max(amount - nemeses.length, 1));
+    const base = shaped.filter((q) => !nemesisKeys.has(qKey(q))).slice(0, Math.max(amount - nemeses.length, 1));
     return shuffle(base.concat(nemeses)).slice(0, amount);
   }
-  return merged.slice(0, amount);
+  return shaped.slice(0, amount);
 }
 
 // ---------- Game flow ----------
@@ -878,9 +907,9 @@ async function startGame(mode, overrides = {}) {
   } else {
     if (mode === "classic") {
       // The ladder sets its own rules: mixed categories (unless a themed card
-      // like Riddles or Flags locked one) and ramped difficulty.
+      // like Riddles or Flags locked one) and a per-level difficulty blend.
       opts.catId = overrides.catId ?? "";
-      opts.difficulty = levelDifficulty(1);
+      opts.mix = levelMix(1);
     } else if (mode === "custom") {
       // Your Rules: the player picks both knobs
       opts.catId = document.querySelector("#chips-category .chip.active").dataset.value;
@@ -1568,7 +1597,7 @@ function levelComplete() {
   const nr = LEVEL_RULES(nextLevel);
   $("results-xp").innerHTML =
     `${state.levelCorrect} / ${state.questions.length} correct · +1 🪙 — ` +
-    `next: Level ${nextLevel} · ${nr.difficulty} · ${nr.time}s clock · ${nr.need}/10 to pass`;
+    `next: Level ${nextLevel} · ${mixLabel(nr.mix)} · ${nr.need}/10 to pass`;
   $("results-badges").hidden = true;
   $("stat-correct").textContent = String(state.correct);
   $("stat-accuracy").textContent = (state.answered ? Math.round((state.correct / state.answered) * 100) : 0) + "%";
@@ -1584,7 +1613,7 @@ async function continueClassicRun() {
   setLoading(true, `Loading Level ${nextLevel}…`);
   let questions;
   try {
-    questions = await getQuestions({ catId: state.catId, difficulty: levelDifficulty(nextLevel), amount: 10 });
+    questions = await getQuestions({ catId: state.catId, mix: levelMix(nextLevel), amount: 10 });
   } catch {
     setLoading(false);
     alert("Couldn't load the next level — ending the run here so your score counts.");
@@ -1597,8 +1626,8 @@ async function continueClassicRun() {
     index: 0,
     level: nextLevel,
     levelCorrect: 0,
-    difficulty: levelDifficulty(nextLevel),
-    questionTime: LEVEL_RULES(nextLevel).time, // the clock tightens as you climb
+    difficulty: "",
+    questionTime: QUESTION_TIME, // constant clock — the blend does the escalating
     awaitingContinue: false,
     locked: false,
     lifelines: { fifty: true, skip: true, time: true }, // fresh set each level
