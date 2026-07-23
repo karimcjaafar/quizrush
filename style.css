@@ -73,6 +73,13 @@ button, .chip, .mode-card, .daily-card, .theme-swatch {
   .lifeline:hover:not(:disabled), .theme-swatch:hover:not(.locked) {
     transform: none;
   }
+  /* On touch screens a tap leaves :hover stuck — kill the colour highlight too,
+     so an answer button never looks pre-selected after the previous tap. */
+  .answer-btn:hover:not(:disabled) {
+    border-color: var(--border);
+    background: rgba(255, 255, 255, 0.055);
+  }
+  .mode-card:hover, .collection-tile:hover { border-color: var(--border); background: var(--surface); }
 }
 
 /* ============ Intro splash ============ */
@@ -404,16 +411,17 @@ body.intro-done #screen-home > :nth-child(n+9) { animation-delay: 0.6s; }
   padding: 32px 20px calc(32px + env(safe-area-inset-bottom));
   flex-direction: column;
 }
-.screen.active { display: flex; animation: screenIn 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
+.screen.active { display: flex; animation: screenIn 0.85s cubic-bezier(0.22, 1, 0.36, 1); }
 
 @keyframes screenIn {
-  from { opacity: 0; transform: translateY(28px) scale(0.985); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  0% { opacity: 0; transform: translateY(40px) scale(0.965); filter: blur(9px); }
+  55% { filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
 }
 
-.screen.screen-exit { animation: screenOut 0.3s ease forwards; }
+.screen.screen-exit { animation: screenOut 0.44s ease forwards; }
 @keyframes screenOut {
-  to { opacity: 0; filter: blur(8px); transform: translateY(-20px) scale(0.98); }
+  to { opacity: 0; filter: blur(12px); transform: translateY(-26px) scale(0.965); }
 }
 
 /* ============ Tab bar ============ */
@@ -701,23 +709,23 @@ select {
 }
 /* Liquid transitions: the old question dissolves away, the next one's pieces
    drift together with a staggered blur-in */
-.question-card.dissolve-out { animation: qDissolve 0.34s ease forwards; }
+.question-card.dissolve-out { animation: qDissolve 0.6s cubic-bezier(0.5, 0, 0.75, 0) forwards; }
 @keyframes qDissolve {
-  to { opacity: 0; filter: blur(14px); transform: scale(0.96) translateY(6px); }
+  to { opacity: 0; filter: blur(20px); transform: scale(0.92) translateY(10px); }
 }
-.question-card.assemble > * { animation: pieceIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
-.question-card.assemble > :nth-child(1) { animation-delay: 0.02s; }
-.question-card.assemble > :nth-child(2) { animation-delay: 0.09s; }
-.question-card.assemble > :nth-child(3) { animation-delay: 0.16s; }
-.question-card.assemble > :nth-child(4) { animation-delay: 0.23s; }
-.question-card.assemble > :nth-child(n+5) { animation-delay: 0.3s; }
-.question-card.assemble .answers .answer-btn { animation: pieceIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
-.question-card.assemble .answers .answer-btn:nth-child(1) { animation-delay: 0.22s; }
-.question-card.assemble .answers .answer-btn:nth-child(2) { animation-delay: 0.3s; }
-.question-card.assemble .answers .answer-btn:nth-child(3) { animation-delay: 0.38s; }
-.question-card.assemble .answers .answer-btn:nth-child(4) { animation-delay: 0.46s; }
+.question-card.assemble > * { animation: pieceIn 0.75s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.question-card.assemble > :nth-child(1) { animation-delay: 0.05s; }
+.question-card.assemble > :nth-child(2) { animation-delay: 0.18s; }
+.question-card.assemble > :nth-child(3) { animation-delay: 0.31s; }
+.question-card.assemble > :nth-child(4) { animation-delay: 0.44s; }
+.question-card.assemble > :nth-child(n+5) { animation-delay: 0.55s; }
+.question-card.assemble .answers .answer-btn { animation: pieceIn 0.68s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.question-card.assemble .answers .answer-btn:nth-child(1) { animation-delay: 0.42s; }
+.question-card.assemble .answers .answer-btn:nth-child(2) { animation-delay: 0.55s; }
+.question-card.assemble .answers .answer-btn:nth-child(3) { animation-delay: 0.68s; }
+.question-card.assemble .answers .answer-btn:nth-child(4) { animation-delay: 0.81s; }
 @keyframes pieceIn {
-  from { opacity: 0; filter: blur(10px); transform: translateY(14px) scale(0.97); }
+  from { opacity: 0; filter: blur(14px); transform: translateY(20px) scale(0.95); }
   to   { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); }
 }
 

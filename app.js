@@ -71,6 +71,13 @@ const Sound = (() => {
     // musical rather than arcade-y.
     click()   { tone(480, { dur: 0.09, vol: 0.05, attack: 0.01 }); },
     start()   { tone(330, { dur: 0.4, vol: 0.08, slide: 660, attack: 0.06 }); },
+    // airy rising sweep for a screen change; downward variant for going back
+    swoosh(up = true) {
+      tone(up ? 300 : 700, { type: "sine", dur: 0.5, vol: 0.06, slide: up ? 760 : 300, attack: 0.08 });
+      tone(up ? 600 : 1400, { type: "sine", dur: 0.42, vol: 0.025, slide: up ? 1520 : 600, attack: 0.08 });
+    },
+    // soft materialize tone as a new question assembles
+    reveal()  { tone(523.25, { type: "sine", dur: 0.55, vol: 0.05, slide: 784, attack: 0.12 }); },
     correct() {
       tone(523.25, { dur: 0.35, vol: 0.1, attack: 0.02 });                  // C5
       tone(659.25, { dur: 0.5, vol: 0.1, when: 0.09, attack: 0.03 });       // E5
@@ -159,17 +166,22 @@ const Music = (() => {
 
   // ----- Track styles: each has a composed theme that loops with the chords -----
   const STYLES = {
-    breeze: { bar: 2.0, lp: 1600, chords: [C, G, Am, F],
-      theme: [ // gentle pentatonic tune
-        [["E5", 0, 0.2], ["G5", 0.25, 0.2], ["A5", 0.5, 0.2], ["G5", 0.75, 0.22]],
-        [["E5", 0, 0.2], ["D5", 0.25, 0.2], ["C5", 0.5, 0.45]],
-        [["D5", 0, 0.2], ["E5", 0.25, 0.2], ["G5", 0.5, 0.2], ["E5", 0.75, 0.22]],
-        [["D5", 0, 0.28], ["C5", 0.375, 0.55]],
+    breeze: { bar: 2.0, lp: 1700, chords: [C, G, Am, F, C, G, F, G],
+      theme: [ // an 8-bar tune: rising question phrase, then a resolving answer
+        [["G5", 0, 0.22], ["A5", 0.25, 0.22], ["C6", 0.5, 0.42]],
+        [["B5", 0, 0.22], ["A5", 0.25, 0.22], ["G5", 0.5, 0.42]],
+        [["A5", 0, 0.22], ["G5", 0.25, 0.22], ["E5", 0.5, 0.22], ["G5", 0.75, 0.24]],
+        [["A5", 0, 0.3], ["G5", 0.4, 0.5]],
+        [["G5", 0, 0.22], ["A5", 0.25, 0.22], ["C6", 0.5, 0.22], ["D6", 0.75, 0.24]],
+        [["E6", 0, 0.28], ["C6", 0.375, 0.22], ["B5", 0.6, 0.4]],
+        [["A5", 0, 0.22], ["G5", 0.25, 0.22], ["A5", 0.5, 0.22], ["B5", 0.75, 0.24]],
+        [["C6", 0, 0.35], ["G5", 0.45, 0.55]],
       ],
       render(t, c, bar, mel) {
         note(c[0] / 2, t, bar * 0.95, 0.05, "sine");
-        c.forEach((f) => note(f, t, bar * 0.98, 0.014, "sine"));
-        for (let i = 0; i < 8; i += 2) note(c[(i / 2) % 3], t + i * (bar / 8), 0.2, 0.024);
+        note(c[0] / 2, t + bar / 2, bar * 0.45, 0.04, "sine"); // walking bass on the &
+        c.forEach((f) => note(f, t, bar * 0.98, 0.013, "sine"));
+        for (let i = 0; i < 8; i += 2) note(c[(i / 2) % 3], t + i * (bar / 8), 0.2, 0.022);
         playMelody(t, bar, mel, { vol: 0.055, wave: "sine", attack: 0.03 });
       } },
     ivory: { bar: 2.4, lp: 1800, chords: [Cmaj7, Am7, Fmaj7, G7],
@@ -442,22 +454,51 @@ const WHOAMI_POINTS = [400, 300, 200, 100]; // payout by clue stage when solved
 // Classic ladder: every level is a 10-question blend that tilts harder as you
 // climb — mostly easy at L1, nearly all hard at L10, all hard beyond. The
 // clock stays constant; the pass bar rises near the top.
+// Gentle early game — Level 1 is all-easy from common topics, ramping to
+// all-hard (expert) by Level 10. Easy really means easy so nobody bounces off.
 const LEVEL_MIXES = [
-  { easy: 8, medium: 2, hard: 0 },  // L1
-  { easy: 6, medium: 4, hard: 0 },  // L2
-  { easy: 4, medium: 5, hard: 1 },  // L3
-  { easy: 3, medium: 5, hard: 2 },  // L4
-  { easy: 2, medium: 5, hard: 3 },  // L5
-  { easy: 1, medium: 4, hard: 5 },  // L6
-  { easy: 1, medium: 3, hard: 6 },  // L7
-  { easy: 0, medium: 3, hard: 7 },  // L8
-  { easy: 0, medium: 2, hard: 8 },  // L9
-  { easy: 0, medium: 1, hard: 9 },  // L10
+  { easy: 10, medium: 0, hard: 0 },  // L1
+  { easy: 9,  medium: 1, hard: 0 },  // L2
+  { easy: 7,  medium: 3, hard: 0 },  // L3
+  { easy: 5,  medium: 4, hard: 1 },  // L4
+  { easy: 3,  medium: 5, hard: 2 },  // L5
+  { easy: 2,  medium: 5, hard: 3 },  // L6
+  { easy: 1,  medium: 4, hard: 5 },  // L7
+  { easy: 0,  medium: 3, hard: 7 },  // L8
+  { easy: 0,  medium: 1, hard: 9 },  // L9
+  { easy: 0,  medium: 0, hard: 10 }, // L10
 ];
 const levelMix = (lvl) => (lvl <= 10 ? LEVEL_MIXES[lvl - 1] : { easy: 0, medium: 0, hard: 10 });
 const LEVEL_RULES = (lvl) => ({ mix: levelMix(lvl), need: lvl <= 6 ? 7 : lvl <= 8 ? 8 : 9 });
 const mixLabel = (m) =>
   ["easy", "medium", "hard"].filter((d) => m[d]).map((d) => `${m[d]} ${d}`).join(" · ");
+// Early levels draw from the most universally-known topics; later levels widen
+const levelScope = (lvl) => (lvl <= 3 ? "common" : "core");
+
+// ---------- Core vs niche categories for mixed rounds ----------
+// Classic / Sudden / Blitz stick to core trivia; niche topics (celebrities,
+// niche pop-culture) are left to their own Specials packs, appearing here only
+// rarely. "Common" is the most broadly-known subset used for very-easy play.
+const CORE_TRIVIA_CATIDS = ["general", "geography", "sport", "science", "history", "entertainment", "arts", "politics"];
+const COMMON_TRIVIA_CATIDS = ["general", "geography", "sport", "science", "history", "entertainment"];
+const CORE_OTDB = [9, 22, 23, 17, 21, 11, 12, 25, 10, 24];          // broadly-known OTDB categories (no video games/anime/celebs)
+const COMMON_OTDB = CORE_OTDB;
+const CORE_TTA = ["general_knowledge", "geography", "history", "science", "society_and_culture", "arts_and_literature", "sport_and_leisure", "music", "film_and_tv"];
+// "Common" gentleness comes from serving easy-difficulty questions across the
+// same broad topics, not from narrowing categories (which just floods one topic)
+const COMMON_TTA = CORE_TTA;
+
+const TIER_LABEL = { easy: "Easy", medium: "Medium", hard: "Hard" };
+const capDiff = (d) => TIER_LABEL[d] || d;
+
+// Sudden Death difficulty ramp by served position: gentle start, brutal tail
+const SUDDEN_RAMP = [
+  ["easy", "Very Easy"], ["easy", "Very Easy"], ["easy", "Very Easy"],
+  ["easy", "Easy"], ["easy", "Easy"], ["easy", "Easy"],
+  ["medium", "Medium"], ["medium", "Medium"], ["medium", "Medium"],
+  ["hard", "Hard"], ["hard", "Hard"], ["hard", "Hard"], ["hard", "Hard"],
+];
+const suddenTier = (i) => SUDDEN_RAMP[i] || ["hard", "Expert"]; // beyond the ramp: Expert forever
 
 const BADGES = [
   { id: "first",      emoji: "🎬", name: "Opening Night",   desc: "Play your first game" },
@@ -652,6 +693,14 @@ function medalFor(catId) {
 // call fails silently and the game plays on unaffected.
 const BACKEND_URL = localStorage.getItem("quizrush-backend") || "https://quizrush-api.karimcjaafar.workers.dev";
 
+// Every backend call is time-boxed: a slow or hung server can never stall
+// gameplay (the cause of the "froze for a second on answering" reports).
+function fetchTimeout(url, opts = {}, ms = 3000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(t));
+}
+
 const Net = {
   deviceId() {
     let id = localStorage.getItem("quizrush-device");
@@ -664,7 +713,7 @@ const Net = {
   async post(path, body) {
     if (!BACKEND_URL) return null;
     try {
-      const res = await fetch(BACKEND_URL + path, {
+      const res = await fetchTimeout(BACKEND_URL + path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -675,7 +724,7 @@ const Net = {
   async get(path) {
     if (!BACKEND_URL) return null;
     try {
-      const res = await fetch(BACKEND_URL + path);
+      const res = await fetchTimeout(BACKEND_URL + path);
       return res.ok ? res.json() : null;
     } catch { return null; }
   },
@@ -906,12 +955,15 @@ function showScreen(name) {
     syncTabbar(name);
     return;
   }
+  // deliberate two-phase transition with an audio sweep that tracks the motion
+  const goingDeeper = !TAB_SCREENS.includes(name) || name === "game" || name === "results";
+  Sound.swoosh(goingDeeper);
   current.classList.add("screen-exit");
   setTimeout(() => {
     Object.values(screens).forEach((s) => s.classList.remove("active", "screen-exit"));
     target.classList.add("active");
     syncTabbar(name);
-  }, 290);
+  }, 440);
 }
 
 function setLoading(on, text) {
@@ -1057,15 +1109,107 @@ function smartWeights(catId) {
 // of each tier, then fill any shortfall starting from medium (adjacent to both).
 function composeMix(pool, mix, amount) {
   const by = { easy: [], medium: [], hard: [] };
-  pool.forEach((q) => (by[q.difficulty] || by.medium).push(q));
-  const picked = [];
-  for (const d of ["hard", "medium", "easy"]) picked.push(...by[d].splice(0, mix[d] || 0));
-  const leftovers = [...by.medium, ...by.easy, ...by.hard];
-  while (picked.length < amount && leftovers.length) picked.push(leftovers.shift());
+  // core categories first within each difficulty, so niche only fills gaps
+  const coreFirst = [...pool].sort(
+    (a, b) => (CORE_TRIVIA_CATIDS.includes(a.catId) ? 0 : 1) - (CORE_TRIVIA_CATIDS.includes(b.catId) ? 0 : 1)
+  );
+  coreFirst.forEach((q) => (by[q.difficulty] || by.medium).push(q));
+
+  const picked = [], chosen = new Set(), catCount = {};
+  const grab = (list, need, cap) => {
+    for (const q of list) {
+      if (need <= 0) break;
+      if (chosen.has(q)) continue;
+      const c = q.catId || "?";
+      if (cap && (catCount[c] || 0) >= cap) continue; // spread across topics
+      chosen.add(q); picked.push(q); catCount[c] = (catCount[c] || 0) + 1; need--;
+    }
+    return need;
+  };
+  for (const d of ["hard", "medium", "easy"]) {
+    let need = mix[d] || 0;
+    // graduated caps spread topics as evenly as the pool allows before doubling up
+    for (const cap of [1, 2, 3, Infinity]) {
+      if (need <= 0) break;
+      need = grab(shuffle(by[d]), need, cap);
+    }
+  }
+  for (const cap of [2, 3, Infinity]) grab(shuffle([...by.hard, ...by.medium, ...by.easy]), amount - picked.length, cap); // top up
   return shuffle(picked).slice(0, amount);
 }
 
-async function getQuestions({ catId = "", difficulty = "", amount = 10, mix = null, exclude = null }) {
+// Sudden Death: serve in a difficulty ramp (very easy → expert), spreading
+// topics and labelling each question's tier.
+function applySuddenRamp(pool, count) {
+  const by = { easy: [], medium: [], hard: [] };
+  // common topics first in the easy bucket so the opening questions are gentle
+  [...pool].sort((a, b) => (COMMON_TRIVIA_CATIDS.includes(a.catId) ? 0 : 1) - (COMMON_TRIVIA_CATIDS.includes(b.catId) ? 0 : 1))
+    .forEach((q) => (by[q.difficulty] || by.medium).push(q));
+  const nearest = { easy: ["easy", "medium", "hard"], medium: ["medium", "easy", "hard"], hard: ["hard", "medium", "easy"] };
+  const out = [], catCount = {};
+  for (let i = 0; i < count; i++) {
+    const [want, label] = suddenTier(i);
+    let q = null;
+    for (const d of nearest[want]) {
+      // prefer a topic not seen too often yet
+      const idx = by[d].findIndex((x) => (catCount[x.catId] || 0) < 2);
+      const j = idx >= 0 ? idx : (by[d].length ? 0 : -1);
+      if (j >= 0) { q = by[d].splice(j, 1)[0]; break; }
+    }
+    if (!q) break;
+    q.tier = label;
+    catCount[q.catId] = (catCount[q.catId] || 0) + 1;
+    out.push(q);
+  }
+  return out;
+}
+
+// Blitz: every question a different difficulty from the last, round-robin.
+function applyBlitzTiers(pool, count) {
+  const by = { easy: [], medium: [], hard: [] };
+  pool.forEach((q) => (by[q.difficulty] || by.medium).push(q));
+  Object.values(by).forEach((a) => shuffle(a));
+  const order = ["easy", "medium", "hard"], out = [];
+  let k = 0;
+  while (out.length < count) {
+    let placed = false;
+    for (let s = 0; s < 3; s++) {
+      const d = order[(k + s) % 3];
+      if (by[d].length) { const q = by[d].shift(); q.tier = capDiff(d); out.push(q); k++; placed = true; break; }
+    }
+    if (!placed) break;
+  }
+  return out;
+}
+
+// Fetch a broad pool from CORE (or COMMON) trivia topics only — the engine for
+// mixed Classic / Sudden / Blitz rounds. TTA takes a category list in one call;
+// one OTDB category is rotated in for variety without tripping its rate limit.
+async function fetchCoreMix({ scope = "core", amount = 60 } = {}) {
+  const ttaCats = scope === "common" ? COMMON_TTA : CORE_TTA;
+  const otdbCats = scope === "common" ? COMMON_OTDB : CORE_OTDB;
+  // OpenTDB self-throttles to 1 request/5s; never let that stall the round —
+  // if it isn't ready within ~1.2s, proceed on The Trivia API alone.
+  const otdbCapped = Promise.race([
+    fetchFromOTDB({ amount: 20, otdbCats, difficulty: "" }).catch(() => []),
+    new Promise((r) => setTimeout(() => r([]), 1200)),
+  ]);
+  const [tta, otdb] = await Promise.allSettled([
+    fetchFromTTA({ amount: Math.min(amount, 50), ttaCats, difficulty: "" }),
+    otdbCapped,
+  ]);
+  const pool = [tta, otdb].flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+  pool.forEach((q) => { q.catId = NAME_TO_CAT[q.category.toLowerCase()] || ""; });
+  // de-dupe by text+visual
+  const seen = new Set();
+  return pool.filter((q) => {
+    const k = normalizeText(q.text) + (q.big || "");
+    if (!normalizeText(q.text) || seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+}
+
+async function getQuestions({ catId = "", difficulty = "", amount = 10, mix = null, exclude = null, scope = "core" }) {
   if (difficulty === "smart") {
     // fetch at the tier the player's record points to, so the difficulty is
     // real rather than whatever mix the sources happened to return
@@ -1074,38 +1218,39 @@ async function getQuestions({ catId = "", difficulty = "", amount = 10, mix = nu
     return getQuestions({ catId, difficulty: dominant, amount });
   }
   const cat = CATEGORIES.find((c) => c.id === catId);
-  const useOtdb = !cat || cat.otdb.length > 0;
-  const useTta = INCLUDE_NC_SOURCES && (!cat || cat.tta.length > 0 || cat.ttaTags?.length > 0);
-  // Mixed levels over-fetch an unfiltered pool so every tier is well stocked
-  const srcAmount = mix ? 50 : amount;
-  const srcDifficulty = mix ? "" : difficulty;
-  // Bank-backed categories get the full bank (all of it for blended levels, so
-  // the no-repeat filter has the whole pool to draw on); "Any" games get a
-  // light sprinkle so riddles season mixed rounds without dominating them.
-  const bankAmount = cat?.bank ? (mix ? 500 : srcAmount) : cat ? 0 : Math.ceil(amount * 0.15);
+  let merged, otdbRejected = false;
 
-  const [otdb, tta] = await Promise.allSettled([
-    useOtdb ? fetchFromOTDB({ amount: srcAmount, otdbCats: cat?.otdb, difficulty: srcDifficulty }) : Promise.resolve([]),
-    useTta ? fetchFromTTA({ amount: srcAmount, ttaCats: cat?.tta, ttaTags: cat?.ttaTags, difficulty: srcDifficulty }) : Promise.resolve([]),
-  ]);
+  if (mix && !catId) {
+    // Mixed Classic / Sudden / Blitz: core trivia only, category-controlled
+    merged = await fetchCoreMix({ scope, amount: 60 });
+    otdbRejected = merged.length === 0;
+  } else {
+    const useOtdb = !cat || cat.otdb.length > 0;
+    const useTta = INCLUDE_NC_SOURCES && (!cat || cat.tta.length > 0 || cat.ttaTags?.length > 0);
+    const srcAmount = amount;
+    const bankAmount = cat?.bank ? amount : cat ? 0 : Math.ceil(amount * 0.15);
 
-  const pool = [otdb, tta].flatMap((r) => (r.status === "fulfilled" ? r.value : []))
-    .concat(bankAmount ? fetchFromBank({ amount: bankAmount, catId, difficulty: srcDifficulty }) : []);
-  const seen = new Set();
-  const merged = shuffle(pool).filter((q) => {
-    // picture questions share their prompt text, so the visual is part of identity
-    const key = normalizeText(q.text) + (q.big || "") + (q.vid || "");
-    if (!normalizeText(q.text) || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+    const [otdb, tta] = await Promise.allSettled([
+      useOtdb ? fetchFromOTDB({ amount: srcAmount, otdbCats: cat?.otdb, difficulty }) : Promise.resolve([]),
+      useTta ? fetchFromTTA({ amount: srcAmount, ttaCats: cat?.tta, ttaTags: cat?.ttaTags, difficulty }) : Promise.resolve([]),
+    ]);
+    otdbRejected = otdb.status === "rejected" && otdb.reason?.message === "rate-limited";
+
+    const pool = [otdb, tta].flatMap((r) => (r.status === "fulfilled" ? r.value : []))
+      .concat(bankAmount ? fetchFromBank({ amount: bankAmount, catId, difficulty }) : []);
+    const seen = new Set();
+    merged = shuffle(pool).filter((q) => {
+      const key = normalizeText(q.text) + (q.big || "") + (q.vid || "");
+      if (!normalizeText(q.text) || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    merged.forEach((q) => { q.catId = catId || NAME_TO_CAT[q.category.toLowerCase()] || ""; });
+  }
 
   if (!merged.length) {
-    const rateLimited = otdb.status === "rejected" && otdb.reason?.message === "rate-limited";
-    throw new Error(rateLimited ? "rate-limited" : "no-questions");
+    throw new Error(otdbRejected ? "rate-limited" : "no-questions");
   }
-  // Tag with our taxonomy id so mastery stats can attribute every answer
-  merged.forEach((q) => { q.catId = catId || NAME_TO_CAT[q.category.toLowerCase()] || ""; });
 
   // No-repeat memory: skip questions this run has already served, unless that
   // would leave the round short — better an occasional repeat than a thin level
@@ -1114,6 +1259,7 @@ async function getQuestions({ catId = "", difficulty = "", amount = 10, mix = nu
 
   // For blended levels, shape the pool to the requested tier proportions
   const shaped = mix ? composeMix(available, mix, amount) : available;
+  shaped.forEach((q) => { q.tier = capDiff(q.difficulty); }); // default label; sudden overrides
 
   // Sprinkle in up to two nemesis questions seeking revenge
   const nemeses = pickNemeses(catId, mix ? "" : difficulty);
@@ -1161,23 +1307,31 @@ async function startGame(mode, overrides = {}) {
       // like Riddles or Flags locked one) and a per-level difficulty blend.
       opts.catId = overrides.catId ?? "";
       opts.mix = levelMix(1);
+      opts.scope = overrides.catId ? "core" : levelScope(1);
     } else if (mode === "custom") {
       // Your Rules: the player picks both knobs
       opts.catId = document.querySelector("#chips-category .chip.active").dataset.value;
       opts.difficulty = document.querySelector("#chips-difficulty .chip.active").dataset.value;
-    } else {
-      opts.amount = 50; // big pool for endless / blitz runs
     }
 
     setLoading(true, "Fetching questions…");
     try {
-      questions = await getQuestions(opts);
+      if (mode === "sudden") {
+        const pool = await fetchCoreMix({ scope: "core", amount: 60 });
+        questions = applySuddenRamp(pool, 50);
+      } else if (mode === "blitz") {
+        const pool = await fetchCoreMix({ scope: "core", amount: 60 });
+        questions = applyBlitzTiers(pool, 50);
+      } else {
+        questions = await getQuestions(opts);
+      }
+      if (!questions.length) throw new Error("no-questions");
     } catch (err) {
       setLoading(false);
       alert(
         err.message === "rate-limited"
           ? "The trivia service is rate-limiting us — wait a few seconds and try again."
-          : "Couldn't load questions for those settings. Try a different category or difficulty."
+          : "Couldn't load questions right now — check your connection and try again."
       );
       return;
     }
@@ -1247,15 +1401,17 @@ function renderQuestion() {
 
   state.locked = false;
 
+  document.activeElement?.blur?.(); // no leftover focus highlight on a fresh question
   const card = $("question-card");
   card.classList.remove("dissolve-out", "shake", "assemble");
   void card.offsetWidth;
   card.classList.add("assemble"); // pieces drift together, staggered
-  setTimeout(() => card.classList.remove("assemble"), 1100);
+  setTimeout(() => card.classList.remove("assemble"), 1600);
+  Sound.reveal();
 
   $("q-category").textContent = (q.nemesis ? "😈 Revenge · " : "") + q.category;
   const diff = $("q-difficulty");
-  diff.textContent = q.difficulty;
+  diff.textContent = q.tier || q.difficulty; // tier label (Very Easy…Expert) when set
   diff.className = "q-difficulty " + q.difficulty;
 
   $("question-text").textContent = q.text;
@@ -1568,7 +1724,7 @@ function nextQuestion() {
   if (state.index >= state.questions.length && (state.mode === "daily" || state.mode === "custom")) return endGame();
   const card = $("question-card");
   card.classList.add("dissolve-out"); // liquid blur away, then reassemble
-  setTimeout(renderQuestion, 340);
+  setTimeout(renderQuestion, 600);
 }
 
 // Gentle full-screen vignette pulse: green for right, red for wrong.
@@ -1679,7 +1835,7 @@ function renderWhoamiCharacter() {
   card.classList.remove("assemble", "shake");
   void card.offsetWidth;
   card.classList.add("assemble");
-  setTimeout(() => card.classList.remove("assemble"), 1100);
+  setTimeout(() => card.classList.remove("assemble"), 1600);
   $("whoami-progress").textContent = `${state.index + 1} / ${WHOAMI_ROUND}`;
   $("whoami-reveal").hidden = true;
   $("btn-learn-who").hidden = true;
@@ -1904,7 +2060,7 @@ async function continueClassicRun() {
   setLoading(true, `Loading Level ${nextLevel}…`);
   let questions;
   try {
-    questions = await getQuestions({ catId: state.catId, mix: levelMix(nextLevel), amount: 10, exclude: state.usedQKeys });
+    questions = await getQuestions({ catId: state.catId, mix: levelMix(nextLevel), amount: 10, exclude: state.usedQKeys, scope: state.catId ? "core" : levelScope(nextLevel) });
   } catch {
     setLoading(false);
     alert("Couldn't load the next level — ending the run here so your score counts.");
@@ -1930,11 +2086,28 @@ async function continueClassicRun() {
 }
 
 // ---------- Dingbats ----------
-function startDingbats() {
+// Typed emoji-film puzzles (converted from the MCQ film bank at load).
+const EMOJI_FILM_PUZZLES = (typeof EMOJI_FILMS !== "undefined" ? EMOJI_FILMS : []).map((f) => {
+  const aliases = [];
+  if (/^The /i.test(f.a)) aliases.push(f.a.replace(/^The /i, ""));
+  const extra = {
+    "Avengers: Infinity War": ["infinity war", "avengers"],
+    "Harry Potter": ["harry potter and the philosophers stone"],
+    "E.T.": ["et the extra terrestrial", "extra terrestrial"],
+    "The Lord of the Rings": ["lord of the rings", "lotr"],
+    "Star Wars": ["a new hope"],
+  }[f.a];
+  if (extra) aliases.push(...extra);
+  return { type: "emoji", topic: "Emoji Film", display: f.e, answer: f.a, aliases,
+           hint: `A film starting with "${f.a.replace(/^(The|A) /i, "")[0]}".` };
+});
+
+function startDingbats(pool) {
   if (!startGuard()) return;
+  const source = pool && pool.length ? pool : DINGBAT_BANK;
   state = {
     mode: "dingbats",
-    puzzles: shuffle(DINGBAT_BANK).slice(0, DINGBAT_ROUND),
+    puzzles: shuffle(source).slice(0, DINGBAT_ROUND),
     index: 0,
     value: DINGBAT_VALUE,
     resolved: false,
@@ -1969,7 +2142,7 @@ function renderDingbat() {
   card.classList.remove("assemble", "shake");
   void card.offsetWidth;
   card.classList.add("assemble");
-  setTimeout(() => card.classList.remove("assemble"), 1100);
+  setTimeout(() => card.classList.remove("assemble"), 1600);
   $("dingbats-progress").textContent = `${state.index + 1} / ${DINGBAT_ROUND}`;
   $("dingbat-cat").textContent = "👀 " + (p.topic || "Say What You See");
   const disp = $("dingbat-display");
@@ -2527,6 +2700,7 @@ function renderHome() {
 document.querySelectorAll(".mode-card").forEach((card) => {
   card.addEventListener("click", () => {
     if (card.disabled) return;
+    if (card.dataset.action === "emojifilms") return startDingbats(EMOJI_FILM_PUZZLES);
     if (card.dataset.action === "partysetup") { Sound.click(); renderPartyNames(); return showScreen("partysetup"); }
     if (card.dataset.mode === "whoami") return startWhoami();
     if (card.dataset.mode === "dingbats") return startDingbats();
