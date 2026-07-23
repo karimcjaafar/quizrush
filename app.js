@@ -100,56 +100,97 @@ const Sound = (() => {
 // A faint loop: soft bass + sustained pad + plucked arpeggio over C–G–Am–F.
 // Light randomization keeps it from feeling mechanical on repeat.
 const Music = (() => {
-  let ctx = null, master = null, timer = null, nextBarTime = 0, barIndex = 0, playing = false;
+  let ctx = null, master = null, lp = null, timer = null, previewTimer = null;
+  let nextBarTime = 0, barIndex = 0, playing = false, style = null;
   let enabled = localStorage.getItem("quizrush-music") !== "off";
-  const CHORDS = [
-    [261.63, 329.63, 392.0],  // C
-    [196.0, 246.94, 293.66],  // G
-    [220.0, 261.63, 329.63],  // Am
-    [174.61, 220.0, 261.63],  // F
-  ];
-  const BAR = 2.0; // seconds per bar
+
+  // Chord voicings (Hz)
+  const C = [261.63, 329.63, 392.0], G = [196.0, 246.94, 293.66];
+  const Am = [220.0, 261.63, 329.63], F = [174.61, 220.0, 261.63];
+  const Em = [164.81, 196.0, 246.94], Dm = [146.83, 174.61, 220.0];
+  const Cmaj7 = [261.63, 329.63, 392.0, 493.88], Am7 = [220.0, 261.63, 329.63, 392.0];
+  const Fmaj7 = [174.61, 220.0, 261.63, 329.63], G7 = [196.0, 246.94, 293.66, 349.23];
 
   function ensureCtx() {
     if (!ctx) {
       ctx = new (window.AudioContext || window.webkitAudioContext)();
       try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch { /* older iOS */ }
       master = ctx.createGain();
-      const lp = ctx.createBiquadFilter();
+      lp = ctx.createBiquadFilter();
       lp.type = "lowpass";
-      lp.frequency.value = 1600;
       master.connect(lp).connect(ctx.destination);
     }
     if (ctx.state === "suspended") ctx.resume();
   }
 
-  function note(freq, when, dur, vol, type = "triangle") {
+  function note(freq, when, dur, vol, type = "triangle", attack = 0.05) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = type;
     osc.frequency.value = freq;
     gain.gain.setValueAtTime(0.0001, when);
-    gain.gain.linearRampToValueAtTime(vol, when + 0.05);
+    gain.gain.linearRampToValueAtTime(vol, when + attack);
     gain.gain.exponentialRampToValueAtTime(0.001, when + dur);
     osc.connect(gain).connect(master);
     osc.start(when);
     osc.stop(when + dur + 0.1);
   }
 
-  function scheduleBar(t, chord) {
-    note(chord[0] / 2, t, BAR * 0.95, 0.05, "sine");            // bass root
-    chord.forEach((f) => note(f, t, BAR * 0.98, 0.016, "sine")); // pad
-    for (let i = 0; i < 8; i++) {                                // eighth-note plucks
-      if (Math.random() < 0.22) continue;                        // breathing room
-      const f = chord[i % 3] * (i % 4 === 3 ? 2 : 1);
-      note(f, t + i * (BAR / 8) + (Math.random() - 0.5) * 0.015, 0.22, 0.038);
-    }
+  // ----- Track styles: each renders one bar -----
+  const STYLES = {
+    breeze: { bar: 2.0, lp: 1600, chords: [C, G, Am, F], render(t, c, bar) {
+      note(c[0] / 2, t, bar * 0.95, 0.05, "sine");
+      c.forEach((f) => note(f, t, bar * 0.98, 0.016, "sine"));
+      for (let i = 0; i < 8; i++) {
+        if (Math.random() < 0.22) continue;
+        note(c[i % 3] * (i % 4 === 3 ? 2 : 1), t + i * (bar / 8) + (Math.random() - 0.5) * 0.015, 0.22, 0.038);
+      }
+    } },
+    ivory: { bar: 2.4, lp: 1800, chords: [Cmaj7, Am7, Fmaj7, G7], render(t, c, bar) {
+      note(c[0] / 2, t, bar * 0.96, 0.045, "sine", 0.08);
+      const seq = [c[0], c[2], c[3] || c[1] * 2, c[1]];
+      seq.forEach((f, i) => {
+        const when = t + i * (bar / 4) + (Math.random() - 0.5) * 0.02;
+        note(f, when, 1.5, 0.05, "sine", 0.02);              // piano-ish body
+        note(f * 2.003, when, 0.9, 0.012, "sine", 0.02);     // faint detuned shimmer
+      });
+    } },
+    minuet: { bar: 1.8, lp: 2200, chords: [C, G, Am, Em, F, C, Dm, G], render(t, c, bar) {
+      const alberti = [c[0], c[2], c[1], c[2], c[0], c[2], c[1], c[2]];
+      alberti.forEach((f, i) => note(f, t + i * (bar / 8), 0.26, 0.036, "triangle", 0.01));
+      note(c[2] * 2, t, 0.7, 0.045, "triangle", 0.015);       // upper voice
+      note((Math.random() < 0.5 ? c[1] : c[0]) * 2, t + bar / 2, 0.7, 0.04, "triangle", 0.015);
+    } },
+    pulse: { bar: 1.6, lp: 2600, chords: [Am, Am, F, G], render(t, c, bar) {
+      const beat = bar / 4;
+      for (let i = 0; i < 4; i++) {
+        note(110, t + i * beat, 0.13, 0.13, "sine", 0.005);   // kick thump
+        note(45, t + i * beat, 0.13, 0.1, "sine", 0.005);
+        note(c[0] / 2, t + i * beat + beat / 2, 0.14, 0.032, "square", 0.008); // offbeat bass
+        note(4200, t + i * beat + beat / 2, 0.03, 0.011, "triangle", 0.004);   // hat tick
+      }
+      [1, 3].forEach((i) => c.forEach((f) => note(f, t + i * beat, 0.11, 0.013, "square", 0.008))); // stabs
+    } },
+    chip: { bar: 1.6, lp: 3000, chords: [C, G, Am, F], render(t, c, bar) {
+      const riff = [c[0], c[1], c[2], c[0] * 2, c[2], c[1], c[2], c[1]];
+      riff.forEach((f, i) => note(f * 2, t + i * (bar / 8), 0.16, 0.026, "square", 0.005));
+      for (let i = 0; i < 4; i++) note(c[0] / 2, t + i * (bar / 4), 0.2, 0.038, "square", 0.008);
+    } },
+    cosmos: { bar: 3.2, lp: 1200, chords: [Am, F, C, G], render(t, c, bar) {
+      note(c[0] / 4, t, bar * 0.98, 0.05, "sine", 0.9);       // sub drone
+      c.forEach((f, i) => note(f, t + i * 0.25, bar * 0.9, 0.02, "sine", 0.8)); // slow swells
+      if (Math.random() < 0.4) note(c[Math.floor(Math.random() * c.length)] * 4, t + Math.random() * bar * 0.6, 0.9, 0.016, "sine", 0.1); // sparkle
+    } },
+  };
+
+  function currentStyle() {
+    return STYLES[localStorage.getItem("quizrush-music-track") || "breeze"] || STYLES.breeze;
   }
 
   function tick() {
     while (nextBarTime < ctx.currentTime + 0.5) {
-      scheduleBar(nextBarTime, CHORDS[barIndex % CHORDS.length]);
-      nextBarTime += BAR;
+      style.render(nextBarTime, style.chords[barIndex % style.chords.length], style.bar);
+      nextBarTime += style.bar;
       barIndex++;
     }
   }
@@ -168,6 +209,8 @@ const Music = (() => {
       try {
         ensureCtx();
         playing = true;
+        style = currentStyle();
+        lp.frequency.value = style.lp;
         master.gain.cancelScheduledValues(ctx.currentTime);
         master.gain.setValueAtTime(0.0001, ctx.currentTime);
         master.gain.linearRampToValueAtTime(1, ctx.currentTime + 1.4); // gentle fade in
@@ -186,6 +229,18 @@ const Music = (() => {
         master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
         master.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.8); // fade out
       } catch { /* already gone */ }
+    },
+    // Called after the selected track changes: crossfade in-round, or play a
+    // short preview when browsing from the home screen
+    applyTrackChange() {
+      clearTimeout(previewTimer);
+      if (playing) {
+        this.stop();
+        setTimeout(() => this.start(), 900);
+      } else if (!state) {
+        this.start();
+        previewTimer = setTimeout(() => { if (!state) this.stop(); }, 3400);
+      }
     },
   };
 })();
@@ -270,6 +325,17 @@ const MASTERY = [
   { at: 120, medal: "🥇" },
   { at: 50,  medal: "🥈" },
   { at: 20,  medal: "🥉" },
+];
+
+// Unlockable music tracks — criteria deliberately span different systems, so
+// different play styles unlock different songs. Checked lazily at paint time.
+const MUSIC_TRACKS = [
+  { id: "breeze", name: "Breeze", icon: "🍃", req: "", unlock: () => true },
+  { id: "ivory",  name: "Ivory",  icon: "🎹", req: "Reach player level 3",     unlock: () => levelFromXp(player.xp) >= 3 },
+  { id: "minuet", name: "Minuet", icon: "🎻", req: "Earn 4 badges",            unlock: () => player.badges.length >= 4 },
+  { id: "pulse",  name: "Pulse",  icon: "🎛️", req: "Reach Level 4 in Classic", unlock: () => player.bestClassicLevel >= 4 },
+  { id: "chip",   name: "8-Bit",  icon: "👾", req: "Earn a category medal",    unlock: () => CATEGORIES.some((c) => medalFor(c.id)) },
+  { id: "cosmos", name: "Cosmos", icon: "🌌", req: "3-day daily streak",       unlock: () => player.bestDailyStreak >= 3 },
 ];
 
 // Unlockable color themes — the Daily Challenge reward. Unlocks are keyed to the
@@ -362,6 +428,8 @@ const player = {
   set appIcon(v) { safeSetItem("quizrush-appicon", v); },
   get profile() { return getJSON("quizrush-profile", null); }, // { name, avatar }
   set profile(v) { setJSON("quizrush-profile", v); },
+  get musicTrack() { return localStorage.getItem("quizrush-music-track") || "breeze"; },
+  set musicTrack(v) { safeSetItem("quizrush-music-track", v); },
 };
 
 const AVATARS = ["😀","😎","🤓","🥸","🦊","🐼","🐸","🦁","🐯","🦉","🐙","🦄","🐢","👾","🤖","🚀","🌟","🍕","🎸","🧠"];
@@ -1989,6 +2057,16 @@ function paintSoundPacks() {
   }).join("");
 }
 
+function paintMusicTracks() {
+  $("track-row").innerHTML = MUSIC_TRACKS.map((t) => {
+    const unlocked = t.unlock();
+    const active = player.musicTrack === t.id;
+    return `<button class="chip pack-chip ${active ? "active" : ""}" data-track="${t.id}"
+      ${unlocked ? "" : "disabled"} title="${unlocked ? t.name : `${t.name} — ${t.req}`}">
+      ${unlocked ? t.icon : "🔒"} ${t.name}</button>`;
+  }).join("");
+}
+
 function applyAppIcon(id) {
   player.appIcon = id;
   $("manifest-link").href = id === "bolt" ? "manifest.json" : `manifest-${id}.json`;
@@ -2062,6 +2140,7 @@ function renderHome() {
   paintThemes();
   paintCategoryChips();
   paintSoundPacks();
+  paintMusicTracks();
   paintAppIcons();
 }
 
@@ -2176,6 +2255,15 @@ $("pack-row").addEventListener("click", (e) => {
   Sound.correct(); // audible preview of the new pack
 });
 
+$("track-row").addEventListener("click", (e) => {
+  const chip = e.target.closest(".pack-chip");
+  if (!chip || chip.disabled) return;
+  player.musicTrack = chip.dataset.track;
+  paintMusicTracks();
+  Sound.click();
+  Music.applyTrackChange(); // crossfade in-round, or a short preview from home
+});
+
 $("icon-row").addEventListener("click", (e) => {
   const chip = e.target.closest(".pack-chip");
   if (!chip || chip.disabled) return;
@@ -2241,6 +2329,7 @@ applyTheme(THEMES.some((t) => t.id === player.theme && player.bestDailyStreak >=
   if (!SOUND_PACKS.some((p) => p.id === player.soundPack && badgeCount >= p.badges)) player.soundPack = "classic";
   const icon = APP_ICONS.find((i) => i.id === player.appIcon && badgeCount >= i.badges) ? player.appIcon : "bolt";
   applyAppIcon(icon);
+  if (!MUSIC_TRACKS.find((t) => t.id === player.musicTrack)?.unlock()) player.musicTrack = "breeze";
 }
 paintSoundButton();
 paintMusicButton();
