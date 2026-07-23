@@ -2343,9 +2343,6 @@ function renderHome() {
 document.querySelectorAll(".mode-card").forEach((card) => {
   card.addEventListener("click", () => {
     if (card.disabled) return;
-    if (card.dataset.action === "brainmenu") { Sound.click(); return showScreen("brainmenu"); }
-    if (card.dataset.action === "picturemenu") { Sound.click(); return showScreen("picturemenu"); }
-    if (card.dataset.action === "specialsmenu") { Sound.click(); paintSpecials(); return showScreen("specialsmenu"); }
     if (card.dataset.action === "partysetup") { Sound.click(); renderPartyNames(); return showScreen("partysetup"); }
     if (card.dataset.mode === "whoami") return startWhoami();
     if (card.dataset.mode === "dingbats") return startDingbats();
@@ -2396,6 +2393,14 @@ $("vol-sfx").addEventListener("input", () => {
 $("vol-music").addEventListener("input", () => {
   safeSetItem("quizrush-vol-music", $("vol-music").value);
   Music.setVolume(Number($("vol-music").value) / 100);
+});
+
+document.querySelectorAll(".collection-tile").forEach((tile) => {
+  tile.addEventListener("click", () => {
+    Sound.click();
+    if (tile.dataset.menu === "specialsmenu") paintSpecials();
+    showScreen(tile.dataset.menu);
+  });
 });
 
 $("btn-brain-back").addEventListener("click", () => { Sound.click(); showScreen("home"); });

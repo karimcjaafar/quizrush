@@ -458,6 +458,30 @@ body.intro-done #screen-home > :nth-child(n+9) { animation-delay: 0.6s; }
   margin: 22px 4px 10px;
 }
 
+/* Collections: one compact row of launcher tiles */
+.collections {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+.collection-tile {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 8px 14px;
+  text-align: center;
+  backdrop-filter: blur(12px);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s, background 0.2s;
+}
+.collection-tile:hover { transform: translateY(-3px); border-color: rgba(124, 92, 255, 0.55); background: rgba(124, 92, 255, 0.08); }
+.collection-tile:active { transform: scale(0.96); }
+.collection-icon { font-size: 30px; line-height: 1; }
+.collection-tile h3 { font-size: 13.5px; font-weight: 700; }
+.collection-tile p { font-size: 11px; color: var(--text-dim); }
+@media (hover: none) { .collection-tile:hover { transform: none; border-color: var(--border); background: var(--surface); } }
+
 .mode-grid { display: flex; flex-direction: column; gap: 14px; }
 
 .mode-card {
