@@ -138,51 +138,108 @@ const Music = (() => {
     osc.stop(when + dur + 0.1);
   }
 
-  // ----- Track styles: each renders one bar -----
+  // ----- Melody support: composed hooks, written as note names -----
+  const SEMI = { C: -9, "C#": -8, D: -7, "D#": -6, E: -5, F: -4, "F#": -3, G: -2, "G#": -1, A: 0, "A#": 1, B: 2 };
+  function N(name) { // "E5" → Hz
+    const oct = Number(name.slice(-1));
+    return 440 * Math.pow(2, (SEMI[name.slice(0, -1)] + (oct - 4) * 12) / 12);
+  }
+  // One melody bar = [noteName|null, startFraction, durFraction][]
+  function playMelody(t, bar, phrase, { vol = 0.05, wave = "sine", attack = 0.02 } = {}) {
+    phrase.forEach(([n, start, dur]) => {
+      if (n) note(N(n), t + start * bar, dur * bar, vol, wave, attack);
+    });
+  }
+  const E8 = (notes) => notes.map((n, i) => [n, i / 8, 0.13]); // straight eighth-note bar
+
+  // ----- Track styles: each has a composed theme that loops with the chords -----
   const STYLES = {
-    breeze: { bar: 2.0, lp: 1600, chords: [C, G, Am, F], render(t, c, bar) {
-      note(c[0] / 2, t, bar * 0.95, 0.05, "sine");
-      c.forEach((f) => note(f, t, bar * 0.98, 0.016, "sine"));
-      for (let i = 0; i < 8; i++) {
-        if (Math.random() < 0.22) continue;
-        note(c[i % 3] * (i % 4 === 3 ? 2 : 1), t + i * (bar / 8) + (Math.random() - 0.5) * 0.015, 0.22, 0.038);
-      }
-    } },
-    ivory: { bar: 2.4, lp: 1800, chords: [Cmaj7, Am7, Fmaj7, G7], render(t, c, bar) {
-      note(c[0] / 2, t, bar * 0.96, 0.045, "sine", 0.08);
-      const seq = [c[0], c[2], c[3] || c[1] * 2, c[1]];
-      seq.forEach((f, i) => {
-        const when = t + i * (bar / 4) + (Math.random() - 0.5) * 0.02;
-        note(f, when, 1.5, 0.05, "sine", 0.02);              // piano-ish body
-        note(f * 2.003, when, 0.9, 0.012, "sine", 0.02);     // faint detuned shimmer
-      });
-    } },
-    minuet: { bar: 1.8, lp: 2200, chords: [C, G, Am, Em, F, C, Dm, G], render(t, c, bar) {
-      const alberti = [c[0], c[2], c[1], c[2], c[0], c[2], c[1], c[2]];
-      alberti.forEach((f, i) => note(f, t + i * (bar / 8), 0.26, 0.036, "triangle", 0.01));
-      note(c[2] * 2, t, 0.7, 0.045, "triangle", 0.015);       // upper voice
-      note((Math.random() < 0.5 ? c[1] : c[0]) * 2, t + bar / 2, 0.7, 0.04, "triangle", 0.015);
-    } },
-    pulse: { bar: 1.6, lp: 2600, chords: [Am, Am, F, G], render(t, c, bar) {
-      const beat = bar / 4;
-      for (let i = 0; i < 4; i++) {
-        note(110, t + i * beat, 0.13, 0.13, "sine", 0.005);   // kick thump
-        note(45, t + i * beat, 0.13, 0.1, "sine", 0.005);
-        note(c[0] / 2, t + i * beat + beat / 2, 0.14, 0.032, "square", 0.008); // offbeat bass
-        note(4200, t + i * beat + beat / 2, 0.03, 0.011, "triangle", 0.004);   // hat tick
-      }
-      [1, 3].forEach((i) => c.forEach((f) => note(f, t + i * beat, 0.11, 0.013, "square", 0.008))); // stabs
-    } },
-    chip: { bar: 1.6, lp: 3000, chords: [C, G, Am, F], render(t, c, bar) {
-      const riff = [c[0], c[1], c[2], c[0] * 2, c[2], c[1], c[2], c[1]];
-      riff.forEach((f, i) => note(f * 2, t + i * (bar / 8), 0.16, 0.026, "square", 0.005));
-      for (let i = 0; i < 4; i++) note(c[0] / 2, t + i * (bar / 4), 0.2, 0.038, "square", 0.008);
-    } },
-    cosmos: { bar: 3.2, lp: 1200, chords: [Am, F, C, G], render(t, c, bar) {
-      note(c[0] / 4, t, bar * 0.98, 0.05, "sine", 0.9);       // sub drone
-      c.forEach((f, i) => note(f, t + i * 0.25, bar * 0.9, 0.02, "sine", 0.8)); // slow swells
-      if (Math.random() < 0.4) note(c[Math.floor(Math.random() * c.length)] * 4, t + Math.random() * bar * 0.6, 0.9, 0.016, "sine", 0.1); // sparkle
-    } },
+    breeze: { bar: 2.0, lp: 1600, chords: [C, G, Am, F],
+      theme: [ // gentle pentatonic tune
+        [["E5", 0, 0.2], ["G5", 0.25, 0.2], ["A5", 0.5, 0.2], ["G5", 0.75, 0.22]],
+        [["E5", 0, 0.2], ["D5", 0.25, 0.2], ["C5", 0.5, 0.45]],
+        [["D5", 0, 0.2], ["E5", 0.25, 0.2], ["G5", 0.5, 0.2], ["E5", 0.75, 0.22]],
+        [["D5", 0, 0.28], ["C5", 0.375, 0.55]],
+      ],
+      render(t, c, bar, mel) {
+        note(c[0] / 2, t, bar * 0.95, 0.05, "sine");
+        c.forEach((f) => note(f, t, bar * 0.98, 0.014, "sine"));
+        for (let i = 0; i < 8; i += 2) note(c[(i / 2) % 3], t + i * (bar / 8), 0.2, 0.024);
+        playMelody(t, bar, mel, { vol: 0.055, wave: "sine", attack: 0.03 });
+      } },
+    ivory: { bar: 2.4, lp: 1800, chords: [Cmaj7, Am7, Fmaj7, G7],
+      theme: [ // lyrical right hand
+        [["E5", 0, 0.2], ["G5", 0.3, 0.18], ["B5", 0.5, 0.42]],
+        [["A5", 0, 0.2], ["G5", 0.25, 0.18], ["E5", 0.5, 0.42]],
+        [["F5", 0, 0.2], ["E5", 0.3, 0.18], ["C5", 0.5, 0.42]],
+        [["D5", 0, 0.28], ["B4", 0.375, 0.2], ["C5", 0.55, 0.4]],
+      ],
+      render(t, c, bar, mel) {
+        note(c[0] / 2, t, bar * 0.96, 0.045, "sine", 0.08);
+        [c[0], c[2], c[1]].forEach((f, i) => note(f, t + i * (bar / 3), 1.3, 0.038, "sine", 0.02));
+        mel.forEach(([n, start, dur]) => {
+          if (!n) return;
+          const when = t + start * bar;
+          note(N(n), when, dur * bar + 0.6, 0.06, "sine", 0.015);   // piano body
+          note(N(n) * 2.003, when, dur * bar, 0.014, "sine", 0.015); // shimmer
+        });
+      } },
+    minuet: { bar: 1.8, lp: 2200, chords: [C, G, Am, Em, F, C, Dm, G],
+      theme: [ // canon-style descending line over the Pachelbel progression
+        [["E5", 0, 0.4], ["D5", 0.5, 0.4]],
+        [["C5", 0, 0.4], ["B4", 0.5, 0.4]],
+        [["A4", 0, 0.4], ["C5", 0.5, 0.4]],
+        [["B4", 0, 0.4], ["G4", 0.5, 0.4]],
+        [["A4", 0, 0.4], ["C5", 0.5, 0.4]],
+        [["E5", 0, 0.4], ["G5", 0.5, 0.4]],
+        [["F5", 0, 0.22], ["E5", 0.25, 0.22], ["D5", 0.5, 0.4]],
+        [["B4", 0, 0.4], ["C5", 0.5, 0.45]],
+      ],
+      render(t, c, bar, mel) {
+        [c[0], c[2], c[1], c[2], c[0], c[2], c[1], c[2]]
+          .forEach((f, i) => note(f, t + i * (bar / 8), 0.24, 0.032, "triangle", 0.01));
+        playMelody(t, bar, mel, { vol: 0.05, wave: "triangle", attack: 0.012 });
+      } },
+    pulse: { bar: 1.85, lp: 2800, chords: [Am, F, C, G], // ~130bpm eurodance
+      theme: [ // original hook in the Blue-era europop mold
+        E8(["A4", "A4", "C5", "A4", "E5", null, "D5", "C5"]),
+        E8(["F4", "A4", "C5", "A4", "C5", null, "A4", "G4"]),
+        E8(["E5", "E5", "D5", "C5", "G4", null, "A4", "B4"]),
+        [["G4", 0, 0.11], ["A4", 0.125, 0.11], ["B4", 0.25, 0.24], ["D5", 0.5, 0.24], ["B4", 0.75, 0.22]],
+      ],
+      render(t, c, bar, mel) {
+        const beat = bar / 4;
+        for (let i = 0; i < 4; i++) {
+          note(110, t + i * beat, 0.13, 0.13, "sine", 0.005);   // kick
+          note(45, t + i * beat, 0.13, 0.1, "sine", 0.005);
+          note(c[0] / 2, t + i * beat + beat / 2, 0.15, 0.034, "square", 0.008); // offbeat bass
+          note(4200, t + i * beat + beat / 2, 0.03, 0.01, "triangle", 0.004);    // hat
+        }
+        c.forEach((f) => note(f, t + beat, 0.1, 0.011, "square", 0.008));        // stab
+        playMelody(t, bar, mel, { vol: 0.042, wave: "sawtooth", attack: 0.008 }); // synth lead
+        playMelody(t, bar, mel, { vol: 0.02, wave: "square", attack: 0.008 });    // lead thickener
+      } },
+    chip: { bar: 1.6, lp: 3200, chords: [C, G, Am, F],
+      theme: [ // bouncy chiptune motif
+        E8(["C5", "E5", "G5", "E5", "C5", "E5", "G5", "A5"]),
+        E8(["B4", "D5", "G5", "D5", "B4", "D5", "G4", "B4"]),
+        E8(["A4", "C5", "E5", "C5", "A4", "C5", "E5", "G5"]),
+        E8(["F5", "E5", "D5", "E5", "F5", "G5", "E5", "C5"]),
+      ],
+      render(t, c, bar, mel) {
+        for (let i = 0; i < 4; i++) note(c[0] / 2, t + i * (bar / 4), 0.18, 0.036, "square", 0.008);
+        playMelody(t, bar, mel, { vol: 0.028, wave: "square", attack: 0.005 });
+      } },
+    cosmos: { bar: 3.2, lp: 1200, chords: [Am, F, C, G],
+      theme: [ // one slow haunting note per bar
+        [["A4", 0.1, 0.6]], [["C5", 0.1, 0.6]], [["B4", 0.1, 0.6]], [["E5", 0.1, 0.7]],
+      ],
+      render(t, c, bar, mel) {
+        note(c[0] / 4, t, bar * 0.98, 0.05, "sine", 0.9);
+        c.forEach((f, i) => note(f, t + i * 0.25, bar * 0.9, 0.018, "sine", 0.8));
+        playMelody(t, bar, mel, { vol: 0.03, wave: "sine", attack: 0.5 });
+        if (Math.random() < 0.35) note(c[Math.floor(Math.random() * c.length)] * 4, t + Math.random() * bar * 0.6, 0.9, 0.014, "sine", 0.1);
+      } },
   };
 
   function currentStyle() {
@@ -191,7 +248,12 @@ const Music = (() => {
 
   function tick() {
     while (nextBarTime < ctx.currentTime + 0.5) {
-      style.render(nextBarTime, style.chords[barIndex % style.chords.length], style.bar);
+      style.render(
+        nextBarTime,
+        style.chords[barIndex % style.chords.length],
+        style.bar,
+        style.theme[barIndex % style.theme.length]
+      );
       nextBarTime += style.bar;
       barIndex++;
     }
