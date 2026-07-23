@@ -490,9 +490,10 @@ function medalFor(catId) {
 }
 
 // ---------- Backend (leaderboards + global answer stats) ----------
-// Points at the Cloudflare Worker in backend/. Empty string = offline mode:
-// every Net call silently no-ops, so the game never depends on the server.
-const BACKEND_URL = localStorage.getItem("quizrush-backend") || "";
+// Points at the Cloudflare Worker in backend/. The localStorage override
+// exists for local development; if the server is ever unreachable, every Net
+// call fails silently and the game plays on unaffected.
+const BACKEND_URL = localStorage.getItem("quizrush-backend") || "https://quizrush-api.karimcjaafar.workers.dev";
 
 const Net = {
   deviceId() {

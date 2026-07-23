@@ -5,4 +5,4 @@ compatibility_date = "2026-07-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "quizrush"
-database_id = "placeholder-set-after-d1-create"
+database_id = "da174e32-c2e4-456f-ad27-20e5c7c559c1"
