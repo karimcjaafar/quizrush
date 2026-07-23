@@ -773,6 +773,77 @@ EMOJI_FILMS.forEach((f) => QUIZRUSH_BANK.push({
   correct: f.a, wrong: f.w,
 }));
 
+// Emoji typed puzzles across topics — join the Say What You 👀 pool.
+// Original encodings; answers are titles/names/sayings (facts). Each carries
+// a topic label and aliases for the fuzzy matcher.
+const EMOJI_TYPED = [
+  // 🎵 Songs
+  { t: "Song", e: "🌂☔", a: "Umbrella", al: ["umbrella by rihanna"], h: "Rihanna will let you stand under it." },
+  { t: "Song", e: "💍🔥", a: "Ring of Fire", al: [], h: "Johnny Cash fell into it." },
+  { t: "Song", e: "💜🌧️", a: "Purple Rain", al: [], h: "Prince's masterpiece." },
+  { t: "Song", e: "🎆🎇", a: "Firework", al: ["fireworks"], h: "Katy Perry asks if you ever felt like a plastic bag." },
+  { t: "Song", e: "🧊🧊👶", a: "Ice Ice Baby", al: [], h: "Stop, collaborate and listen." },
+  { t: "Song", e: "💃👑🎶", a: "Dancing Queen", al: [], h: "ABBA — young and sweet, only seventeen." },
+  { t: "Song", e: "👁️🐅", a: "Eye of the Tiger", al: [], h: "Rocky's training montage." },
+  { t: "Song", e: "👶🦈", a: "Baby Shark", al: ["baby shark doo doo"], h: "Doo doo doo doo doo doo." },
+  { t: "Song", e: "🔔🔔🛷", a: "Jingle Bells", al: [], h: "Dashing through the snow." },
+  { t: "Song", e: "🏨🌴🦅", a: "Hotel California", al: [], h: "You can check out any time you like…" },
+  { t: "Song", e: "🎹👨🎶", a: "Piano Man", al: [], h: "Sing us a song, says Billy Joel." },
+  { t: "Song", e: "🌈⬆️🎶", a: "Over the Rainbow", al: ["somewhere over the rainbow"], h: "Dorothy dreams somewhere beyond it." },
+  // 📺 TV shows
+  { t: "TV Show", e: "🐉🪑👑", a: "Game of Thrones", al: [], h: "Winter is coming." },
+  { t: "TV Show", e: "👨‍🔬🧪💊", a: "Breaking Bad", al: [], h: "A chemistry teacher goes very wrong." },
+  { t: "TV Show", e: "👫👫👫☕", a: "Friends", al: [], h: "They'll be there for you, at Central Perk." },
+  { t: "TV Show", e: "🦑🎮🔴🟢", a: "Squid Game", al: [], h: "Red light, green light — for very high stakes." },
+  { t: "TV Show", e: "🏝️✈️❓", a: "Lost", al: [], h: "A plane crash, an island, many mysteries." },
+  { t: "TV Show", e: "🧟🚶🚶", a: "The Walking Dead", al: ["walking dead"], h: "Survivors versus the undead." },
+  { t: "TV Show", e: "🕵️🎻🇬🇧", a: "Sherlock", al: ["sherlock holmes"], h: "A modern consulting detective." },
+  { t: "TV Show", e: "👑👸🇬🇧", a: "The Crown", al: ["crown"], h: "The reign of Elizabeth II, dramatized." },
+  { t: "TV Show", e: "🧇👧👾🚲", a: "Stranger Things", al: [], h: "Eleven loves waffles; the Upside Down looms." },
+  { t: "TV Show", e: "🟡👨‍👩‍👧‍👦🍩", a: "The Simpsons", al: ["simpsons"], h: "Springfield's yellow family." },
+  // 📚 Books
+  { t: "Book", e: "🐋⚓😠", a: "Moby Dick", al: ["moby-dick"], h: "Captain Ahab's white whale." },
+  { t: "Book", e: "🕸️🐷✍️", a: "Charlotte's Web", al: ["charlottes web"], h: "A spider writes to save a pig." },
+  { t: "Book", e: "🐰🕳️👧", a: "Alice in Wonderland", al: ["alices adventures in wonderland"], h: "Down the rabbit hole." },
+  { t: "Book", e: "🏝️🪰👦👦", a: "Lord of the Flies", al: [], h: "Boys on an island, order collapsing." },
+  { t: "Book", e: "🐻🐆👦🌴", a: "The Jungle Book", al: ["jungle book"], h: "Mowgli's bare necessities." },
+  { t: "Book", e: "🧙🚪🦁❄️", a: "Narnia", al: ["the lion the witch and the wardrobe", "the chronicles of narnia"], h: "Through the wardrobe." },
+  // 🗼 Landmarks
+  { t: "Landmark", e: "🗼🥐🇫🇷", a: "The Eiffel Tower", al: ["eiffel tower"], h: "Paris's iron lady." },
+  { t: "Landmark", e: "🗽🍎", a: "The Statue of Liberty", al: ["statue of liberty"], h: "A gift from France in New York harbor." },
+  { t: "Landmark", e: "⏰🏰🇬🇧", a: "Big Ben", al: [], h: "London's most famous bongs." },
+  { t: "Landmark", e: "⚪🕌🇮🇳", a: "The Taj Mahal", al: ["taj mahal"], h: "A marble mausoleum built for love." },
+  { t: "Landmark", e: "🧱🐉🇨🇳", a: "The Great Wall", al: ["great wall of china", "the great wall of china"], h: "Visible for thousands of miles across China." },
+  { t: "Landmark", e: "🎭⛵🇦🇺", a: "The Sydney Opera House", al: ["sydney opera house", "opera house"], h: "Sails on Sydney harbor." },
+  { t: "Landmark", e: "🏟️🦁🇮🇹", a: "The Colosseum", al: ["colosseum", "coliseum"], h: "Rome's gladiator arena." },
+  { t: "Landmark", e: "🌉🌁", a: "The Golden Gate Bridge", al: ["golden gate bridge", "golden gate"], h: "San Francisco's red icon in the fog." },
+  { t: "Landmark", e: "🔺🔺🐪", a: "The Pyramids", al: ["pyramids", "pyramids of giza", "giza"], h: "Pharaohs' pointed tombs." },
+  { t: "Landmark", e: "🗿🏝️", a: "Easter Island", al: ["rapa nui", "the moai"], h: "Home of the giant stone heads." },
+  // 💬 Sayings
+  { t: "Saying", e: "🐘🛋️🏠", a: "Elephant in the room", al: ["the elephant in the room"], h: "The huge thing nobody mentions." },
+  { t: "Saying", e: "🌧️🐱🐶", a: "Raining cats and dogs", al: ["its raining cats and dogs"], h: "Very heavy rain indeed." },
+  { t: "Saying", e: "🥶🦶", a: "Cold feet", al: ["getting cold feet"], h: "Last-minute nerves." },
+  { t: "Saying", e: "🐟🏜️", a: "Fish out of water", al: ["a fish out of water"], h: "Completely out of your element." },
+  { t: "Saying", e: "🍰😌", a: "Piece of cake", al: ["a piece of cake"], h: "Extremely easy." },
+  { t: "Saying", e: "🐦🐦🪨", a: "Two birds, one stone", al: ["kill two birds with one stone", "two birds with one stone"], h: "One action, double result." },
+  { t: "Saying", e: "☁️9️⃣", a: "Cloud nine", al: ["on cloud nine"], h: "Where the blissfully happy float." },
+  { t: "Saying", e: "🫖🌪️", a: "Storm in a teacup", al: ["a storm in a teacup", "tempest in a teapot"], h: "Big fuss, tiny matter." },
+  { t: "Saying", e: "🐺👕🐑", a: "Wolf in sheep's clothing", al: ["a wolf in sheeps clothing"], h: "A hidden danger, dressed as harmless." },
+  { t: "Saying", e: "🛏️🌹🌹", a: "Bed of roses", al: ["a bed of roses"], h: "Life made easy and comfortable — supposedly." },
+  // 🎮 Video games
+  { t: "Video Game", e: "🍄👨🔧", a: "Super Mario", al: ["mario", "super mario bros"], h: "Nintendo's jumping plumber." },
+  { t: "Video Game", e: "🦔💨💍", a: "Sonic", al: ["sonic the hedgehog"], h: "Sega's fastest blue hero." },
+  { t: "Video Game", e: "⛏️🧱🟩", a: "Minecraft", al: [], h: "Mine, craft, build — block by block." },
+  { t: "Video Game", e: "🟡👻👻🍒", a: "Pac-Man", al: ["pacman", "pac man"], h: "Waka waka waka." },
+  { t: "Video Game", e: "🧱⬇️🔁", a: "Tetris", al: [], h: "Falling blocks, tidy lines." },
+  { t: "Video Game", e: "🐦😡🐷", a: "Angry Birds", al: [], h: "Slingshot fury versus green pigs." },
+  { t: "Video Game", e: "🦍🛢️👷", a: "Donkey Kong", al: [], h: "Barrels down the girders since 1981." },
+  { t: "Video Game", e: "🌻🆚🧟", a: "Plants vs Zombies", al: ["plants versus zombies", "pvz"], h: "Your garden is the last line of defense." },
+];
+EMOJI_TYPED.forEach((p) => DINGBAT_BANK.push({
+  type: "emoji", topic: p.t, display: p.e, answer: p.a, aliases: p.al, hint: p.h,
+}));
+
 // "Who Am I?" bank — 4 clues per character, ordered obscure → obvious.
 // Original clue phrasings written for this app. `aliases` are the accepted
 // short forms; fuzzy matching adds misspelling tolerance on top.

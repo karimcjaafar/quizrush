@@ -1855,6 +1855,17 @@ function startDingbats() {
   renderDingbat();
 }
 
+// Hangman-style blanks: one tile per letter, punctuation shown literally
+function blanksFor(answer) {
+  return answer.split(" ").map((word) =>
+    `<span class="blank-word">${[...word].map((ch) =>
+      /[a-zA-Z0-9]/.test(ch)
+        ? `<span class="blank"></span>`
+        : `<span class="blank lit">${escapeHtml(ch)}</span>`
+    ).join("")}</span>`
+  ).join("");
+}
+
 function renderDingbat() {
   const p = state.puzzles[state.index];
   state.value = DINGBAT_VALUE;
@@ -1865,9 +1876,11 @@ function renderDingbat() {
   card.classList.add("assemble");
   setTimeout(() => card.classList.remove("assemble"), 1100);
   $("dingbats-progress").textContent = `${state.index + 1} / ${DINGBAT_ROUND}`;
+  $("dingbat-cat").textContent = "👀 " + (p.topic || "Say What You See");
   const disp = $("dingbat-display");
   disp.textContent = p.display;
   disp.className = "dingbat-display " + p.type;
+  $("dingbat-blanks").innerHTML = blanksFor(p.answer);
   $("dingbat-hint").hidden = true;
   $("dingbat-reveal").hidden = true;
   $("dingbat-input-row").style.display = "";
