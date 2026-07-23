@@ -1127,6 +1127,15 @@ select {
 
 /* ============ Picture questions ============ */
 .q-visual { font-size: 84px; text-align: center; line-height: 1.15; margin-bottom: 6px; }
+.shape-svg {
+  width: 150px; height: 150px;
+  display: block;
+  margin: 0 auto;
+}
+.shape-svg path {
+  fill: var(--accent);
+  filter: drop-shadow(0 4px 18px rgba(124, 92, 255, 0.35));
+}
 
 /* ============ Confetti ============ */
 .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; }

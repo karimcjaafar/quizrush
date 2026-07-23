@@ -127,8 +127,8 @@
       </button>
       <button class="collection-tile" data-menu="picturemenu">
         <span class="collection-icon">📸</span>
-        <h3>Pictures</h3>
-        <p>Flags</p>
+        <h3>Picture Round</h3>
+        <p>3 rounds</p>
       </button>
       <button class="collection-tile" data-menu="specialsmenu">
         <span class="collection-icon">🎯</span>
@@ -358,11 +358,19 @@
         </div>
       </button>
 
-      <button class="mode-card soon" disabled>
+      <button class="mode-card" data-mode="classic" data-cat="shapes">
         <div class="mode-icon">🗺️</div>
         <div class="mode-info">
           <h2>Country Shapes</h2>
-          <p>Name the country from its outline — coming soon.</p>
+          <p>Name the country from its silhouette alone.</p>
+        </div>
+      </button>
+
+      <button class="mode-card" data-mode="classic" data-cat="emovies">
+        <div class="mode-icon">🎬</div>
+        <div class="mode-info">
+          <h2>Emoji Films</h2>
+          <p>🦁👑? 🧊🚢? Guess the movie from the emojis.</p>
         </div>
       </button>
     </section>
@@ -568,6 +576,7 @@
   </div>
 
   <script src="bank.js"></script>
+  <script src="shapes.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

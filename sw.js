@@ -1,9 +1,9 @@
 // QuizRush service worker: network-first with cache fallback, so updates land
 // immediately when online while the whole app keeps working offline.
 // Bump the version on breaking cache changes.
-const CACHE = "quizrush-v1";
+const CACHE = "quizrush-v2";
 const SHELL = [
-  "./", "./index.html", "./style.css", "./app.js", "./bank.js",
+  "./", "./index.html", "./style.css", "./app.js", "./bank.js", "./shapes.js",
   "./manifest.json", "./icon-bolt.svg", "./icon-bolt.png",
 ];
 

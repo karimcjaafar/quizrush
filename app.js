@@ -404,6 +404,9 @@ const CATEGORIES = [
   { id: "worldcup",  name: "World Cup",            emoji: "⚽", otdb: [], tta: [], bank: true, special: true },
   { id: "starwars",  name: "Star Wars",            emoji: "🛸", otdb: [], tta: [], bank: true, special: true },
   { id: "british",   name: "British Quiz",         emoji: "🇬🇧", otdb: [], tta: [], bank: true, special: true },
+  // Picture rounds beyond flags: menu-only (hidden from Your Rules chips)
+  { id: "shapes",    name: "Country Shapes",       emoji: "🗺️", otdb: [], tta: [], bank: true, special: true },
+  { id: "emovies",   name: "Emoji Films",          emoji: "🎬", otdb: [], tta: [], bank: true, special: true },
 ];
 
 // Maps source-category display names back to our taxonomy, so mastery stats
@@ -594,7 +597,8 @@ function offerLearnMore() {
 // you beat them. Capped so the list stays a grudge, not a graveyard.
 const NEMESIS_CAP = 30;
 
-const nemesisKey = (q) => q.text + (q.big || "");
+// Question identity = text + visual (picture rounds share their prompt text)
+const nemesisKey = (q) => q.text + (q.big || "") + (q.vid || "");
 
 function recordNemesis(q) {
   // the daily stays a one-shot; party answers belong to guests, not the owner
@@ -653,6 +657,7 @@ const DAILY_POOLS = [
   // broad specialist packs join the rotation; fandom packs (worldcup,
   // starwars, british) stay pack-only so dailies remain universal
   ["animals", 24], ["myth", 24], ["decades", 24], ["space", 24],
+  ["shapes", 30], ["emovies", 24],
 ];
 function dailyQuestion() {
   const d = new Date();
@@ -870,6 +875,8 @@ function fetchFromBank({ amount, catId, difficulty }) {
     difficulty: q.difficulty,
     text: q.text,
     big: q.big || "",
+    svgPath: q.svgPath || "",
+    vid: q.vid || "",
     correct: q.correct,
     answers: shuffle([q.correct, ...q.wrong]),
   }));
@@ -933,7 +940,7 @@ async function getQuestions({ catId = "", difficulty = "", amount = 10, mix = nu
   const seen = new Set();
   const merged = shuffle(pool).filter((q) => {
     // picture questions share their prompt text, so the visual is part of identity
-    const key = normalizeText(q.text) + (q.big || "");
+    const key = normalizeText(q.text) + (q.big || "") + (q.vid || "");
     if (!normalizeText(q.text) || seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -1098,8 +1105,15 @@ function renderQuestion() {
   diff.className = "q-difficulty " + q.difficulty;
 
   $("question-text").textContent = q.text;
-  $("q-visual").textContent = q.big || "";
-  $("q-visual").hidden = !q.big;
+  const vis = $("q-visual");
+  if (q.svgPath) {
+    // our own generated silhouette data — safe to inject
+    vis.innerHTML = `<svg viewBox="0 0 100 100" class="shape-svg"><path d="${q.svgPath}"/></svg>`;
+    vis.hidden = false;
+  } else {
+    vis.textContent = q.big || "";
+    vis.hidden = !q.big;
+  }
 
   if (state.mode === "classic" || state.mode === "custom" || state.mode === "daily") {
     const prefix = state.mode === "classic" ? `Lv ${state.level} · ` : "";

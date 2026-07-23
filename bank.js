@@ -714,6 +714,40 @@ const PACK_EXPANSION = [
 ];
 PACK_EXPANSION.forEach((q) => QUIZRUSH_BANK.push(q));
 
+// 🎬 Emoji Films — picture round built from emoji, zero assets. Titles are
+// facts (not copyrightable); the emoji renderings are original.
+const EMOJI_FILMS = [
+  { d: "easy", e: "🦁👑", a: "The Lion King", w: ["Madagascar", "The Jungle Book", "Tarzan"] },
+  { d: "easy", e: "🧊🚢💔", a: "Titanic", w: ["Poseidon", "Life of Pi", "The Perfect Storm"] },
+  { d: "easy", e: "🐠🔍", a: "Finding Nemo", w: ["Shark Tale", "The Little Mermaid", "Moana"] },
+  { d: "easy", e: "❄️👭⛄", a: "Frozen", w: ["Ice Age", "Brave", "Tangled"] },
+  { d: "easy", e: "🤠🚀🧸", a: "Toy Story", w: ["The Lego Movie", "Wreck-It Ralph", "Small Soldiers"] },
+  { d: "easy", e: "🦖🏝️⚠️", a: "Jurassic Park", w: ["King Kong", "Godzilla", "The Lost World"] },
+  { d: "easy", e: "🐼🥋", a: "Kung Fu Panda", w: ["Mulan", "The Karate Kid", "Rush Hour"] },
+  { d: "easy", e: "🏠🎈👴", a: "Up", w: ["Home Alone", "The Croods", "Cloudy with a Chance of Meatballs"] },
+  { d: "medium", e: "🧙‍♂️💍🌋", a: "The Lord of the Rings", w: ["The Hobbit", "Harry Potter", "Eragon"] },
+  { d: "medium", e: "👻🚫🔫", a: "Ghostbusters", w: ["Beetlejuice", "The Frighteners", "Casper"] },
+  { d: "medium", e: "🌪️🧙👠", a: "The Wizard of Oz", w: ["Mary Poppins", "Alice in Wonderland", "Chitty Chitty Bang Bang"] },
+  { d: "medium", e: "🍫🏭🎫", a: "Charlie and the Chocolate Factory", w: ["Matilda", "The BFG", "James and the Giant Peach"] },
+  { d: "medium", e: "👽📞🏠🚲", a: "E.T.", w: ["Close Encounters", "Flight of the Navigator", "Explorers"] },
+  { d: "medium", e: "🔙⏰🚗⚡", a: "Back to the Future", w: ["The Time Machine", "Looper", "Bill & Ted"] },
+  { d: "medium", e: "🦈🏖️🚤", a: "Jaws", w: ["The Meg", "Deep Blue Sea", "Sharknado"] },
+  { d: "medium", e: "💊🕶️🐇", a: "The Matrix", w: ["Inception", "Tron", "Blade Runner"] },
+  { d: "hard", e: "🏨👻🪓✍️", a: "The Shining", w: ["Psycho", "The Amityville Horror", "1408"] },
+  { d: "hard", e: "🚣🐅🌊", a: "Life of Pi", w: ["Cast Away", "The Old Man and the Sea", "All Is Lost"] },
+  { d: "hard", e: "🤡🎈🚣", a: "It", w: ["Joker", "Poltergeist", "The Babadook"] },
+  { d: "hard", e: "🐑🤫🍷", a: "The Silence of the Lambs", w: ["Se7en", "Zodiac", "Red Dragon"] },
+  { d: "hard", e: "✂️🖐️🏰", a: "Edward Scissorhands", w: ["Beetlejuice", "Frankenweenie", "Sleepy Hollow"] },
+  { d: "hard", e: "📅🔁⏰🐿️", a: "Groundhog Day", w: ["Looper", "Happy Death Day", "Palm Springs"] },
+  { d: "hard", e: "🌃🎹💃🕺", a: "La La Land", w: ["Whiplash", "Chicago", "Moulin Rouge"] },
+  { d: "hard", e: "🤖🌱❤️🚀", a: "WALL-E", w: ["Big Hero 6", "Robots", "Astro Boy"] },
+];
+EMOJI_FILMS.forEach((f) => QUIZRUSH_BANK.push({
+  cat: "emovies", difficulty: f.d,
+  text: "Which film is this?", big: f.e,
+  correct: f.a, wrong: f.w,
+}));
+
 // "Who Am I?" bank — 4 clues per character, ordered obscure → obvious.
 // Original clue phrasings written for this app. `aliases` are the accepted
 // short forms; fuzzy matching adds misspelling tolerance on top.
