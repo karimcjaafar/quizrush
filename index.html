@@ -62,16 +62,6 @@
         <h1>Quiz<span class="logo-accent">Rush</span></h1>
       </div>
       <p class="tagline">Pick a mode. Beat your best.</p>
-      <div class="player-bar">
-        <div class="level-pill">Lv <span id="lvl-num">1</span></div>
-        <div class="xp-track"><div class="xp-fill" id="xp-fill"></div></div>
-        <span class="xp-label" id="xp-label"></span>
-      </div>
-      <div class="player-sub">
-        <button class="player-name" id="player-name" title="Edit profile"></button>
-        <span class="player-title" id="player-title">Trivia Novice</span>
-        <span class="player-tokens" id="player-tokens" title="Earn tokens from dailies and Classic levels — spend them on lifeline refills and Sudden Death revives">🪙 0</span>
-      </div>
     </header>
 
     <button class="daily-card" id="daily-card">
@@ -98,7 +88,7 @@
         <div class="mode-icon">🎛️</div>
         <div class="mode-info">
           <h2>Your Rules</h2>
-          <p>One 10-question round with the category and difficulty you choose below.</p>
+          <p>One 10-question round — pick the category and difficulty yourself.</p>
         </div>
         <div class="mode-best" id="best-custom"></div>
       </button>
@@ -166,27 +156,52 @@
       </button>
     </section>
 
-    <section class="settings-panel" id="classic-settings">
-      <h3>Your Rules settings</h3>
-      <div class="settings-row">
-        <label>Category</label>
-        <div class="chip-group" id="chips-category"></div>
+  </main>
+
+  <!-- ============ PROGRESS SCREEN ============ -->
+  <main id="screen-progress" class="screen">
+    <header class="submenu-header">
+      <div>
+        <h2>📊 Progress</h2>
+        <p class="submenu-sub">Your levels, streaks, mastery and badges.</p>
       </div>
-      <div class="settings-row">
-        <label>Difficulty</label>
-        <div class="chip-group" id="chips-difficulty">
-          <button class="chip active" data-value="">Any</button>
-          <button class="chip" data-value="easy">Easy</button>
-          <button class="chip" data-value="medium">Medium</button>
-          <button class="chip" data-value="hard">Hard</button>
-          <button class="chip" data-value="smart" title="Adapts to your track record in the chosen category">🤖 Smart</button>
-        </div>
+    </header>
+
+    <section class="settings-panel">
+      <div class="player-bar">
+        <div class="level-pill">Lv <span id="lvl-num">1</span></div>
+        <div class="xp-track"><div class="xp-fill" id="xp-fill"></div></div>
+        <span class="xp-label" id="xp-label"></span>
       </div>
-      <p class="settings-note">These apply to Your Rules rounds. Classic sets its own: each level blends easy, medium and hard questions — mostly easy at level 1, nearly all hard by level 10 — with the pass bar rising from level 7. Beyond ten: endless, all hard.</p>
+      <div class="player-sub">
+        <button class="player-name" id="player-name" title="Edit profile"></button>
+        <span class="player-title" id="player-title">Trivia Novice</span>
+        <span class="player-tokens" id="player-tokens" title="Earn tokens from dailies and Classic levels — spend them on lifeline refills and Sudden Death revives">🪙 0</span>
+      </div>
+      <p class="streak-line" id="streak-line"></p>
     </section>
 
+    <section class="settings-panel">
+      <h3>Category mastery</h3>
+      <div class="mastery-list" id="mastery-list"></div>
+    </section>
+
+    <section class="badges-panel">
+      <h3>Badges <span id="badges-count"></span></h3>
+      <div class="badges-grid" id="badges-grid"></div>
+    </section>
+  </main>
+
+  <!-- ============ CUSTOMIZE SCREEN ============ -->
+  <main id="screen-customize" class="screen">
+    <header class="submenu-header">
+      <div>
+        <h2>🎨 Customize</h2>
+        <p class="submenu-sub">Make it yours — unlock more with streaks &amp; badges.</p>
+      </div>
+    </header>
+
     <section class="themes-panel">
-      <h3>Customize <span class="themes-hint">unlock with streaks &amp; badges</span></h3>
       <div class="style-row">
         <span class="style-label">Theme</span>
         <div class="theme-row" id="theme-row"></div>
@@ -203,11 +218,15 @@
         <span class="style-label">Icon</span>
         <div class="pack-row" id="icon-row"></div>
       </div>
-    </section>
-
-    <section class="badges-panel">
-      <h3>Badges <span id="badges-count"></span></h3>
-      <div class="badges-grid" id="badges-grid"></div>
+      <div class="style-row">
+        <span class="style-label">Effects</span>
+        <input type="range" class="vol-slider" id="vol-sfx" min="0" max="100" step="5" />
+      </div>
+      <div class="style-row">
+        <span class="style-label">Music vol</span>
+        <input type="range" class="vol-slider" id="vol-music" min="0" max="100" step="5" />
+      </div>
+      <button class="btn btn-ghost btn-full" id="btn-edit-profile">👤 Edit profile</button>
     </section>
 
     <footer class="credits">
@@ -215,6 +234,42 @@
       &amp; <a href="https://the-trivia-api.com" target="_blank" rel="noopener">The Trivia API</a>
     </footer>
   </main>
+
+  <!-- ============ YOUR RULES SETUP ============ -->
+  <main id="screen-rulessetup" class="screen">
+    <header class="submenu-header">
+      <button class="btn-quit" id="btn-rules-back" title="Back to home">←</button>
+      <div>
+        <h2>🎛️ Your Rules</h2>
+        <p class="submenu-sub">One 10-question round, exactly how you like it.</p>
+      </div>
+    </header>
+
+    <section class="settings-panel">
+      <div class="settings-row">
+        <label>Category</label>
+        <div class="chip-group" id="chips-category"></div>
+      </div>
+      <div class="settings-row">
+        <label>Difficulty</label>
+        <div class="chip-group" id="chips-difficulty">
+          <button class="chip active" data-value="">Any</button>
+          <button class="chip" data-value="easy">Easy</button>
+          <button class="chip" data-value="medium">Medium</button>
+          <button class="chip" data-value="hard">Hard</button>
+          <button class="chip" data-value="smart" title="Adapts to your track record in the chosen category">🤖 Smart</button>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" id="btn-rules-start">Start round</button>
+    </section>
+  </main>
+
+  <!-- ============ TAB BAR ============ -->
+  <nav class="tabbar" id="tabbar">
+    <button data-tab="home" class="active"><span class="tab-icon">▶️</span><span>Play</span></button>
+    <button data-tab="progress"><span class="tab-icon">📊</span><span>Progress</span></button>
+    <button data-tab="customize"><span class="tab-icon">🎨</span><span>Customize</span></button>
+  </nav>
 
   <!-- ============ BRAIN GAMES MENU ============ -->
   <main id="screen-brainmenu" class="screen">

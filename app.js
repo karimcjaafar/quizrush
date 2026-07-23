@@ -31,6 +31,8 @@ const Sound = (() => {
       const pack = SOUND_PACKS.find((p) => p.id === packId) || SOUND_PACKS[0];
       freq *= pack.pitch;
       dur *= pack.durMult;
+      vol *= Number(localStorage.getItem("quizrush-vol-sfx") ?? 100) / 100; // user mixer
+      if (vol <= 0) return;
       if (pack.wave) type = pack.wave;
       if (slide) slide *= pack.pitch;
 
@@ -213,7 +215,8 @@ const Music = (() => {
         lp.frequency.value = style.lp;
         master.gain.cancelScheduledValues(ctx.currentTime);
         master.gain.setValueAtTime(0.0001, ctx.currentTime);
-        master.gain.linearRampToValueAtTime(1, ctx.currentTime + 1.4); // gentle fade in
+        const target = Math.max(Number(localStorage.getItem("quizrush-vol-music") ?? 100) / 100, 0.0001);
+        master.gain.linearRampToValueAtTime(target, ctx.currentTime + 1.4); // gentle fade in
         nextBarTime = ctx.currentTime + 0.05;
         barIndex = 0;
         tick();
@@ -229,6 +232,16 @@ const Music = (() => {
         master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
         master.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.8); // fade out
       } catch { /* already gone */ }
+    },
+    // Live volume from the mixer slider
+    setVolume(v) {
+      try {
+        if (ctx && playing) {
+          master.gain.cancelScheduledValues(ctx.currentTime);
+          master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+          master.gain.linearRampToValueAtTime(Math.max(v, 0.0001), ctx.currentTime + 0.15);
+        }
+      } catch { /* mixer is cosmetic */ }
     },
     // Called after the selected track changes: crossfade in-round, or play a
     // short preview when browsing from the home screen
@@ -640,6 +653,9 @@ function liveDailyStreak() {
 const $ = (id) => document.getElementById(id);
 const screens = {
   home: $("screen-home"),
+  progress: $("screen-progress"),
+  customize: $("screen-customize"),
+  rulessetup: $("screen-rulessetup"),
   brainmenu: $("screen-brainmenu"),
   picturemenu: $("screen-picturemenu"),
   specialsmenu: $("screen-specialsmenu"),
@@ -649,6 +665,17 @@ const screens = {
   dingbats: $("screen-dingbats"),
   results: $("screen-results"),
 };
+
+// The tab bar lives on the three top-level surfaces only
+const TAB_SCREENS = ["home", "progress", "customize"];
+function syncTabbar(name) {
+  const isTab = TAB_SCREENS.includes(name);
+  $("tabbar").classList.toggle("hidden", !isTab);
+  if (isTab) {
+    document.querySelectorAll(".tabbar button").forEach((b) =>
+      b.classList.toggle("active", b.dataset.tab === name));
+  }
+}
 
 // ---------- State ----------
 let state = null;
@@ -684,12 +711,14 @@ function showScreen(name) {
   if (!current || matchMedia("(prefers-reduced-motion: reduce)").matches) {
     Object.values(screens).forEach((s) => s.classList.remove("active", "screen-exit"));
     target.classList.add("active");
+    syncTabbar(name);
     return;
   }
   current.classList.add("screen-exit");
   setTimeout(() => {
     Object.values(screens).forEach((s) => s.classList.remove("active", "screen-exit"));
     target.classList.add("active");
+    syncTabbar(name);
   }, 290);
 }
 
@@ -1024,9 +1053,10 @@ function renderQuestion() {
   state.locked = false;
 
   const card = $("question-card");
-  card.classList.remove("slide-out", "shake");
-  card.classList.add("slide-in");
-  card.addEventListener("animationend", () => card.classList.remove("slide-in"), { once: true });
+  card.classList.remove("dissolve-out", "shake", "assemble");
+  void card.offsetWidth;
+  card.classList.add("assemble"); // pieces drift together, staggered
+  setTimeout(() => card.classList.remove("assemble"), 1100);
 
   $("q-category").textContent = (q.nemesis ? "😈 Revenge · " : "") + q.category;
   const diff = $("q-difficulty");
@@ -1328,8 +1358,8 @@ function nextQuestion() {
   if (state.index >= state.questions.length && state.mode === "classic") return levelComplete();
   if (state.index >= state.questions.length && (state.mode === "daily" || state.mode === "custom")) return endGame();
   const card = $("question-card");
-  card.classList.add("slide-out");
-  card.addEventListener("animationend", () => renderQuestion(), { once: true });
+  card.classList.add("dissolve-out"); // liquid blur away, then reassemble
+  setTimeout(renderQuestion, 340);
 }
 
 // Gentle full-screen vignette pulse: green for right, red for wrong.
@@ -1350,6 +1380,20 @@ function popPoints(text) {
   pop.classList.add("show");
 }
 
+// Little celebration when the token counter ticks up
+let tokensSeen = null;
+function tokenJuice(v) {
+  if (tokensSeen !== null && v > tokensSeen) {
+    ["game-tokens", "player-tokens"].forEach((id) => {
+      const el = $(id);
+      el.classList.remove("token-bump");
+      void el.offsetWidth;
+      el.classList.add("token-bump");
+    });
+  }
+  tokensSeen = v;
+}
+
 function updateScoreUI() {
   if (state.mode === "party") {
     const p = state.players[state.current];
@@ -1359,6 +1403,7 @@ function updateScoreUI() {
   }
   $("score-value").textContent = state.score.toLocaleString();
   $("game-tokens").textContent = "🪙 " + player.tokens;
+  tokenJuice(player.tokens);
   const badge = $("streak-badge");
   badge.textContent = "🔥 " + state.streak;
   badge.classList.toggle("hot", state.streak >= 3);
@@ -1421,6 +1466,11 @@ function startWhoami() {
 function renderWhoamiCharacter() {
   state.stage = 0;
   state.resolved = false;
+  const card = document.querySelector("#screen-whoami .question-card");
+  card.classList.remove("assemble", "shake");
+  void card.offsetWidth;
+  card.classList.add("assemble");
+  setTimeout(() => card.classList.remove("assemble"), 1100);
   $("whoami-progress").textContent = `${state.index + 1} / ${WHOAMI_ROUND}`;
   $("whoami-reveal").hidden = true;
   $("whoami-input-row").style.display = "";
@@ -1692,6 +1742,11 @@ function renderDingbat() {
   const p = state.puzzles[state.index];
   state.value = DINGBAT_VALUE;
   state.resolved = false;
+  const card = document.querySelector("#screen-dingbats .question-card");
+  card.classList.remove("assemble", "shake");
+  void card.offsetWidth;
+  card.classList.add("assemble");
+  setTimeout(() => card.classList.remove("assemble"), 1100);
   $("dingbats-progress").textContent = `${state.index + 1} / ${DINGBAT_ROUND}`;
   const disp = $("dingbat-display");
   disp.textContent = p.display;
@@ -2103,6 +2158,7 @@ function paintPlayerBar() {
   $("player-name").textContent = p ? `${p.avatar} ${p.name}` : "";
   $("player-title").textContent = "🎖 " + titleForLevel(lvl);
   $("player-tokens").textContent = "🪙 " + player.tokens;
+  tokenJuice(player.tokens);
 }
 
 function paintCategoryChips() {
@@ -2202,6 +2258,32 @@ function paintThemes() {
   });
 }
 
+function paintStreakLine() {
+  const live = liveDailyStreak();
+  const best = player.bestDailyStreak;
+  $("streak-line").textContent =
+    live > 0 ? `🔥 ${live}-day daily streak · best ${best}` :
+    best > 0 ? `Daily streak paused · best ${best} — play today's to restart it` :
+    "Solve a Daily Challenge to start a streak";
+}
+
+function paintMastery() {
+  const rows = CATEGORIES
+    .map((c) => ({ c, s: player.catStats[c.id] }))
+    .filter((x) => x.s?.answered > 0)
+    .sort((a, b) => b.s.answered - a.s.answered);
+  $("mastery-list").innerHTML = rows.length
+    ? rows.map(({ c, s }) => {
+        const acc = Math.round((s.correct / s.answered) * 100);
+        return `<div class="mastery-row">
+          <span class="mastery-name">${c.emoji} ${c.name} ${medalFor(c.id)}</span>
+          <div class="mastery-track"><div class="mastery-fill" style="width:${acc}%"></div></div>
+          <span class="mastery-num">${acc}% · ${s.correct}✓</span>
+        </div>`;
+      }).join("")
+    : `<p class="settings-note">Play some rounds and your per-category accuracy will build here.</p>`;
+}
+
 function renderHome() {
   renderBests();
   paintPlayerBar();
@@ -2212,6 +2294,8 @@ function renderHome() {
   paintSoundPacks();
   paintMusicTracks();
   paintAppIcons();
+  paintStreakLine();
+  paintMastery();
 }
 
 // ---------- Wiring ----------
@@ -2224,8 +2308,34 @@ document.querySelectorAll(".mode-card").forEach((card) => {
     if (card.dataset.action === "partysetup") { Sound.click(); renderPartyNames(); return showScreen("partysetup"); }
     if (card.dataset.mode === "whoami") return startWhoami();
     if (card.dataset.mode === "dingbats") return startDingbats();
+    if (card.dataset.mode === "custom") { Sound.click(); return showScreen("rulessetup"); }
     startGame(card.dataset.mode, card.dataset.cat ? { catId: card.dataset.cat } : {});
   });
+});
+
+// Tab bar
+document.querySelectorAll(".tabbar button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    Sound.click();
+    renderHome(); // repaint whichever tab we're entering
+    showScreen(btn.dataset.tab);
+  });
+});
+
+$("btn-rules-back").addEventListener("click", () => { Sound.click(); showScreen("home"); });
+$("btn-rules-start").addEventListener("click", () => { Sound.click(); startGame("custom"); });
+$("btn-edit-profile").addEventListener("click", () => { Sound.click(); openProfileSetup(); });
+
+// Volume mixer
+$("vol-sfx").value = localStorage.getItem("quizrush-vol-sfx") ?? 100;
+$("vol-music").value = localStorage.getItem("quizrush-vol-music") ?? 100;
+$("vol-sfx").addEventListener("input", () => {
+  safeSetItem("quizrush-vol-sfx", $("vol-sfx").value);
+  Sound.click(); // instant audible feedback at the new level
+});
+$("vol-music").addEventListener("input", () => {
+  safeSetItem("quizrush-vol-music", $("vol-music").value);
+  Music.setVolume(Number($("vol-music").value) / 100);
 });
 
 $("btn-brain-back").addEventListener("click", () => { Sound.click(); showScreen("home"); });
@@ -2436,6 +2546,9 @@ renderHome();
 
 // Prime the audio engine on the first touch anywhere (iOS gesture requirement)
 document.addEventListener("pointerdown", () => Sound.unlock(), { once: true });
+
+// Offline + instant loads
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => { /* optional */ });
 
 // Intro splash: plays ~2.3s (tap to skip), then the home screen cascades in
 {
