@@ -1,0 +1,13 @@
+{
+  "name": "QuizRush",
+  "short_name": "QuizRush",
+  "description": "Trivia and brain games: five modes, daily challenges, streaks and unlockables.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0b0d17",
+  "theme_color": "#0b0d17",
+  "icons": [
+    { "src": "icon-crown.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon-crown.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}

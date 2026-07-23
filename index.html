@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>QuizRush</title>
+  <meta name="theme-color" content="#0b0d17" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="QuizRush" />
+  <link rel="manifest" id="manifest-link" href="manifest.json" />
+  <link rel="apple-touch-icon" id="touch-icon-link" href="icon-bolt.png" />
+  <link rel="icon" id="favicon-link" href="icon-bolt.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <button id="btn-sound" class="btn-sound" title="Mute sounds">🔊</button>
+
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- ============ HOME SCREEN ============ -->
+  <main id="screen-home" class="screen active">
+    <header class="home-header">
+      <div class="logo">
+        <span class="logo-bolt">⚡</span>
+        <h1>Quiz<span class="logo-accent">Rush</span></h1>
+      </div>
+      <p class="tagline">Pick a mode. Beat your best.</p>
+      <div class="player-bar">
+        <div class="level-pill">Lv <span id="lvl-num">1</span></div>
+        <div class="xp-track"><div class="xp-fill" id="xp-fill"></div></div>
+        <span class="xp-label" id="xp-label"></span>
+      </div>
+      <div class="player-sub">
+        <span class="player-title" id="player-title">Trivia Novice</span>
+        <span class="player-tokens" id="player-tokens" title="Earn tokens from dailies and Classic levels — spend them on lifeline refills and Sudden Death revives">🪙 0</span>
+      </div>
+    </header>
+
+    <button class="daily-card" id="daily-card">
+      <div class="mode-icon daily-icon">📅</div>
+      <div class="mode-info">
+        <h2>Daily Challenge</h2>
+        <p id="daily-desc">Loading today's challenge…</p>
+      </div>
+      <div class="mode-best" id="daily-status"></div>
+    </button>
+
+    <h3 class="shelf-label">Trivia</h3>
+    <section class="mode-grid">
+      <button class="mode-card" data-mode="classic">
+        <div class="mode-icon">🎯</div>
+        <div class="mode-info">
+          <h2>Classic</h2>
+          <p>Climb the levels — 7/10 advances you, and the game sets the rules.</p>
+        </div>
+        <div class="mode-best" id="best-classic"></div>
+      </button>
+
+      <button class="mode-card" data-mode="custom">
+        <div class="mode-icon">🎛️</div>
+        <div class="mode-info">
+          <h2>Your Rules</h2>
+          <p>One 10-question round with the category and difficulty you choose below.</p>
+        </div>
+        <div class="mode-best" id="best-custom"></div>
+      </button>
+
+      <button class="mode-card" data-mode="sudden">
+        <div class="mode-icon">💀</div>
+        <div class="mode-info">
+          <h2>Sudden Death</h2>
+          <p>One wrong answer ends the run. How far can you go?</p>
+        </div>
+        <div class="mode-best" id="best-sudden"></div>
+      </button>
+
+      <button class="mode-card" data-mode="blitz">
+        <div class="mode-icon">⏱️</div>
+        <div class="mode-info">
+          <h2>Blitz</h2>
+          <p>60 seconds on the clock. Answer as many as you can.</p>
+        </div>
+        <div class="mode-best" id="best-blitz"></div>
+      </button>
+
+      <button class="mode-card" data-action="partysetup">
+        <div class="mode-icon">🎉</div>
+        <div class="mode-info">
+          <h2>Party</h2>
+          <p>Pass-and-play on one phone — 2 to 4 players, winner takes the glory.</p>
+        </div>
+      </button>
+    </section>
+
+    <h3 class="shelf-label">Brain Games</h3>
+    <section class="mode-grid">
+      <button class="mode-card" data-action="brainmenu">
+        <div class="mode-icon">🧠</div>
+        <div class="mode-info">
+          <h2>Brain Games</h2>
+          <p>Who Am I? · Say What You 👀 · Riddles · Number Games</p>
+        </div>
+        <div class="mode-best">4 games ›</div>
+      </button>
+    </section>
+
+    <h3 class="shelf-label">Picture Rounds</h3>
+    <section class="mode-grid">
+      <button class="mode-card" data-action="picturemenu">
+        <div class="mode-icon">📸</div>
+        <div class="mode-info">
+          <h2>Picture Rounds</h2>
+          <p>Flags of the world — with country shapes, animals &amp; more to come.</p>
+        </div>
+        <div class="mode-best">›</div>
+      </button>
+    </section>
+
+    <section class="settings-panel" id="classic-settings">
+      <h3>Your Rules settings</h3>
+      <div class="settings-row">
+        <label>Category</label>
+        <div class="chip-group" id="chips-category"></div>
+      </div>
+      <div class="settings-row">
+        <label>Difficulty</label>
+        <div class="chip-group" id="chips-difficulty">
+          <button class="chip active" data-value="">Any</button>
+          <button class="chip" data-value="easy">Easy</button>
+          <button class="chip" data-value="medium">Medium</button>
+          <button class="chip" data-value="hard">Hard</button>
+          <button class="chip" data-value="smart" title="Adapts to your track record in the chosen category">🤖 Smart</button>
+        </div>
+      </div>
+      <p class="settings-note">These apply to Your Rules rounds. Classic ignores them — its levels ramp from easy to hard on their own.</p>
+    </section>
+
+    <section class="themes-panel">
+      <h3>Customize <span class="themes-hint">unlock with streaks &amp; badges</span></h3>
+      <div class="style-row">
+        <span class="style-label">Theme</span>
+        <div class="theme-row" id="theme-row"></div>
+      </div>
+      <div class="style-row">
+        <span class="style-label">Sound</span>
+        <div class="pack-row" id="pack-row"></div>
+      </div>
+      <div class="style-row">
+        <span class="style-label">Icon</span>
+        <div class="pack-row" id="icon-row"></div>
+      </div>
+    </section>
+
+    <section class="badges-panel">
+      <h3>Badges <span id="badges-count"></span></h3>
+      <div class="badges-grid" id="badges-grid"></div>
+    </section>
+
+    <footer class="credits">
+      Questions from <a href="https://opentdb.com" target="_blank" rel="noopener">Open Trivia DB</a>
+      &amp; <a href="https://the-trivia-api.com" target="_blank" rel="noopener">The Trivia API</a>
+    </footer>
+  </main>
+
+  <!-- ============ BRAIN GAMES MENU ============ -->
+  <main id="screen-brainmenu" class="screen">
+    <header class="submenu-header">
+      <button class="btn-quit" id="btn-brain-back" title="Back to home">←</button>
+      <div>
+        <h2>🧠 Brain Games</h2>
+        <p class="submenu-sub">Puzzles beyond trivia — where thinking beats knowing.</p>
+      </div>
+    </header>
+
+    <section class="mode-grid">
+      <button class="mode-card" data-mode="whoami">
+        <div class="mode-icon">🕵️</div>
+        <div class="mode-info">
+          <h2>Who Am I?</h2>
+          <p>Clues reveal one by one. Type your guess — solve early for more points.</p>
+        </div>
+        <div class="mode-best" id="best-whoami"></div>
+      </button>
+
+      <button class="mode-card" data-mode="dingbats">
+        <div class="mode-icon">👀</div>
+        <div class="mode-info">
+          <h2>Say What You 👀</h2>
+          <p>Decode the emoji and word-art puzzles into the phrase they show.</p>
+        </div>
+        <div class="mode-best" id="best-dingbats"></div>
+      </button>
+
+      <button class="mode-card" data-mode="classic" data-cat="logic">
+        <div class="mode-icon">🧩</div>
+        <div class="mode-info">
+          <h2>Riddles</h2>
+          <p>Lateral thinking and what-am-I riddles.</p>
+        </div>
+      </button>
+
+      <button class="mode-card" data-mode="classic" data-cat="numbers">
+        <div class="mode-icon">🔢</div>
+        <div class="mode-info">
+          <h2>Number Games</h2>
+          <p>Playful arithmetic — trick sums, patterns and number riddles.</p>
+        </div>
+      </button>
+    </section>
+  </main>
+
+  <!-- ============ PARTY SETUP ============ -->
+  <main id="screen-partysetup" class="screen">
+    <header class="submenu-header">
+      <button class="btn-quit" id="btn-party-back" title="Back to home">←</button>
+      <div>
+        <h2>🎉 Party Mode</h2>
+        <p class="submenu-sub">One phone, 2–4 players, 5 questions each. Pass it round!</p>
+      </div>
+    </header>
+
+    <section class="settings-panel">
+      <div class="settings-row">
+        <label>Players</label>
+        <div class="chip-group" id="chips-players">
+          <button class="chip active" data-value="2">2</button>
+          <button class="chip" data-value="3">3</button>
+          <button class="chip" data-value="4">4</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <label>Names</label>
+        <div class="party-names" id="party-names"></div>
+      </div>
+      <button class="btn btn-primary btn-full" id="btn-party-start">Start the party</button>
+    </section>
+  </main>
+
+  <!-- ============ PICTURE ROUNDS MENU ============ -->
+  <main id="screen-picturemenu" class="screen">
+    <header class="submenu-header">
+      <button class="btn-quit" id="btn-picture-back" title="Back to home">←</button>
+      <div>
+        <h2>📸 Picture Rounds</h2>
+        <p class="submenu-sub">See it, name it — visual trivia.</p>
+      </div>
+    </header>
+
+    <section class="mode-grid">
+      <button class="mode-card" data-mode="classic" data-cat="flags">
+        <div class="mode-icon">🚩</div>
+        <div class="mode-info">
+          <h2>Flags</h2>
+          <p>80 flags of the world, easy to fiendish. Climb the levels.</p>
+        </div>
+      </button>
+
+      <button class="mode-card soon" disabled>
+        <div class="mode-icon">🗺️</div>
+        <div class="mode-info">
+          <h2>Country Shapes</h2>
+          <p>Name the country from its outline — coming soon.</p>
+        </div>
+      </button>
+    </section>
+  </main>
+
+  <!-- ============ GAME SCREEN ============ -->
+  <main id="screen-game" class="screen">
+    <header class="game-header">
+      <button class="btn-quit" id="btn-quit" title="Quit game">✕</button>
+      <div class="game-progress" id="game-progress">
+        <span id="progress-label">1 / 10</span>
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      </div>
+      <div class="game-score">
+        <span class="score-value" id="score-value">0</span>
+        <span class="score-sub"><span class="party-turn" id="party-turn" hidden></span><span class="streak-badge" id="streak-badge">🔥 0</span> <span class="game-tokens" id="game-tokens">🪙 0</span></span>
+      </div>
+    </header>
+
+    <div class="blitz-timer" id="blitz-timer" hidden>
+      <div class="blitz-timer-fill" id="blitz-timer-fill"></div>
+      <span class="blitz-timer-label" id="blitz-timer-label">60</span>
+    </div>
+
+    <section class="question-area">
+      <div class="question-card" id="question-card">
+        <div class="question-meta">
+          <span class="q-category" id="q-category"></span>
+          <span class="q-difficulty" id="q-difficulty"></span>
+        </div>
+        <div class="timer-ring-wrap" id="timer-ring-wrap">
+          <svg class="timer-ring" viewBox="0 0 80 80">
+            <circle class="ring-track" cx="40" cy="40" r="34"></circle>
+            <circle class="ring-fill" id="ring-fill" cx="40" cy="40" r="34"></circle>
+          </svg>
+          <span class="timer-num" id="timer-num">15</span>
+        </div>
+        <div class="q-visual" id="q-visual" hidden></div>
+        <h2 class="question-text" id="question-text">Loading…</h2>
+        <div class="answers" id="answers"></div>
+        <div class="revive-offer" id="revive-offer" hidden>
+          <p class="revive-text">💔 Wrong answer — but you can buy a second chance.</p>
+          <p class="revive-balance" id="revive-balance"></p>
+          <div class="revive-buttons">
+            <button class="btn btn-primary" id="btn-revive">Continue · 3 🪙</button>
+            <button class="btn btn-ghost" id="btn-no-revive">End run</button>
+          </div>
+        </div>
+        <div class="lifelines" id="lifelines">
+          <button class="lifeline" id="lf-fifty" title="Remove two wrong answers"><span>50:50</span></button>
+          <button class="lifeline" id="lf-skip" title="Skip this question, no penalty"><span>⏭️ Skip</span></button>
+          <button class="lifeline" id="lf-time" title="Extra time"><span id="lf-time-label">⏰ +7s</span></button>
+        </div>
+      </div>
+      <div class="points-pop" id="points-pop"></div>
+    </section>
+  </main>
+
+  <!-- ============ WHO AM I SCREEN ============ -->
+  <main id="screen-whoami" class="screen">
+    <header class="game-header">
+      <button class="btn-quit" id="btn-quit-whoami" title="Quit game">✕</button>
+      <div class="game-progress">
+        <span id="whoami-progress">1 / 5</span>
+      </div>
+      <div class="game-score">
+        <span class="score-value" id="whoami-score">0</span>
+        <span class="streak-badge" id="whoami-streak">🔥 0</span>
+      </div>
+    </header>
+
+    <section class="question-area">
+      <div class="question-card">
+        <div class="question-meta">
+          <span class="q-category">🕵️ Who Am I?</span>
+          <span class="q-difficulty" id="whoami-stage">Clue 1 · 400 pts</span>
+        </div>
+        <div class="clues" id="clues"></div>
+        <div class="whoami-reveal" id="whoami-reveal" hidden></div>
+        <div class="whoami-input-row" id="whoami-input-row">
+          <input id="whoami-input" type="text" placeholder="Type your guess…" autocomplete="off" autocapitalize="off" spellcheck="false" />
+          <button class="btn btn-primary btn-guess" id="btn-guess">Guess</button>
+        </div>
+        <div class="whoami-actions" id="whoami-actions">
+          <button class="lifeline" id="btn-next-clue">🔍 Next clue</button>
+          <button class="lifeline" id="btn-give-up">🏳️ Give up</button>
+        </div>
+        <button class="btn btn-primary" id="btn-next-char" hidden>Next character</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ DINGBATS SCREEN ============ -->
+  <main id="screen-dingbats" class="screen">
+    <header class="game-header">
+      <button class="btn-quit" id="btn-quit-dingbats" title="Quit game">✕</button>
+      <div class="game-progress">
+        <span id="dingbats-progress">1 / 8</span>
+      </div>
+      <div class="game-score">
+        <span class="score-value" id="dingbats-score">0</span>
+        <span class="streak-badge" id="dingbats-streak">🔥 0</span>
+      </div>
+    </header>
+
+    <section class="question-area">
+      <div class="question-card">
+        <div class="question-meta">
+          <span class="q-category">👀 Say What You See</span>
+          <span class="q-difficulty" id="dingbats-value">Worth 300 pts</span>
+        </div>
+        <div class="dingbat-display" id="dingbat-display"></div>
+        <p class="dingbat-hint" id="dingbat-hint" hidden></p>
+        <div class="whoami-reveal" id="dingbat-reveal" hidden></div>
+        <div class="whoami-input-row" id="dingbat-input-row">
+          <input id="dingbat-input" type="text" placeholder="What does it say?" autocomplete="off" autocapitalize="off" spellcheck="false" />
+          <button class="btn btn-primary btn-guess" id="btn-dingbat-guess">Guess</button>
+        </div>
+        <div class="whoami-actions" id="dingbat-actions">
+          <button class="lifeline" id="btn-dingbat-hint">💡 Hint (−100)</button>
+          <button class="lifeline" id="btn-dingbat-giveup">🏳️ Give up</button>
+        </div>
+        <button class="btn btn-primary" id="btn-next-dingbat" hidden>Next puzzle</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ RESULTS SCREEN ============ -->
+  <main id="screen-results" class="screen">
+    <div class="results-card">
+      <div class="results-emoji" id="results-emoji">🏆</div>
+      <h2 id="results-title">Round complete!</h2>
+      <p class="new-best" id="new-best" hidden>✨ New personal best! ✨</p>
+      <div class="results-score" id="results-score">0</div>
+      <p class="results-score-label" id="results-score-label">points</p>
+      <div class="results-xp" id="results-xp"></div>
+      <div class="results-badges" id="results-badges" hidden></div>
+      <div class="party-podium" id="party-podium" hidden></div>
+      <div class="results-stats">
+        <div class="stat">
+          <span class="stat-value" id="stat-correct">0</span>
+          <span class="stat-label">Correct</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="stat-accuracy">0%</span>
+          <span class="stat-label">Accuracy</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="stat-streak">0</span>
+          <span class="stat-label">Best streak</span>
+        </div>
+      </div>
+      <div class="results-actions">
+        <button class="btn btn-share" id="btn-share" hidden>📣 Share result</button>
+        <button class="btn btn-primary" id="btn-again">Play again</button>
+        <button class="btn btn-ghost" id="btn-home">Home</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Party: pass-the-phone gate between turns -->
+  <div class="pass-overlay" id="pass-overlay" hidden>
+    <div class="pass-card">
+      <p class="pass-label">Pass the phone to</p>
+      <h2 id="pass-name">Player 1</h2>
+      <button class="btn btn-primary btn-full" id="btn-pass-ready">I'm ready!</button>
+    </div>
+  </div>
+
+  <!-- First-run welcome -->
+  <div class="welcome-overlay" id="welcome-overlay" hidden>
+    <div class="welcome-card">
+      <h2>⚡ Welcome to QuizRush!</h2>
+      <ul>
+        <li><span>📅</span><div><b>The Daily</b> — one question, one shot, every day. Streaks unlock new looks.</div></li>
+        <li><span>🪙</span><div><b>Tokens</b> — earned from Classic levels and dailies. Spend them on lifeline refills and Sudden Death revives.</div></li>
+        <li><span>🧠</span><div><b>Brain Games</b> — riddles, emoji puzzles and Who Am I?, for when trivia isn't enough.</div></li>
+      </ul>
+      <button class="btn btn-primary" id="btn-welcome">Let's go</button>
+    </div>
+  </div>
+
+  <!-- Ambient answer feedback -->
+  <div class="feedback-flash" id="feedback-flash" aria-hidden="true"></div>
+
+  <!-- Loading overlay -->
+  <div class="loading-overlay" id="loading-overlay" hidden>
+    <div class="spinner"></div>
+    <p id="loading-text">Fetching questions…</p>
+  </div>
+
+  <script src="bank.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
