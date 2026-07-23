@@ -1302,7 +1302,7 @@ function endParty() {
   $("results-emoji").textContent = "🏆";
   $("results-title").textContent = tie ? "It's a tie!" : `${ranked[0].name} wins!`;
   $("new-best").hidden = true;
-  $("results-score").textContent = ranked[0].score.toLocaleString();
+  countUp($("results-score"), ranked[0].score);
   $("results-score-label").textContent = tie ? "top score" : `${ranked[0].name}'s score`;
   $("results-xp").innerHTML = "";
   $("results-badges").hidden = true;
@@ -1346,8 +1346,7 @@ function levelComplete() {
   $("stat-streak").textContent = String(state.bestStreak);
   $("btn-again").textContent = `Continue to Level ${nextLevel}`;
   $("btn-home").textContent = "End run";
-  showScreen("results");
-  Sound.levelUp();
+  playLevelUpCinematic(nextLevel, () => showScreen("results"));
 }
 
 async function continueClassicRun() {
@@ -1614,7 +1613,7 @@ function endGame() {
     dingbats: `Decoded ${correct} of ${answered}!`,
   }[mode];
   $("new-best").hidden = !isBest;
-  $("results-score").textContent = score.toLocaleString();
+  countUp($("results-score"), score);
   $("stat-correct").textContent = String(correct);
   $("stat-accuracy").textContent = accuracy + "%";
   $("stat-streak").textContent = String(bestStreak);
@@ -1659,6 +1658,44 @@ $("btn-share").addEventListener("click", async () => {
     }
   } catch { /* user cancelled the share sheet */ }
 });
+
+// ---------- Score count-up ----------
+function countUp(el, target, dur = 900) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    el.textContent = target.toLocaleString();
+    return;
+  }
+  const t0 = performance.now();
+  const step = (t) => {
+    const p = Math.min((t - t0) / dur, 1);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(target * eased).toLocaleString();
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+// ---------- Level-up cinematic ----------
+function playLevelUpCinematic(nextLevel, then) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { Sound.levelUp(); return then(); }
+  const ov = $("levelup-overlay");
+  $("lu-num").textContent = String(nextLevel);
+  ov.hidden = false;
+  ov.classList.remove("play");
+  void ov.offsetWidth;
+  ov.classList.add("play");
+  confetti();
+  Sound.levelUp();
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    ov.hidden = true;
+    then();
+  };
+  ov.onclick = finish; // tap to skip
+  setTimeout(finish, 3400);
+}
 
 // ---------- Confetti ----------
 function confetti() {
@@ -1964,6 +2001,22 @@ applyTheme(THEMES.some((t) => t.id === player.theme && player.bestDailyStreak >=
 }
 paintSoundButton();
 renderHome();
+
+// Intro splash: plays ~2.3s (tap to skip), then the home screen cascades in
+{
+  const splash = $("splash");
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    splash.classList.add("out");
+    setTimeout(() => splash.remove(), 700);
+    document.body.classList.add("intro-done");
+  };
+  splash.addEventListener("click", finish);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) finish();
+  else setTimeout(finish, 2300);
+}
 
 // First visit (or missing profile): orientation + profile setup in one card.
 // Tapping your name on the home screen reopens it for edits.
