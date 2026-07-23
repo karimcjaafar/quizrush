@@ -12,7 +12,12 @@ const Sound = (() => {
   let enabled = localStorage.getItem("quizrush-sound") !== "off";
 
   function ac() {
-    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!ctx) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      // iOS: play through the media channel so the silent/ring switch doesn't
+      // mute the game (the most common "I get no sound" report on iPhone)
+      try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch { /* older iOS */ }
+    }
     if (ctx.state === "suspended") ctx.resume();
     return ctx;
   }
@@ -54,9 +59,12 @@ const Sound = (() => {
     get enabled() { return enabled; },
     toggle() {
       enabled = !enabled;
-      localStorage.setItem("quizrush-sound", enabled ? "on" : "off");
+      try { localStorage.setItem("quizrush-sound", enabled ? "on" : "off"); } catch { /* play on */ }
       return enabled;
     },
+    // iOS unlocks audio only inside a user gesture — prime the context on the
+    // very first touch so every later cue can play
+    unlock() { try { if (enabled) ac(); } catch { /* audio optional */ } },
     // All cues favor sine waves, low volumes, soft attacks and longer tails —
     // musical rather than arcade-y.
     click()   { tone(480, { dur: 0.09, vol: 0.05, attack: 0.01 }); },
@@ -225,11 +233,17 @@ function getJSON(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
   catch { return fallback; }
 }
-function setJSON(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+// Storage writes must never break gameplay (private browsing / full quota)
+function setJSON(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* play on */ }
+}
+function safeSetItem(key, value) {
+  try { localStorage.setItem(key, value); } catch { /* play on */ }
+}
 
 const player = {
   get xp() { return Number(localStorage.getItem("quizrush-xp") || 0); },
-  set xp(v) { localStorage.setItem("quizrush-xp", String(v)); },
+  set xp(v) { safeSetItem("quizrush-xp", String(v)); },
   get badges() { return getJSON("quizrush-badges", []); },
   set badges(v) { setJSON("quizrush-badges", v); },
   get modesPlayed() { return getJSON("quizrush-modes", []); },
@@ -239,19 +253,19 @@ const player = {
   get dailyStreak() { return getJSON("quizrush-daily-streak", { count: 0, last: "" }); },
   set dailyStreak(v) { setJSON("quizrush-daily-streak", v); },
   get bestDailyStreak() { return Number(localStorage.getItem("quizrush-daily-best") || 0); },
-  set bestDailyStreak(v) { localStorage.setItem("quizrush-daily-best", String(v)); },
+  set bestDailyStreak(v) { safeSetItem("quizrush-daily-best", String(v)); },
   get theme() { return localStorage.getItem("quizrush-theme") || "midnight"; },
-  set theme(v) { localStorage.setItem("quizrush-theme", v); },
+  set theme(v) { safeSetItem("quizrush-theme", v); },
   get bestClassicLevel() { return Number(localStorage.getItem("quizrush-best-level") || 1); },
-  set bestClassicLevel(v) { localStorage.setItem("quizrush-best-level", String(v)); },
+  set bestClassicLevel(v) { safeSetItem("quizrush-best-level", String(v)); },
   get tokens() { return Number(localStorage.getItem("quizrush-tokens") || 0); },
-  set tokens(v) { localStorage.setItem("quizrush-tokens", String(Math.max(0, v))); },
+  set tokens(v) { safeSetItem("quizrush-tokens", String(Math.max(0, v))); },
   get catStats() { return getJSON("quizrush-catstats", {}); },
   set catStats(v) { setJSON("quizrush-catstats", v); },
   get soundPack() { return localStorage.getItem("quizrush-soundpack") || "classic"; },
-  set soundPack(v) { localStorage.setItem("quizrush-soundpack", v); },
+  set soundPack(v) { safeSetItem("quizrush-soundpack", v); },
   get appIcon() { return localStorage.getItem("quizrush-appicon") || "bolt"; },
-  set appIcon(v) { localStorage.setItem("quizrush-appicon", v); },
+  set appIcon(v) { safeSetItem("quizrush-appicon", v); },
   get profile() { return getJSON("quizrush-profile", null); }, // { name, avatar }
   set profile(v) { setJSON("quizrush-profile", v); },
 };
@@ -665,7 +679,23 @@ async function getQuestions({ catId = "", difficulty = "", amount = 10 }) {
 }
 
 // ---------- Game flow ----------
+// Double-tapping a mode card must never start two games: the first game's
+// orphaned timers would drain the visible countdown at double speed and fire
+// phantom timeouts. One start per 800ms, and any live intervals are killed.
+let lastStartAt = 0;
+function startGuard() {
+  const now = Date.now();
+  if (now - lastStartAt < 800) return false;
+  lastStartAt = now;
+  if (state) {
+    clearInterval(state.qTimer);
+    clearInterval(state.blitzTimer);
+  }
+  return true;
+}
+
 async function startGame(mode, overrides = {}) {
+  if (!startGuard()) return;
   const opts = { amount: 10 };
   let questions;
 
@@ -1054,6 +1084,8 @@ function onTimeout() {
 function showReviveOffer() {
   $("revive-offer").hidden = false;
   $("revive-balance").textContent = `You have ${player.tokens} 🪙`;
+  // on small screens the offer can render below the fold — bring it into view
+  $("revive-offer").scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 
@@ -1138,6 +1170,7 @@ function guessMatches(guess, entry) {
 }
 
 function startWhoami() {
+  if (!startGuard()) return;
   state = {
     mode: "whoami",
     characters: shuffle(WHOAMI_BANK).slice(0, WHOAMI_ROUND),
@@ -1267,6 +1300,7 @@ function nextWhoamiCharacter() {
 const PARTY_PER_PLAYER = 5;
 
 async function startParty(names) {
+  if (!startGuard()) return;
   setLoading(true, "Fetching questions…");
   let questions;
   try {
@@ -1369,6 +1403,7 @@ function levelComplete() {
 }
 
 async function continueClassicRun() {
+  if (!startGuard()) return;
   const nextLevel = state.level + 1;
   setLoading(true, `Loading Level ${nextLevel}…`);
   let questions;
@@ -1398,6 +1433,7 @@ async function continueClassicRun() {
 
 // ---------- Dingbats ----------
 function startDingbats() {
+  if (!startGuard()) return;
   state = {
     mode: "dingbats",
     puzzles: shuffle(DINGBAT_BANK).slice(0, DINGBAT_ROUND),
@@ -2089,6 +2125,9 @@ applyTheme(THEMES.some((t) => t.id === player.theme && player.bestDailyStreak >=
 }
 paintSoundButton();
 renderHome();
+
+// Prime the audio engine on the first touch anywhere (iOS gesture requirement)
+document.addEventListener("pointerdown", () => Sound.unlock(), { once: true });
 
 // Intro splash: plays ~2.3s (tap to skip), then the home screen cascades in
 {
