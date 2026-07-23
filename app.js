@@ -273,9 +273,14 @@ const DINGBAT_FLOOR = 100;    // a solve is never worth less than this
 const WHOAMI_ROUND = 5;                    // characters per round
 const WHOAMI_POINTS = [400, 300, 200, 100]; // payout by clue stage when solved
 
-// Classic is a level ladder: clear 70% of a level to advance, difficulty ramps up
-const LEVEL_PASS_RATIO = 0.7;
-const levelDifficulty = (lvl) => (lvl <= 2 ? "easy" : lvl <= 4 ? "medium" : "hard");
+// Classic ladder: intensity climbs through Level 10 on three axes — question
+// tier, clock, and pass bar — then holds at maximum for endless play beyond.
+const LEVEL_RULES = (lvl) => ({
+  difficulty: lvl <= 2 ? "easy" : lvl <= 4 ? "medium" : "hard",
+  time: Math.max(15 - Math.max(lvl - 5, 0), 10), // 15s, tightening to 10s from L6→L10
+  need: lvl <= 6 ? 7 : lvl <= 8 ? 8 : 9,         // out of 10, rising from L7
+});
+const levelDifficulty = (lvl) => LEVEL_RULES(lvl).difficulty;
 
 const BADGES = [
   { id: "first",      emoji: "🎬", name: "Opening Night",   desc: "Play your first game" },
@@ -290,6 +295,7 @@ const BADGES = [
   { id: "hardcore",   emoji: "🧠", name: "Hard Boiled",     desc: "Score 9/10 or better on a Classic level" },
   { id: "climber",    emoji: "🪜", name: "Climber",         desc: "Reach Level 3 in Classic" },
   { id: "summit",     emoji: "🏔️", name: "Summit",          desc: "Reach Level 6 in Classic" },
+  { id: "ten",        emoji: "🔟", name: "Perfect Ten",     desc: "Reach Level 10 in Classic" },
   { id: "daily",      emoji: "📅", name: "Daily Devotee",   desc: "Solve a Daily Challenge" },
 ];
 
@@ -1544,7 +1550,8 @@ function endParty() {
 function levelComplete() {
   clearInterval(state.qTimer);
   state.maxLevelCorrect = Math.max(state.maxLevelCorrect, state.levelCorrect);
-  const needed = Math.ceil(state.questions.length * LEVEL_PASS_RATIO);
+  // pass bar scales with round length so thin bank categories stay fair
+  const needed = Math.ceil(state.questions.length * LEVEL_RULES(state.level).need / 10);
   if (state.levelCorrect < needed) return endGame(); // run over
 
   const nextLevel = state.level + 1;
@@ -1558,8 +1565,10 @@ function levelComplete() {
   $("new-best").hidden = true;
   $("results-score").textContent = state.score.toLocaleString();
   $("results-score-label").textContent = "points so far";
+  const nr = LEVEL_RULES(nextLevel);
   $("results-xp").innerHTML =
-    `${state.levelCorrect} / ${state.questions.length} correct · +1 🪙 — next up: Level ${nextLevel} (${levelDifficulty(nextLevel)})`;
+    `${state.levelCorrect} / ${state.questions.length} correct · +1 🪙 — ` +
+    `next: Level ${nextLevel} · ${nr.difficulty} · ${nr.time}s clock · ${nr.need}/10 to pass`;
   $("results-badges").hidden = true;
   $("stat-correct").textContent = String(state.correct);
   $("stat-accuracy").textContent = (state.answered ? Math.round((state.correct / state.answered) * 100) : 0) + "%";
@@ -1589,6 +1598,7 @@ async function continueClassicRun() {
     level: nextLevel,
     levelCorrect: 0,
     difficulty: levelDifficulty(nextLevel),
+    questionTime: LEVEL_RULES(nextLevel).time, // the clock tightens as you climb
     awaitingContinue: false,
     locked: false,
     lifelines: { fifty: true, skip: true, time: true }, // fresh set each level
@@ -1815,6 +1825,7 @@ function endGame() {
     hardcore: mode === "classic" && state.maxLevelCorrect >= 9,
     climber: mode === "classic" && player.bestClassicLevel >= 3,
     summit: mode === "classic" && player.bestClassicLevel >= 6,
+    ten: mode === "classic" && player.bestClassicLevel >= 10,
     daily: mode === "daily" && dailyWon,
   };
   const newBadges = BADGES.filter((b) => checks[b.id] && !earned.has(b.id));
