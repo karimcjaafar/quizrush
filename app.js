@@ -22,6 +22,32 @@ const Sound = (() => {
     return ctx;
   }
 
+  // Earthy filtered-noise "whoosh" — like wind or breath, for screen changes.
+  // Warm and organic rather than a clunky synth sweep.
+  function whoosh({ dur = 0.75, vol = 0.05, from = 700, to = 220, when = 0, peak = 0.3 } = {}) {
+    if (!enabled) return;
+    try {
+      vol *= Number(localStorage.getItem("quizrush-vol-sfx") ?? 100) / 100;
+      if (vol <= 0) return;
+      const c = ac();
+      const t = c.currentTime + when;
+      const buf = c.createBuffer(1, Math.ceil(c.sampleRate * dur), c.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1; // white noise
+      const src = c.createBufferSource(); src.buffer = buf;
+      const filt = c.createBiquadFilter();
+      filt.type = "lowpass"; filt.Q.value = 0.6;
+      filt.frequency.setValueAtTime(from, t);
+      filt.frequency.exponentialRampToValueAtTime(to, t + dur);
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + dur * peak);   // swell in
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);  // and settle out
+      src.connect(filt).connect(g).connect(c.destination);
+      src.start(t); src.stop(t + dur + 0.05);
+    } catch { /* audio never crashes the game */ }
+  }
+
   function tone(freq, { type = "sine", dur = 0.3, vol = 0.12, when = 0, slide = null, attack = 0.025 } = {}) {
     if (!enabled) return;
     try {
@@ -71,10 +97,12 @@ const Sound = (() => {
     // musical rather than arcade-y.
     click()   { tone(480, { dur: 0.09, vol: 0.05, attack: 0.01 }); },
     start()   { tone(330, { dur: 0.4, vol: 0.08, slide: 660, attack: 0.06 }); },
-    // airy rising sweep for a screen change; downward variant for going back
+    // Earthy transition: a soft breath of filtered noise + a warm low swell.
+    // "up" (going deeper) rises; "down" (going back) falls.
     swoosh(up = true) {
-      tone(up ? 300 : 700, { type: "sine", dur: 0.5, vol: 0.06, slide: up ? 760 : 300, attack: 0.08 });
-      tone(up ? 600 : 1400, { type: "sine", dur: 0.42, vol: 0.025, slide: up ? 1520 : 600, attack: 0.08 });
+      whoosh(up ? { dur: 0.8, vol: 0.045, from: 400, to: 900 } : { dur: 0.8, vol: 0.045, from: 900, to: 300 });
+      tone(up ? 180 : 320, { type: "sine", dur: 0.7, vol: 0.05, slide: up ? 300 : 170, attack: 0.14 }); // warm body
+      tone(up ? 270 : 480, { type: "sine", dur: 0.6, vol: 0.02, slide: up ? 450 : 255, attack: 0.16 }); // gentle harmonic
     },
     // soft materialize tone as a new question assembles
     reveal()  { tone(523.25, { type: "sine", dur: 0.55, vol: 0.05, slide: 784, attack: 0.12 }); },
@@ -398,6 +426,19 @@ const Music = (() => {
         master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
         master.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.8); // fade out
       } catch { /* already gone */ }
+    },
+    // Briefly dip under a transition so the whoosh sits in a warm pocket,
+    // then swell back — makes the music feel woven into the movement.
+    duck() {
+      try {
+        if (!ctx || !playing) return;
+        const base = Math.max(Number(localStorage.getItem("quizrush-vol-music") ?? 100) / 100, 0.0001);
+        const now = ctx.currentTime;
+        master.gain.cancelScheduledValues(now);
+        master.gain.setValueAtTime(master.gain.value, now);
+        master.gain.linearRampToValueAtTime(base * 0.35, now + 0.18); // dip
+        master.gain.linearRampToValueAtTime(base, now + 1.1);          // swell back
+      } catch { /* cosmetic */ }
     },
     // Live volume from the mixer slider
     setVolume(v) {
@@ -1059,12 +1100,13 @@ function showScreen(name) {
   // deliberate two-phase transition with an audio sweep that tracks the motion
   const goingDeeper = !TAB_SCREENS.includes(name) || name === "game" || name === "results";
   Sound.swoosh(goingDeeper);
+  Music.duck(); // dip the music so the transition breathes
   current.classList.add("screen-exit");
   setTimeout(() => {
     Object.values(screens).forEach((s) => s.classList.remove("active", "screen-exit"));
     target.classList.add("active");
     syncTabbar(name);
-  }, 440);
+  }, 620);
 }
 
 function setLoading(on, text) {

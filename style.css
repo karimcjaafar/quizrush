@@ -430,17 +430,27 @@ body.intro-done #screen-home > :nth-child(n+9) { animation-delay: 0.6s; }
   padding: 32px 20px calc(32px + env(safe-area-inset-bottom));
   flex-direction: column;
 }
-.screen.active { display: flex; animation: screenIn 0.85s cubic-bezier(0.22, 1, 0.36, 1); }
+/* Deliberately slow, fluid page motion — the incoming page rises and settles
+   from depth over ~1.3s, giving the eye time to enjoy it. */
+.screen.active { display: flex; animation: screenIn 1.3s cubic-bezier(0.16, 1, 0.3, 1); }
 
 @keyframes screenIn {
-  0% { opacity: 0; transform: translateY(40px) scale(0.965); filter: blur(9px); }
-  55% { filter: blur(0); }
+  0%   { opacity: 0; transform: translateY(52px) scale(0.9); filter: blur(18px); }
+  30%  { opacity: 1; }
+  70%  { filter: blur(0); }
   100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
 }
 
-.screen.screen-exit { animation: screenOut 0.44s ease forwards; }
+/* Outgoing page recedes softly into blur before the new one arrives */
+.screen.screen-exit { animation: screenOut 0.62s cubic-bezier(0.5, 0, 0.75, 0) forwards; }
 @keyframes screenOut {
-  to { opacity: 0; filter: blur(12px); transform: translateY(-26px) scale(0.965); }
+  0%   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  100% { opacity: 0; transform: translateY(-40px) scale(0.92); filter: blur(18px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen.active { animation-duration: 0.2s; }
+  .screen.screen-exit { animation-duration: 0.12s; }
 }
 
 /* ============ Tab bar ============ */
