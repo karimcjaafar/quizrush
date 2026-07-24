@@ -481,12 +481,51 @@ const levelScope = (lvl) => (lvl <= 3 ? "common" : "core");
 // rarely. "Common" is the most broadly-known subset used for very-easy play.
 const CORE_TRIVIA_CATIDS = ["general", "geography", "sport", "science", "history", "entertainment", "arts", "politics"];
 const COMMON_TRIVIA_CATIDS = ["general", "geography", "sport", "science", "history", "entertainment"];
-const CORE_OTDB = [9, 22, 23, 17, 21, 11, 12, 25, 10, 24];          // broadly-known OTDB categories (no video games/anime/celebs)
+// OpenTDB's Sports category (21) is heavily American (NFL/NBA/MLB), which
+// alienates a UK audience — sport in the mix comes from The Trivia API (UK-made,
+// football/cricket/rugby leaning) instead. 21 is still used by the Sport pack.
+const CORE_OTDB = [9, 22, 23, 17, 11, 12, 25, 10, 24];
 const COMMON_OTDB = CORE_OTDB;
 const CORE_TTA = ["general_knowledge", "geography", "history", "science", "society_and_culture", "arts_and_literature", "sport_and_leisure", "music", "film_and_tv"];
 // "Common" gentleness comes from serving easy-difficulty questions across the
 // same broad topics, not from narrowing categories (which just floods one topic)
 const COMMON_TTA = CORE_TTA;
+
+// UK-focused content filter: drop questions too niche/alienating for a UK
+// audience (American football above all, plus other US-only sports). Applied
+// to every API-sourced question so they can never appear from the live sources.
+const UNFRIENDLY = [
+  /american football|\bnfl\b|super bowl|superbowl|quarterback|touchdown|linebacker|gridiron|\bnfc\b|\bafc east|afc west|afc north|afc south\b/i,
+  /\bmlb\b|major league baseball|world series/i,
+  /\bnba\b|\bnhl\b/i,
+  /nascar|indycar|daytona 500/i,
+];
+function isUnfriendly(q) {
+  const hay = (q.text + " " + q.correct + " " + (q.answers || q.wrong || []).join(" ")).toLowerCase();
+  return UNFRIENDLY.some((re) => re.test(hay));
+}
+
+// Sub-topic key so a single round never clusters on one specific sport — three
+// different sports is fine; three American-football (or three of anything) isn't.
+const SPORT_SUBS = [
+  [/american football|nfl|super bowl/i, "amfootball"],
+  [/\bcricket\b|wicket|bowler|batsman/i, "cricket"],
+  [/\brugby\b|scrum|try |six nations/i, "rugby"],
+  [/tennis|wimbledon|grand slam|\bace\b/i, "tennis"],
+  [/\bgolf\b|par |birdie|the open\b/i, "golf"],
+  [/basketball|\bnba\b|slam dunk/i, "basketball"],
+  [/baseball|\bmlb\b|home run/i, "baseball"],
+  [/box(ing|er)|heavyweight|knockout/i, "boxing"],
+  [/formula 1|f1\b|grand prix|nascar/i, "motorsport"],
+  [/olympic|olympics/i, "olympics"],
+  [/football|soccer|fifa|premier league|world cup/i, "football"],
+];
+function topicKey(q) {
+  if (q.catId !== "sport") return q.catId || "?";
+  const hay = (q.text + " " + (q.answers || []).join(" ")).toLowerCase();
+  const sub = SPORT_SUBS.find(([re]) => re.test(hay));
+  return sub ? "sport:" + sub[1] : "sport";
+}
 
 const TIER_LABEL = { easy: "Easy", medium: "Medium", hard: "Hard" };
 const capDiff = (d) => TIER_LABEL[d] || d;
@@ -1120,7 +1159,7 @@ function composeMix(pool, mix, amount) {
     for (const q of list) {
       if (need <= 0) break;
       if (chosen.has(q)) continue;
-      const c = q.catId || "?";
+      const c = topicKey(q); // sub-topic aware (splits sport by discipline)
       if (cap && (catCount[c] || 0) >= cap) continue; // spread across topics
       chosen.add(q); picked.push(q); catCount[c] = (catCount[c] || 0) + 1; need--;
     }
@@ -1198,7 +1237,8 @@ async function fetchCoreMix({ scope = "core", amount = 60 } = {}) {
     fetchFromTTA({ amount: Math.min(amount, 50), ttaCats, difficulty: "" }),
     otdbCapped,
   ]);
-  const pool = [tta, otdb].flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+  const pool = [tta, otdb].flatMap((r) => (r.status === "fulfilled" ? r.value : []))
+    .filter((q) => !isUnfriendly(q)); // drop American football & US-only sports
   pool.forEach((q) => { q.catId = NAME_TO_CAT[q.category.toLowerCase()] || ""; });
   // de-dupe by text+visual
   const seen = new Set();
@@ -1242,6 +1282,7 @@ async function getQuestions({ catId = "", difficulty = "", amount = 10, mix = nu
     merged = shuffle(pool).filter((q) => {
       const key = normalizeText(q.text) + (q.big || "") + (q.vid || "");
       if (!normalizeText(q.text) || seen.has(key)) return false;
+      if (!q.svgPath && !q.big && isUnfriendly(q)) return false; // UK filter (skip our own bank picture qs)
       seen.add(key);
       return true;
     });
