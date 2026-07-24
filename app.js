@@ -158,6 +158,21 @@ const Sound = (() => {
         tone(f, { dur: 0.6, vol: 0.09, when: 0.15 + i * 0.22, attack: 0.04 }));
       tone(1318.5, { dur: 1.0, vol: 0.07, when: 1.05, attack: 0.06 });
     },
+    // The grand cinematic score (~14s): dark sub impact → slow riser → a
+    // resolving major chord swell → a calm held resolve. Serious, not childish.
+    cinematic() {
+      whoosh({ dur: 2.4, vol: 0.06, from: 240, to: 60 });                 // dark opening breath
+      tone(41.2, { type: "sine", dur: 2.6, vol: 0.16, attack: 0.02 });    // sub impact
+      tone(82.4, { type: "sine", dur: 2.6, vol: 0.07, attack: 0.02 });
+      tone(60, { type: "sawtooth", dur: 7, vol: 0.028, slide: 520, attack: 1.6 });   // slow riser
+      tone(90, { type: "sawtooth", dur: 7, vol: 0.016, slide: 760, attack: 1.6 });
+      tone(130.81, { type: "sine", dur: 8, vol: 0.03, attack: 1.0 });     // C3 drone through the build
+      const t0 = 7.6;                                                     // the climax chord (C major, wide)
+      [130.81, 164.81, 196.0, 261.63, 392.0].forEach((f, i) =>
+        tone(f, { type: "triangle", dur: 5.5, vol: 0.05, when: t0 + i * 0.12, attack: 0.5 }));
+      whoosh({ dur: 3.6, vol: 0.05, from: 300, to: 1500, when: 7.4, peak: 0.55 }); // rising swell
+      tone(523.25, { type: "sine", dur: 3.6, vol: 0.05, when: 8.3, attack: 0.7 }); // calm high resolve
+    },
   };
 })();
 
@@ -462,6 +477,19 @@ const Music = (() => {
         master.gain.setValueAtTime(master.gain.value, now);
         master.gain.linearRampToValueAtTime(base * 0.35, now + 0.18); // dip
         master.gain.linearRampToValueAtTime(base, now + 1.1);          // swell back
+      } catch { /* cosmetic */ }
+    },
+    // Hold the music low under a long cinematic, then swell back afterwards.
+    dip(depth = 0.14, holdMs = 13000) {
+      try {
+        if (!ctx || !playing) return;
+        const base = Math.max(Number(localStorage.getItem("quizrush-vol-music") ?? 100) / 100, 0.0001);
+        const now = ctx.currentTime;
+        master.gain.cancelScheduledValues(now);
+        master.gain.setValueAtTime(master.gain.value, now);
+        master.gain.linearRampToValueAtTime(base * depth, now + 0.7);
+        master.gain.setValueAtTime(base * depth, now + holdMs / 1000);
+        master.gain.linearRampToValueAtTime(base, now + holdMs / 1000 + 1.3);
       } catch { /* cosmetic */ }
     },
     // Live volume from the mixer slider
@@ -2608,7 +2636,53 @@ function countUp(el, target, dur = 900) {
 }
 
 // ---------- Level-up cinematic ----------
+// Rare, grand moments (reaching Level 5 or the Level 10 summit) get the full
+// ~14s cinematic; ordinary level clears get the shorter beat.
+const MILESTONE_LEVELS = { 5: { kicker: "MILESTONE REACHED", sub: "The climb is well underway" },
+                           10: { kicker: "THE SUMMIT", sub: "Level 10 — few make it this far" } };
+
+function playMilestone({ kicker = "MILESTONE", title, sub = "" }, then) {
+  const ov = $("cinema");
+  $("cinema-kicker").textContent = kicker;
+  $("cinema-title").textContent = title;
+  $("cinema-sub").textContent = sub;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const DUR = reduced ? 2600 : 14000;
+  const dust = $("cinema-dust");
+  dust.innerHTML = "";
+  if (!reduced) {
+    for (let i = 0; i < 40; i++) {
+      const p = document.createElement("i");
+      p.style.left = Math.random() * 100 + "%";
+      p.style.setProperty("--dx", (Math.random() * 80 - 40) + "px");
+      p.style.animationDuration = (6 + Math.random() * 7) + "s";
+      p.style.animationDelay = (Math.random() * 6) + "s";
+      const sz = 2 + Math.random() * 3;
+      p.style.width = p.style.height = sz + "px";
+      dust.appendChild(p);
+    }
+  }
+  ov.hidden = false;
+  ov.classList.remove("play", "out");
+  void ov.offsetWidth;
+  ov.classList.add("play");
+  Music.dip(0.14, DUR);
+  Sound.cinematic();
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    ov.classList.add("out");
+    setTimeout(() => { ov.hidden = true; ov.classList.remove("play", "out"); }, 1100);
+    then();
+  };
+  ov.onclick = finish; // tap to continue at any point
+  setTimeout(finish, DUR);
+}
+
 function playLevelUpCinematic(nextLevel, then) {
+  const milestone = MILESTONE_LEVELS[nextLevel];
+  if (milestone) return playMilestone({ kicker: milestone.kicker, title: `LEVEL ${nextLevel}`, sub: milestone.sub }, then);
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) { Sound.levelUp(); return then(); }
   const ov = $("levelup-overlay");
   $("lu-num").textContent = String(nextLevel);
