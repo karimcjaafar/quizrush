@@ -83,6 +83,12 @@ const Sound = (() => {
     } catch { /* audio is never worth crashing the game over */ }
   }
 
+  // The QuizRush signature: one C-major-pentatonic motif (do–mi–sol–la) whose
+  // fragments recur through every cue, so the whole app sounds like one system.
+  // Small random pitch/volume jitter keeps repeated sounds from fatiguing.
+  const R = (a, b) => a + Math.random() * (b - a);
+  const NOTE = { C5: 523.25, D5: 587.33, E5: 659.25, G5: 783.99, A5: 880, C6: 1046.5, E6: 1318.5, G6: 1568, C7: 2093 };
+
   return {
     get enabled() { return enabled; },
     toggle() {
@@ -95,7 +101,9 @@ const Sound = (() => {
     unlock() { try { if (enabled) ac(); } catch { /* audio optional */ } },
     // All cues favor sine waves, low volumes, soft attacks and longer tails —
     // musical rather than arcade-y.
-    click()   { tone(480, { dur: 0.09, vol: 0.05, attack: 0.01 }); },
+    // Hierarchy: clicks are the quietest, navigation/coin moderate,
+    // correct/notify stronger, big rewards richest.
+    click()   { tone(NOTE.E5 * R(0.99, 1.01), { type: "triangle", dur: 0.07, vol: 0.03, attack: 0.005 }); }, // one motif note, tactile
     start()   { tone(330, { dur: 0.4, vol: 0.08, slide: 660, attack: 0.06 }); },
     // Earthy transition: a soft breath of filtered noise + a warm low swell.
     // "up" (going deeper) rises; "down" (going back) falls.
@@ -107,10 +115,24 @@ const Sound = (() => {
     // soft materialize tone as a new question assembles
     reveal()  { tone(523.25, { type: "sine", dur: 0.55, vol: 0.05, slide: 784, attack: 0.12 }); },
     correct() {
-      tone(523.25, { dur: 0.35, vol: 0.1, attack: 0.02 });                  // C5
-      tone(659.25, { dur: 0.5, vol: 0.1, when: 0.09, attack: 0.03 });       // E5
+      // ascending do–mi–sol from the motif, marimba-like, gently varied
+      const v = R(0.985, 1.015);
+      tone(NOTE.C5 * v, { type: "triangle", dur: 0.16, vol: 0.07, attack: 0.006 });
+      tone(NOTE.E5 * v, { type: "triangle", dur: 0.22, vol: 0.075, when: 0.07, attack: 0.006 });
+      tone(NOTE.G5 * v, { type: "triangle", dur: 0.4, vol: 0.075, when: 0.14, attack: 0.008 });
     },
-    wrong()   { tone(196, { dur: 0.5, vol: 0.1, slide: 165, attack: 0.04 }); }, // soft low sigh, no buzz
+    // bright brief sparkle for token/coin gains — 2–6kHz range, always varied
+    coin() {
+      const v = R(0.95, 1.06);
+      tone(NOTE.G6 * v, { type: "triangle", dur: 0.09, vol: 0.045, attack: 0.003 });
+      tone(NOTE.C7 * v, { type: "sine", dur: 0.13, vol: 0.028, when: 0.03, attack: 0.003 });
+    },
+    // recognisable 3-note motif fragment for notifications/toasts
+    notify() {
+      [NOTE.C5, NOTE.G5, NOTE.C6].forEach((f, i) =>
+        tone(f, { type: "triangle", dur: 0.34, vol: 0.055, when: i * 0.11, attack: 0.01 }));
+    },
+    wrong()   { tone(349.23, { type: "sine", dur: 0.34, vol: 0.075, slide: 261.63, attack: 0.03 }); }, // soft descending F4→C4, never punitive
     tick() {
       // alternating tick-tock, like a clock counting you down
       this._tock = !this._tock;
@@ -122,9 +144,11 @@ const Sound = (() => {
       tone(1046.5, { dur: 0.9, vol: 0.09, when: 0.45, attack: 0.05 });
     },
     best() {
-      tone(261.63, { dur: 1.3, vol: 0.045, attack: 0.12 }); // warm low pad underneath
-      [523.25, 587.33, 659.25, 783.99, 1046.5].forEach((f, i) =>
-        tone(f, { dur: 0.5, vol: 0.09, when: i * 0.12, attack: 0.03 }));
+      // the full motif, harmonised — the richest routine reward tier
+      tone(261.63, { dur: 1.4, vol: 0.04, attack: 0.14 }); // warm low pad
+      tone(392, { dur: 1.4, vol: 0.03, attack: 0.14 });
+      [NOTE.C5, NOTE.E5, NOTE.G5, NOTE.A5, NOTE.C6].forEach((f, i) =>
+        tone(f, { type: "triangle", dur: 0.55, vol: 0.085, when: i * 0.11, attack: 0.02 }));
     },
     levelUp() {
       // ~2s gentle jingle: sustained C+G pad with a slow rising arpeggio on top
@@ -1900,6 +1924,7 @@ function tokenJuice(v) {
       void el.offsetWidth;
       el.classList.add("token-bump");
     });
+    Sound.coin(); // bright sparkle when tokens are gained
   }
   tokensSeen = v;
 }
@@ -2592,6 +2617,7 @@ function playLevelUpCinematic(nextLevel, then) {
   void ov.offsetWidth;
   ov.classList.add("play");
   confetti();
+  Music.duck();
   Sound.levelUp();
   let done = false;
   const finish = () => {
@@ -2615,6 +2641,7 @@ function playCelebration({ big, sub = "" }, then) {
   void ov.offsetWidth;
   ov.classList.add("play");
   confetti();
+  Music.duck();
   Sound.best();
   let done = false;
   const finish = () => {
@@ -2818,6 +2845,8 @@ function toast(msg) {
   t.classList.remove("show");
   void t.offsetWidth;
   t.classList.add("show");
+  Sound.notify();
+  Music.duck();
   setTimeout(() => { t.hidden = true; }, 3100);
 }
 
