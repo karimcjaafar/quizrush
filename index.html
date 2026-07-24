@@ -171,7 +171,7 @@
       <div class="player-sub">
         <button class="player-name" id="player-name" title="Edit profile"></button>
         <span class="player-title" id="player-title">Trivia Novice</span>
-        <span class="player-tokens" id="player-tokens" title="Earn tokens from dailies and Classic levels — spend them on lifeline refills and Sudden Death revives">🪙 0</span>
+        <button class="player-tokens" id="player-tokens" title="Open the Shop">🪙 0</button>
       </div>
       <p class="streak-line" id="streak-line"></p>
     </section>
@@ -221,6 +221,7 @@
         <span class="style-label">Music vol</span>
         <input type="range" class="vol-slider" id="vol-music" min="0" max="100" step="5" />
       </div>
+      <button class="btn btn-ghost btn-full" id="btn-open-shop">🛒 Open Shop</button>
       <button class="btn btn-ghost btn-full" id="btn-edit-profile">👤 Edit profile</button>
     </section>
 
@@ -228,6 +229,44 @@
       Questions from <a href="https://opentdb.com" target="_blank" rel="noopener">Open Trivia DB</a>
       &amp; <a href="https://the-trivia-api.com" target="_blank" rel="noopener">The Trivia API</a>
     </footer>
+  </main>
+
+  <!-- ============ SHOP ============ -->
+  <main id="screen-shop" class="screen">
+    <header class="submenu-header">
+      <button class="btn-quit" id="btn-shop-back" title="Back">←</button>
+      <div>
+        <h2>🛒 Shop</h2>
+        <p class="submenu-sub">Everything's earnable by playing — or grab a top-up.</p>
+      </div>
+    </header>
+
+    <section class="settings-panel shop-balance">
+      <span class="shop-bal-label">Your balance</span>
+      <span class="shop-bal" id="shop-balance">🪙 0</span>
+    </section>
+
+    <section class="settings-panel">
+      <h3>Spend tokens</h3>
+      <div class="shop-list" id="shop-spend"></div>
+    </section>
+
+    <section class="settings-panel">
+      <h3>Get more tokens</h3>
+      <p class="settings-note" id="shop-demo-note"></p>
+      <div class="shop-list" id="shop-packs"></div>
+    </section>
+
+    <section class="settings-panel">
+      <h3>Earn tokens free</h3>
+      <ul class="earn-list">
+        <li><span>📅</span> Open the app each day <b>+5</b></li>
+        <li><span>🗓️</span> Solve the Daily Challenge <b>+2</b></li>
+        <li><span>🎯</span> Clear a Classic level <b>+1</b></li>
+        <li><span>⬆️</span> Reach a new level <b>+5</b></li>
+        <li><span>🏆</span> Earn a badge <b>+10</b></li>
+      </ul>
+    </section>
   </main>
 
   <!-- ============ YOUR RULES SETUP ============ -->

@@ -696,6 +696,12 @@ const player = {
   set bestClassicLevel(v) { safeSetItem("quizrush-best-level", String(v)); },
   get tokens() { return Number(localStorage.getItem("quizrush-tokens") || 0); },
   set tokens(v) { safeSetItem("quizrush-tokens", String(Math.max(0, v))); },
+  get streakFreezes() { return Number(localStorage.getItem("quizrush-freezes") || 0); },
+  set streakFreezes(v) { safeSetItem("quizrush-freezes", String(Math.max(0, v))); },
+  get ownedThemes() { return getJSON("quizrush-owned-themes", []); },
+  set ownedThemes(v) { setJSON("quizrush-owned-themes", v); },
+  get lastLoginBonus() { return localStorage.getItem("quizrush-login-bonus") || ""; },
+  set lastLoginBonus(v) { safeSetItem("quizrush-login-bonus", v); },
   get catStats() { return getJSON("quizrush-catstats", {}); },
   set catStats(v) { setJSON("quizrush-catstats", v); },
   get soundPack() { return localStorage.getItem("quizrush-soundpack") || "classic"; },
@@ -724,6 +730,61 @@ function medalFor(catId) {
   const s = player.catStats[catId];
   if (!s) return "";
   return MASTERY.find((m) => s.correct >= m.at)?.medal || "";
+}
+
+// ---------- Token economy ----------
+// Free to play forever; tokens are earned through play and spent on comforts
+// (lifeline refills, Sudden Death revives, streak freezes) and optional
+// cosmetics. Real-money token packs are SIMULATED until launch (DEMO_STORE).
+const START_TOKENS = 25;      // one-time welcome grant
+const LOGIN_BONUS = 5;        // first open of the day
+const LEVELUP_TOKENS = 5;     // per XP level gained in a game
+const BADGE_TOKENS = 10;      // per new badge earned
+const STREAK_FREEZE_COST = 40;
+const MAX_FREEZES = 3;
+
+// Premium themes — buyable only with tokens (takes a while to afford), never
+// handed out through gameplay. Palettes are defined in style.css.
+const SHOP_THEMES = [
+  { id: "aurora",  name: "Aurora",  cost: 250 },
+  { id: "crimson", name: "Crimson", cost: 250 },
+  { id: "mono",    name: "Mono",    cost: 180 },
+];
+
+// Real-money packs — shown with real prices so testers see the true flow, but
+// purchases are free in demo mode. Flip DEMO_STORE off + wire Stripe at launch.
+const DEMO_STORE = true;
+const TOKEN_PACKS = [
+  { id: "small",  tokens: 50,  price: "£0.99" },
+  { id: "medium", tokens: 150, price: "£1.99", tag: "Popular" },
+  { id: "large",  tokens: 500, price: "£4.99", tag: "Best value" },
+];
+
+function dateKeyOffset(n) {
+  const d = new Date(Date.now() + n * 86400000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Run once at startup: welcome grant + daily login bonus + auto streak-freeze
+function runEconomyOnLoad() {
+  if (!localStorage.getItem("quizrush-welcomed-tokens")) {
+    player.tokens += START_TOKENS;
+    safeSetItem("quizrush-welcomed-tokens", "1");
+  }
+  const today = todayKey();
+  if (player.lastLoginBonus !== today) {
+    player.tokens += LOGIN_BONUS;
+    player.lastLoginBonus = today;
+    window.__loginBonus = LOGIN_BONUS; // surfaced as a toast after render
+  }
+  // Streak freeze: if exactly yesterday was missed and a freeze is held, spend
+  // it to bridge the gap so a valued streak survives one skipped day.
+  const s = player.dailyStreak;
+  if (s.count > 0 && s.last === dateKeyOffset(-2) && player.streakFreezes > 0) {
+    player.streakFreezes -= 1;
+    player.dailyStreak = { count: s.count, last: yesterdayKey() };
+    window.__freezeUsed = true;
+  }
 }
 
 // ---------- Backend (leaderboards + global answer stats) ----------
@@ -935,6 +996,7 @@ const screens = {
   home: $("screen-home"),
   progress: $("screen-progress"),
   customize: $("screen-customize"),
+  shop: $("screen-shop"),
   rulessetup: $("screen-rulessetup"),
   brainmenu: $("screen-brainmenu"),
   picturemenu: $("screen-picturemenu"),
@@ -2352,6 +2414,7 @@ function endGame() {
   const lvlBefore = levelFromXp(player.xp);
   player.xp += xpGained;
   const lvlAfter = levelFromXp(player.xp);
+  if (lvlAfter > lvlBefore) player.tokens += (lvlAfter - lvlBefore) * LEVELUP_TOKENS; // level-up pays tokens
   const titleChanged = titleForLevel(lvlAfter) !== titleForLevel(lvlBefore);
   $("results-xp").innerHTML =
     `+${xpGained} XP` +
@@ -2384,6 +2447,7 @@ function endGame() {
   const newBadges = BADGES.filter((b) => checks[b.id] && !earned.has(b.id));
   if (newBadges.length) {
     player.badges = [...earned, ...newBadges.map((b) => b.id)];
+    player.tokens += newBadges.length * BADGE_TOKENS; // each new badge pays tokens
   }
   const badgesEl = $("results-badges");
   badgesEl.hidden = !newBadges.length && !newThemes.length;
@@ -2679,14 +2743,21 @@ function applyTheme(id) {
   player.theme = id;
 }
 
+function themeUnlocked(id) {
+  const t = THEMES.find((x) => x.id === id);
+  if (t) return player.bestDailyStreak >= t.streak;
+  if (SHOP_THEMES.some((x) => x.id === id)) return player.ownedThemes.includes(id);
+  return id === "midnight";
+}
+
 function paintThemes() {
-  const best = player.bestDailyStreak;
-  $("theme-row").innerHTML = THEMES.map((t) => {
-    const unlocked = best >= t.streak;
+  const rows = THEMES.map((t) => ({ id: t.id, name: t.name, unlocked: themeUnlocked(t.id), need: `reach a ${t.streak}-day daily streak` }))
+    .concat(SHOP_THEMES.map((t) => ({ id: t.id, name: t.name, unlocked: themeUnlocked(t.id), need: `buy in the Shop · ${t.cost} 🪙` })));
+  $("theme-row").innerHTML = rows.map((t) => {
     const active = player.theme === t.id;
-    const title = unlocked ? t.name : `${t.name} — reach a ${t.streak}-day daily streak`;
-    return `<button class="theme-swatch swatch-${t.id} ${active ? "active" : ""} ${unlocked ? "" : "locked"}"
-      data-theme-id="${t.id}" title="${title}" ${unlocked ? "" : "disabled"}>${unlocked ? "" : "🔒"}</button>`;
+    const title = t.unlocked ? t.name : `${t.name} — ${t.need}`;
+    return `<button class="theme-swatch swatch-${t.id} ${active ? "active" : ""} ${t.unlocked ? "" : "locked"}"
+      data-theme-id="${t.id}" title="${title}" ${t.unlocked ? "" : "disabled"}>${t.unlocked ? "" : "🔒"}</button>`;
   }).join("");
   document.querySelectorAll(".theme-swatch:not(.locked)").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -2697,13 +2768,98 @@ function paintThemes() {
   });
 }
 
+// ---------- Shop ----------
+function toast(msg) {
+  const t = $("badge-toast");
+  t.textContent = msg;
+  t.hidden = false;
+  t.classList.remove("show");
+  void t.offsetWidth;
+  t.classList.add("show");
+  setTimeout(() => { t.hidden = true; }, 3100);
+}
+
+function paintShop() {
+  $("shop-balance").textContent = "🪙 " + player.tokens;
+  $("shop-demo-note").textContent = DEMO_STORE
+    ? "Preview mode — these show real prices but nothing is charged yet."
+    : "";
+
+  // Spend: streak freeze + premium themes
+  const freezeFull = player.streakFreezes >= MAX_FREEZES;
+  const spend = [
+    `<button class="shop-item" data-buy="freeze" ${freezeFull ? "disabled" : ""}>
+       <span class="shop-emoji">🧊</span>
+       <span class="shop-info"><b>Streak Freeze</b><small>Saves your daily streak if you miss a day (hold ${player.streakFreezes}/${MAX_FREEZES})</small></span>
+       <span class="shop-cost">${freezeFull ? "Full" : STREAK_FREEZE_COST + " 🪙"}</span>
+     </button>`,
+    ...SHOP_THEMES.map((t) => {
+      const owned = player.ownedThemes.includes(t.id);
+      return `<button class="shop-item" data-buy="theme:${t.id}" ${owned ? "disabled" : ""}>
+        <span class="shop-emoji swatch-${t.id} shop-swatch"></span>
+        <span class="shop-info"><b>${t.name} theme</b><small>Exclusive colour theme</small></span>
+        <span class="shop-cost">${owned ? "Owned ✓" : t.cost + " 🪙"}</span>
+      </button>`;
+    }),
+  ];
+  $("shop-spend").innerHTML = spend.join("");
+
+  // Real-money packs (simulated)
+  $("shop-packs").innerHTML = TOKEN_PACKS.map((p) =>
+    `<button class="shop-item" data-pack="${p.id}">
+       <span class="shop-emoji">🪙</span>
+       <span class="shop-info"><b>${p.tokens} tokens</b>${p.tag ? `<small>${p.tag}</small>` : "<small>Top-up</small>"}</span>
+       <span class="shop-cost price">${p.price}</span>
+     </button>`).join("");
+}
+
+function openShop() { Sound.click(); paintShop(); showScreen("shop"); }
+
+function buyShopItem(what) {
+  if (what === "freeze") {
+    if (player.streakFreezes >= MAX_FREEZES) return;
+    if (player.tokens < STREAK_FREEZE_COST) return notEnough();
+    player.tokens -= STREAK_FREEZE_COST;
+    player.streakFreezes += 1;
+    Sound.correct(); toast("🧊 Streak Freeze bought!");
+  } else if (what.startsWith("theme:")) {
+    const id = what.slice(6);
+    const t = SHOP_THEMES.find((x) => x.id === id);
+    if (!t || player.ownedThemes.includes(id)) return;
+    if (player.tokens < t.cost) return notEnough();
+    player.tokens -= t.cost;
+    player.ownedThemes = [...player.ownedThemes, id];
+    applyTheme(id);
+    Sound.best(); confetti(); toast(`🎨 ${t.name} theme unlocked!`);
+  }
+  paintShop(); renderHome();
+}
+
+function buyTokenPack(id) {
+  const p = TOKEN_PACKS.find((x) => x.id === id);
+  if (!p) return;
+  if (DEMO_STORE) {
+    player.tokens += p.tokens;
+    Sound.best(); confetti();
+    toast(`✅ Demo purchase — +${p.tokens} 🪙 (no charge)`);
+    paintShop(); renderHome();
+  } else {
+    // launch: hand off to Stripe checkout here
+  }
+}
+
+function notEnough() {
+  toast("Not enough tokens — keep playing to earn more!");
+}
+
 function paintStreakLine() {
   const live = liveDailyStreak();
   const best = player.bestDailyStreak;
+  const fz = player.streakFreezes ? ` · 🧊 ${player.streakFreezes}` : "";
   $("streak-line").textContent =
-    live > 0 ? `🔥 ${live}-day daily streak · best ${best}` :
+    (live > 0 ? `🔥 ${live}-day daily streak · best ${best}` :
     best > 0 ? `Daily streak paused · best ${best} — play today's to restart it` :
-    "Solve a Daily Challenge to start a streak";
+    "Solve a Daily Challenge to start a streak") + fz;
 }
 
 function paintMastery() {
@@ -2781,6 +2937,19 @@ $("btn-learn-who").addEventListener("click", () => {
 $("btn-rules-back").addEventListener("click", () => { Sound.click(); showScreen("home"); });
 $("btn-rules-start").addEventListener("click", () => { Sound.click(); startGame("custom"); });
 $("btn-edit-profile").addEventListener("click", () => { Sound.click(); openProfileSetup(); });
+
+// Shop entry points, back, and purchase delegation
+$("player-tokens").addEventListener("click", openShop);
+$("btn-open-shop").addEventListener("click", openShop);
+$("btn-shop-back").addEventListener("click", () => { Sound.click(); showScreen("customize"); });
+$("shop-spend").addEventListener("click", (e) => {
+  const b = e.target.closest(".shop-item");
+  if (b && !b.disabled) buyShopItem(b.dataset.buy);
+});
+$("shop-packs").addEventListener("click", (e) => {
+  const b = e.target.closest(".shop-item");
+  if (b) buyTokenPack(b.dataset.pack);
+});
 
 // Volume mixer
 $("vol-sfx").value = localStorage.getItem("quizrush-vol-sfx") ?? 100;
@@ -2996,7 +3165,8 @@ $("btn-again").addEventListener("click", () => {
   }
 }
 
-applyTheme(THEMES.some((t) => t.id === player.theme && player.bestDailyStreak >= t.streak) ? player.theme : "midnight");
+runEconomyOnLoad();
+applyTheme(themeUnlocked(player.theme) ? player.theme : "midnight");
 {
   const badgeCount = player.badges.length;
   if (!SOUND_PACKS.some((p) => p.id === player.soundPack && badgeCount >= p.badges)) player.soundPack = "classic";
@@ -3028,6 +3198,11 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
     splash.classList.add("out");
     setTimeout(() => splash.remove(), 700);
     document.body.classList.add("intro-done");
+    // economy notices, once the stage is clear
+    setTimeout(() => {
+      if (window.__freezeUsed) { toast("🧊 Streak freeze used — your streak is safe!"); window.__freezeUsed = false; }
+      else if (window.__loginBonus) { toast(`📅 Daily login bonus: +${window.__loginBonus} 🪙`); window.__loginBonus = 0; }
+    }, 900);
   };
   splash.addEventListener("click", () => {
     if (phase === "gate") {

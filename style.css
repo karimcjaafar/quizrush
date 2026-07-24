@@ -46,6 +46,25 @@
   --orb1: #b8860b; --orb2: #d4742a; --orb3: #8a6d1d;
   --bg: #141005;
 }
+/* Premium (shop-only) themes */
+:root[data-theme="aurora"] {
+  --accent: #43e97b; --accent-2: #38f9d7;
+  --gradient: linear-gradient(135deg, #43e97b, #38f9d7);
+  --orb1: #1f8a70; --orb2: #2a9df5; --orb3: #6a3df5;
+  --bg: #08131a;
+}
+:root[data-theme="crimson"] {
+  --accent: #ff4d6d; --accent-2: #ff9a3c;
+  --gradient: linear-gradient(135deg, #ff4d6d, #ff9a3c);
+  --orb1: #a01235; --orb2: #d4742a; --orb3: #7a1d3d;
+  --bg: #15070b;
+}
+:root[data-theme="mono"] {
+  --accent: #cfd4e6; --accent-2: #8b93b0;
+  --gradient: linear-gradient(135deg, #eef0f8, #8b93b0);
+  --orb1: #3a4160; --orb2: #565d7e; --orb3: #23283c;
+  --bg: #0c0e16;
+}
 
 html, body { height: 100%; }
 
@@ -512,7 +531,40 @@ body.intro-done #screen-home > :nth-child(n+9) { animation-delay: 0.6s; }
   margin-top: 10px;
 }
 .player-title { font-size: 13px; font-weight: 700; color: var(--gold); }
-.player-tokens { font-size: 13px; font-weight: 700; color: var(--text-dim); }
+.player-tokens { font-size: 13px; font-weight: 700; color: var(--gold); }
+.player-tokens:hover { text-decoration: underline; }
+
+/* Shop */
+.shop-balance { display: flex; align-items: center; justify-content: space-between; }
+.shop-bal-label { font-size: 13px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+.shop-bal { font-size: 24px; font-weight: 800; color: var(--gold); }
+.shop-list { display: flex; flex-direction: column; gap: 10px; }
+.shop-item {
+  display: flex; align-items: center; gap: 13px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 13px 15px;
+  text-align: left;
+  transition: transform 0.15s, border-color 0.15s, background 0.15s;
+}
+.shop-item:hover:not(:disabled) { transform: translateY(-2px); border-color: rgba(124, 92, 255, 0.5); background: rgba(124, 92, 255, 0.08); }
+.shop-item:active:not(:disabled) { transform: scale(0.98); }
+.shop-item:disabled { opacity: 0.55; }
+.shop-emoji { font-size: 26px; width: 34px; text-align: center; flex-shrink: 0; }
+.shop-swatch { width: 30px; height: 30px; border-radius: 8px; }
+.shop-info { flex: 1; display: flex; flex-direction: column; }
+.shop-info b { font-size: 14.5px; font-weight: 700; }
+.shop-info small { font-size: 11.5px; color: var(--text-dim); line-height: 1.35; }
+.shop-cost { font-size: 13.5px; font-weight: 800; color: var(--gold); white-space: nowrap; }
+.shop-cost.price { color: var(--accent); background: rgba(124, 92, 255, 0.14); padding: 5px 11px; border-radius: 999px; }
+@media (hover: none) { .shop-item:hover:not(:disabled) { transform: none; border-color: var(--border); background: rgba(255,255,255,0.05); } }
+
+.earn-list { list-style: none; display: flex; flex-direction: column; gap: 9px; }
+.earn-list li { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text-dim); }
+.earn-list li span { font-size: 17px; width: 24px; text-align: center; }
+.earn-list li b { margin-left: auto; color: var(--gold); }
 
 /* Daily challenge card */
 .daily-card {
@@ -1089,6 +1141,9 @@ select {
 .swatch-ocean    { background: linear-gradient(135deg, #2fb4ff, #29e6c8); }
 .swatch-forest   { background: linear-gradient(135deg, #3ddc84, #b7e04a); }
 .swatch-gold     { background: linear-gradient(135deg, #ffce54, #ff9d2e); }
+.swatch-aurora   { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+.swatch-crimson  { background: linear-gradient(135deg, #ff4d6d, #ff9a3c); }
+.swatch-mono     { background: linear-gradient(135deg, #eef0f8, #8b93b0); }
 
 /* ============ Badges panel ============ */
 .badges-panel {
