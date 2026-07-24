@@ -264,6 +264,22 @@ body.intro-done #screen-home > :nth-child(n+9) { animation-delay: 0.6s; }
 @keyframes homeIn { from { opacity: 0; transform: translateY(24px); } }
 
 /* ============ Level-up cinematic ============ */
+/* ============ Staged results reveal ============ */
+.results-card.reveal-stage > * { opacity: 0; }
+.results-card.reveal-stage > .shown { animation: resReveal 0.75s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.results-card.somber-reveal > .shown { animation-duration: 1.05s; }
+@keyframes resReveal {
+  from { opacity: 0; transform: translateY(22px) scale(0.98); filter: blur(8px); }
+  to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+/* Sombre ending: desaturated, dimmer, calm — respectful of a loss */
+#screen-results.somber .results-card { filter: saturate(0.5) brightness(0.9); }
+#screen-results.somber .results-emoji { filter: grayscale(0.35); }
+#screen-results.somber .results-score {
+  background: linear-gradient(135deg, #9aa0b8, #6a7091);
+  -webkit-background-clip: text; background-clip: text;
+}
+
 /* ============ Cinematic milestone (~14s grand sequence) ============ */
 .cinema {
   position: fixed; inset: 0;

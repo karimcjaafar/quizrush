@@ -76,7 +76,7 @@ const Sound = (() => {
       gain.gain.linearRampToValueAtTime(vol, t + attack);
       gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
       filter.type = "lowpass";
-      filter.frequency.value = 2400;
+      filter.frequency.value = 1150; // darker: roll off all the harsh top end
       osc.connect(gain).connect(filter).connect(c.destination);
       osc.start(t);
       osc.stop(t + dur + 0.1);
@@ -103,60 +103,51 @@ const Sound = (() => {
     // musical rather than arcade-y.
     // Hierarchy: clicks are the quietest, navigation/coin moderate,
     // correct/notify stronger, big rewards richest.
-    click()   { tone(NOTE.E5 * R(0.99, 1.01), { type: "triangle", dur: 0.07, vol: 0.03, attack: 0.005 }); }, // one motif note, tactile
-    start()   { tone(330, { dur: 0.4, vol: 0.08, slide: 660, attack: 0.06 }); },
-    // Earthy transition: a soft breath of filtered noise + a warm low swell.
-    // "up" (going deeper) rises; "down" (going back) falls.
+    // Everything sits LOW and warm, sine-based, with soft attacks — adult and
+    // unobtrusive. Never bright, never piercing, never a sudden hit.
+    click()   { tone(146.83, { type: "sine", dur: 0.11, vol: 0.035, attack: 0.02 }); },              // low soft tap (D3)
+    start()   { tone(130.81, { type: "sine", dur: 0.55, vol: 0.06, slide: 196, attack: 0.14 }); },   // low warm rise
+    // Earthy transition: a soft breath of filtered noise + a low warm swell.
     swoosh(up = true) {
-      whoosh(up ? { dur: 0.8, vol: 0.045, from: 400, to: 900 } : { dur: 0.8, vol: 0.045, from: 900, to: 300 });
-      tone(up ? 180 : 320, { type: "sine", dur: 0.7, vol: 0.05, slide: up ? 300 : 170, attack: 0.14 }); // warm body
-      tone(up ? 270 : 480, { type: "sine", dur: 0.6, vol: 0.02, slide: up ? 450 : 255, attack: 0.16 }); // gentle harmonic
+      whoosh(up ? { dur: 0.9, vol: 0.05, from: 260, to: 620 } : { dur: 0.9, vol: 0.05, from: 620, to: 180 });
+      tone(up ? 110 : 196, { type: "sine", dur: 0.85, vol: 0.05, slide: up ? 174 : 104, attack: 0.22 });
     },
-    // soft materialize tone as a new question assembles
-    reveal()  { tone(523.25, { type: "sine", dur: 0.55, vol: 0.05, slide: 784, attack: 0.12 }); },
+    reveal()  { tone(146.83, { type: "sine", dur: 0.7, vol: 0.04, slide: 196, attack: 0.22 }); },     // low soft swell (D3→G3)
     correct() {
-      // ascending do–mi–sol from the motif, marimba-like, gently varied
-      const v = R(0.985, 1.015);
-      tone(NOTE.C5 * v, { type: "triangle", dur: 0.16, vol: 0.07, attack: 0.006 });
-      tone(NOTE.E5 * v, { type: "triangle", dur: 0.22, vol: 0.075, when: 0.07, attack: 0.006 });
-      tone(NOTE.G5 * v, { type: "triangle", dur: 0.4, vol: 0.075, when: 0.14, attack: 0.008 });
+      // a warm, low, gentle two-note lift — confident but soft, never bright
+      tone(196.0, { type: "sine", dur: 0.3, vol: 0.06, attack: 0.05 });                  // G3
+      tone(261.63, { type: "sine", dur: 0.55, vol: 0.05, when: 0.12, attack: 0.06 });    // C4
     },
-    // bright brief sparkle for token/coin gains — 2–6kHz range, always varied
-    coin() {
-      const v = R(0.95, 1.06);
-      tone(NOTE.G6 * v, { type: "triangle", dur: 0.09, vol: 0.045, attack: 0.003 });
-      tone(NOTE.C7 * v, { type: "sine", dur: 0.13, vol: 0.028, when: 0.03, attack: 0.003 });
+    coin() {  // soft, low, muted — a warm token 'tuk', never a sparkle
+      const v = R(0.97, 1.03);
+      tone(196.0 * v, { type: "sine", dur: 0.17, vol: 0.035, attack: 0.03 });
+      tone(130.81 * v, { type: "sine", dur: 0.2, vol: 0.02, attack: 0.03 });
     },
-    // recognisable 3-note motif fragment for notifications/toasts
-    notify() {
-      [NOTE.C5, NOTE.G5, NOTE.C6].forEach((f, i) =>
-        tone(f, { type: "triangle", dur: 0.34, vol: 0.055, when: i * 0.11, attack: 0.01 }));
+    notify() {  // two low warm notes, calm and unhurried
+      tone(130.81, { type: "sine", dur: 0.45, vol: 0.05, attack: 0.06 });
+      tone(196.0, { type: "sine", dur: 0.6, vol: 0.04, when: 0.18, attack: 0.07 });
     },
-    wrong()   { tone(349.23, { type: "sine", dur: 0.34, vol: 0.075, slide: 261.63, attack: 0.03 }); }, // soft descending F4→C4, never punitive
-    tick() {
-      // alternating tick-tock, like a clock counting you down
+    wrong()   { tone(164.81, { type: "sine", dur: 0.5, vol: 0.06, slide: 123.47, attack: 0.07 }); },  // low soft descend E3→B2
+    somber() {
+      tone(146.83, { type: "sine", dur: 2.0, vol: 0.06, slide: 110, attack: 0.4 });      // D3 → A2, slow dark fall
+      tone(196.0, { type: "sine", dur: 1.7, vol: 0.03, slide: 146.83, attack: 0.45 });
+    },
+    tick() {  // a soft low muted pulse, barely there — no piercing clock
       this._tock = !this._tock;
-      tone(this._tock ? 1150 : 870, { type: "square", dur: 0.028, vol: 0.045, attack: 0.002 });
+      tone(this._tock ? 174.61 : 146.83, { type: "sine", dur: 0.07, vol: 0.03, attack: 0.015 });
     },
-    fanfare() {
-      [523.25, 659.25, 783.99].forEach((f, i) =>
-        tone(f, { dur: 0.45, vol: 0.09, when: i * 0.15, attack: 0.03 }));
-      tone(1046.5, { dur: 0.9, vol: 0.09, when: 0.45, attack: 0.05 });
+    fanfare() {  // warm low resolution, slow and rounded
+      [130.81, 164.81, 196.0].forEach((f, i) => tone(f, { type: "sine", dur: 0.9, vol: 0.055, when: i * 0.18, attack: 0.08 }));
+      tone(261.63, { type: "sine", dur: 1.3, vol: 0.045, when: 0.55, attack: 0.12 });
     },
-    best() {
-      // the full motif, harmonised — the richest routine reward tier
-      tone(261.63, { dur: 1.4, vol: 0.04, attack: 0.14 }); // warm low pad
-      tone(392, { dur: 1.4, vol: 0.03, attack: 0.14 });
-      [NOTE.C5, NOTE.E5, NOTE.G5, NOTE.A5, NOTE.C6].forEach((f, i) =>
-        tone(f, { type: "triangle", dur: 0.55, vol: 0.085, when: i * 0.11, attack: 0.02 }));
+    best() {  // a warm low chord that swells in — serious, not a bright arpeggio
+      [65.41, 130.81, 164.81, 196.0].forEach((f) => tone(f, { type: "sine", dur: 1.9, vol: 0.05, attack: 0.28 }));
+      tone(261.63, { type: "sine", dur: 1.4, vol: 0.035, when: 0.5, attack: 0.25 });
     },
-    levelUp() {
-      // ~2s gentle jingle: sustained C+G pad with a slow rising arpeggio on top
-      tone(261.63, { dur: 1.9, vol: 0.045, attack: 0.15 });
-      tone(392, { dur: 1.9, vol: 0.035, attack: 0.15 });
-      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) =>
-        tone(f, { dur: 0.6, vol: 0.09, when: 0.15 + i * 0.22, attack: 0.04 }));
-      tone(1318.5, { dur: 1.0, vol: 0.07, when: 1.05, attack: 0.06 });
+    levelUp() {  // low warm pad + a slow, dignified low rise
+      tone(65.41, { type: "sine", dur: 2.6, vol: 0.06, attack: 0.35 });   // C2 bass
+      tone(98.0, { type: "sine", dur: 2.6, vol: 0.04, attack: 0.35 });    // G2
+      [130.81, 164.81, 196.0, 261.63].forEach((f, i) => tone(f, { type: "sine", dur: 1.0, vol: 0.05, when: 0.4 + i * 0.35, attack: 0.14 }));
     },
     // The grand cinematic score (~14s): dark sub impact → slow riser → a
     // resolving major chord swell → a calm held resolve. Serious, not childish.
@@ -185,9 +176,10 @@ const Music = (() => {
   let enabled = localStorage.getItem("quizrush-music") !== "off";
 
   // Chord voicings (Hz)
-  const C = [261.63, 329.63, 392.0], G = [196.0, 246.94, 293.66];
-  const Am = [220.0, 261.63, 329.63], F = [174.61, 220.0, 261.63];
-  const Em = [164.81, 196.0, 246.94], Dm = [146.83, 174.61, 220.0];
+  // Low, warm voicings (octave 3 pads → octave 2 bass) for a dark, adult bed
+  const C = [130.81, 164.81, 196.0], G = [146.83, 196.0, 246.94];
+  const Am = [130.81, 164.81, 220.0], F = [130.81, 174.61, 220.0];
+  const Em = [123.47, 164.81, 196.0], Dm = [146.83, 174.61, 220.0];
   const Cmaj7 = [261.63, 329.63, 392.0, 493.88], Am7 = [220.0, 261.63, 329.63, 392.0];
   const Fmaj7 = [174.61, 220.0, 261.63, 329.63], G7 = [196.0, 246.94, 293.66, 349.23];
 
@@ -231,117 +223,59 @@ const Music = (() => {
   }
   const E8 = (notes) => notes.map((n, i) => [n, i / 8, 0.13]); // straight eighth-note bar
 
-  // ----- Track styles: each has a composed theme that loops with the chords -----
+  // ----- Track styles -----
+  // All tracks are dark, low and slow: deep sustained bass, warm sine pads,
+  // sparse low melody notes with long rests, heavy low-pass filtering. Nothing
+  // bright, busy or high. Long evolving progressions so it never feels looped.
+  const softBass = (t, root, bar, vol = 0.055) => note(root / 2, t, bar * 0.98, vol, "sine", bar * 0.16);
+  const softPad = (t, c, bar, vol = 0.02) => c.forEach((f) => note(f, t, bar * 0.95, vol, "sine", bar * 0.22));
+
   const STYLES = {
-    breeze: { bar: 2.0, lp: 1700, chords: [C, G, Am, F, C, G, F, G],
-      theme: [ // an 8-bar tune: rising question phrase, then a resolving answer
-        [["G5", 0, 0.22], ["A5", 0.25, 0.22], ["C6", 0.5, 0.42]],
-        [["B5", 0, 0.22], ["A5", 0.25, 0.22], ["G5", 0.5, 0.42]],
-        [["A5", 0, 0.22], ["G5", 0.25, 0.22], ["E5", 0.5, 0.22], ["G5", 0.75, 0.24]],
-        [["A5", 0, 0.3], ["G5", 0.4, 0.5]],
-        [["G5", 0, 0.22], ["A5", 0.25, 0.22], ["C6", 0.5, 0.22], ["D6", 0.75, 0.24]],
-        [["E6", 0, 0.28], ["C6", 0.375, 0.22], ["B5", 0.6, 0.4]],
-        [["A5", 0, 0.22], ["G5", 0.25, 0.22], ["A5", 0.5, 0.22], ["B5", 0.75, 0.24]],
-        [["C6", 0, 0.35], ["G5", 0.45, 0.55]],
+    breeze: { bar: 4.0, lp: 850, chords: [C, Am, F, G, C, Em, Dm, G],
+      theme: [ // a low note drifts by every other bar — calm, unhurried
+        [["G3", 0.25, 0.65]], [], [["E3", 0.3, 0.6]], [],
+        [["A3", 0.2, 0.7]], [], [["G3", 0.3, 0.4], ["E3", 0.65, 0.4]], [],
+      ],
+      render(t, c, bar, mel) { softBass(t, c[0], bar); softPad(t, c, bar); playMelody(t, bar, mel, { vol: 0.028, wave: "sine", attack: 0.35 }); } },
+    ivory: { bar: 3.6, lp: 950, chords: [C, Am, F, G, Em, Am, Dm, G],
+      theme: [ // sparse low piano phrases
+        [["E4", 0.2, 0.5], ["C4", 0.55, 0.4]], [], [["D4", 0.2, 0.5], ["A3", 0.55, 0.4]], [],
+        [["C4", 0.2, 0.6]], [], [["E4", 0.2, 0.4], ["G3", 0.55, 0.45]], [],
       ],
       render(t, c, bar, mel) {
-        note(c[0] / 2, t, bar * 0.95, 0.05, "sine");
-        note(c[0] / 2, t + bar / 2, bar * 0.45, 0.04, "sine"); // walking bass on the &
-        c.forEach((f) => note(f, t, bar * 0.98, 0.013, "sine"));
-        for (let i = 0; i < 8; i += 2) note(c[(i / 2) % 3], t + i * (bar / 8), 0.2, 0.022);
-        playMelody(t, bar, mel, { vol: 0.055, wave: "sine", attack: 0.03 });
+        softBass(t, c[0], bar, 0.05);
+        softPad(t, c, bar, 0.018);
+        mel.forEach(([n, start, dur]) => { if (n) note(N(n), t + start * bar, dur * bar + 0.5, 0.035, "sine", 0.06); });
       } },
-    ivory: { bar: 2.4, lp: 1800, chords: [Cmaj7, Am7, Fmaj7, G7],
-      theme: [ // lyrical right hand
-        [["E5", 0, 0.2], ["G5", 0.3, 0.18], ["B5", 0.5, 0.42]],
-        [["A5", 0, 0.2], ["G5", 0.25, 0.18], ["E5", 0.5, 0.42]],
-        [["F5", 0, 0.2], ["E5", 0.3, 0.18], ["C5", 0.5, 0.42]],
-        [["D5", 0, 0.28], ["B4", 0.375, 0.2], ["C5", 0.55, 0.4]],
+    minuet: { bar: 4.4, lp: 800, chords: [Am, Em, F, C, Dm, Am, Dm, Em],
+      theme: [ // long, legato low cello-like lines
+        [["A3", 0.1, 0.85]], [], [["G3", 0.1, 0.85]], [],
+        [["F3", 0.1, 0.85]], [], [["E3", 0.1, 0.9]], [],
       ],
+      render(t, c, bar, mel) { softBass(t, c[0], bar, 0.05); softPad(t, c, bar, 0.022); playMelody(t, bar, mel, { vol: 0.03, wave: "sine", attack: 0.6 }); } },
+    pulse: { bar: 3.2, lp: 800, chords: [Am, F, C, G], // slow, brooding downtempo
+      theme: [ [["E3", 0.35, 0.5]], [], [["A3", 0.35, 0.5]], [] ],
       render(t, c, bar, mel) {
-        note(c[0] / 2, t, bar * 0.96, 0.045, "sine", 0.08);
-        [c[0], c[2], c[1]].forEach((f, i) => note(f, t + i * (bar / 3), 1.3, 0.038, "sine", 0.02));
-        mel.forEach(([n, start, dur]) => {
-          if (!n) return;
-          const when = t + start * bar;
-          note(N(n), when, dur * bar + 0.6, 0.06, "sine", 0.015);   // piano body
-          note(N(n) * 2.003, when, dur * bar, 0.014, "sine", 0.015); // shimmer
-        });
+        note(55, t, 0.22, 0.09, "sine", 0.01);                 // deep soft kick, beat 1
+        note(55, t + bar / 2, 0.22, 0.07, "sine", 0.01);       // and beat 3
+        softBass(t, c[0], bar, 0.045);
+        softPad(t, c, bar, 0.016);
+        playMelody(t, bar, mel, { vol: 0.026, wave: "sine", attack: 0.3 });
       } },
-    minuet: { bar: 1.8, lp: 2200, chords: [C, G, Am, Em, F, C, Dm, G],
-      theme: [ // canon-style descending line over the Pachelbel progression
-        [["E5", 0, 0.4], ["D5", 0.5, 0.4]],
-        [["C5", 0, 0.4], ["B4", 0.5, 0.4]],
-        [["A4", 0, 0.4], ["C5", 0.5, 0.4]],
-        [["B4", 0, 0.4], ["G4", 0.5, 0.4]],
-        [["A4", 0, 0.4], ["C5", 0.5, 0.4]],
-        [["E5", 0, 0.4], ["G5", 0.5, 0.4]],
-        [["F5", 0, 0.22], ["E5", 0.25, 0.22], ["D5", 0.5, 0.4]],
-        [["B4", 0, 0.4], ["C5", 0.5, 0.45]],
-      ],
+    chip: { bar: 3.0, lp: 900, chords: [C, Am, F, G], // warm, muted low pulse (retro, not bright)
+      theme: [ [["G3", 0.2, 0.4], ["E3", 0.55, 0.4]], [], [["C4", 0.2, 0.4], ["A3", 0.55, 0.4]], [] ],
+      render(t, c, bar, mel) { note(c[0] / 2, t, 0.5, 0.05, "sine", 0.05); softPad(t, c, bar, 0.018); playMelody(t, bar, mel, { vol: 0.03, wave: "sine", attack: 0.15 }); } },
+    cosmos: { bar: 4.8, lp: 700, chords: [Am, F, C, Em], // deep space drone
+      theme: [ [["E3", 0.15, 0.75]], [], [["A3", 0.15, 0.8]], [] ],
       render(t, c, bar, mel) {
-        [c[0], c[2], c[1], c[2], c[0], c[2], c[1], c[2]]
-          .forEach((f, i) => note(f, t + i * (bar / 8), 0.24, 0.032, "triangle", 0.01));
-        playMelody(t, bar, mel, { vol: 0.05, wave: "triangle", attack: 0.012 });
+        note(c[0] / 2, t, bar * 0.98, 0.05, "sine", 1.2);      // deep drone
+        softPad(t, c, bar, 0.016);
+        playMelody(t, bar, mel, { vol: 0.024, wave: "sine", attack: 0.8 });
       } },
-    pulse: { bar: 1.85, lp: 2800, chords: [Am, F, C, G], // ~130bpm eurodance
-      theme: [ // original hook in the Blue-era europop mold
-        E8(["A4", "A4", "C5", "A4", "E5", null, "D5", "C5"]),
-        E8(["F4", "A4", "C5", "A4", "C5", null, "A4", "G4"]),
-        E8(["E5", "E5", "D5", "C5", "G4", null, "A4", "B4"]),
-        [["G4", 0, 0.11], ["A4", 0.125, 0.11], ["B4", 0.25, 0.24], ["D5", 0.5, 0.24], ["B4", 0.75, 0.22]],
-      ],
-      render(t, c, bar, mel) {
-        const beat = bar / 4;
-        for (let i = 0; i < 4; i++) {
-          note(110, t + i * beat, 0.13, 0.13, "sine", 0.005);   // kick
-          note(45, t + i * beat, 0.13, 0.1, "sine", 0.005);
-          note(c[0] / 2, t + i * beat + beat / 2, 0.15, 0.034, "square", 0.008); // offbeat bass
-          note(4200, t + i * beat + beat / 2, 0.03, 0.01, "triangle", 0.004);    // hat
-        }
-        c.forEach((f) => note(f, t + beat, 0.1, 0.011, "square", 0.008));        // stab
-        playMelody(t, bar, mel, { vol: 0.042, wave: "sawtooth", attack: 0.008 }); // synth lead
-        playMelody(t, bar, mel, { vol: 0.02, wave: "square", attack: 0.008 });    // lead thickener
-      } },
-    chip: { bar: 1.6, lp: 3200, chords: [C, G, Am, F],
-      theme: [ // bouncy chiptune motif
-        E8(["C5", "E5", "G5", "E5", "C5", "E5", "G5", "A5"]),
-        E8(["B4", "D5", "G5", "D5", "B4", "D5", "G4", "B4"]),
-        E8(["A4", "C5", "E5", "C5", "A4", "C5", "E5", "G5"]),
-        E8(["F5", "E5", "D5", "E5", "F5", "G5", "E5", "C5"]),
-      ],
-      render(t, c, bar, mel) {
-        for (let i = 0; i < 4; i++) note(c[0] / 2, t + i * (bar / 4), 0.18, 0.036, "square", 0.008);
-        playMelody(t, bar, mel, { vol: 0.028, wave: "square", attack: 0.005 });
-      } },
-    cosmos: { bar: 3.2, lp: 1200, chords: [Am, F, C, G],
-      theme: [ // one slow haunting note per bar
-        [["A4", 0.1, 0.6]], [["C5", 0.1, 0.6]], [["B4", 0.1, 0.6]], [["E5", 0.1, 0.7]],
-      ],
-      render(t, c, bar, mel) {
-        note(c[0] / 4, t, bar * 0.98, 0.05, "sine", 0.9);
-        c.forEach((f, i) => note(f, t + i * 0.25, bar * 0.9, 0.018, "sine", 0.8));
-        playMelody(t, bar, mel, { vol: 0.03, wave: "sine", attack: 0.5 });
-        if (Math.random() < 0.35) note(c[Math.floor(Math.random() * c.length)] * 4, t + Math.random() * bar * 0.6, 0.9, 0.014, "sine", 0.1);
-      } },
-    // The QuizRush anthem: the menu theme the intro resolves into. Upbeat but
-    // easy to live with on loop. Not selectable — it belongs to the home screen.
-    anthem: { bar: 2.0, lp: 2200, chords: [C, G, Am, F],
-      theme: [
-        E8(["E5", "G5", "C6", "G5", "A5", null, "G5", "E5"]),
-        E8(["D5", "G5", "B5", "G5", "D5", null, "B4", "D5"]),
-        E8(["C5", "E5", "A5", "E5", "C5", null, "E5", "G5"]),
-        [["F5", 0, 0.11], ["E5", 0.125, 0.11], ["D5", 0.25, 0.22], ["E5", 0.5, 0.2], ["C5", 0.72, 0.26]],
-      ],
-      render(t, c, bar, mel) {
-        note(75, t, 0.14, 0.09, "sine", 0.005);                        // soft kick 1
-        note(75, t + bar / 2, 0.14, 0.07, "sine", 0.005);              // soft kick 3
-        note(c[0] / 2, t, bar * 0.45, 0.045, "sine", 0.02);            // bass
-        note(c[0] / 2, t + bar / 2, bar * 0.45, 0.04, "sine", 0.02);
-        c.forEach((f) => note(f, t, bar * 0.96, 0.012, "sine", 0.15)); // pad
-        playMelody(t, bar, mel, { vol: 0.04, wave: "triangle", attack: 0.012 });
-        playMelody(t, bar, mel, { vol: 0.016, wave: "sine", attack: 0.012 });
-      } },
+    // The menu theme the intro resolves into — dark, warm, calm ambient.
+    anthem: { bar: 4.0, lp: 850, chords: [C, Am, F, G, Am, F, C, G],
+      theme: [ [["E3", 0.25, 0.6]], [], [["C4", 0.3, 0.5]], [], [["A3", 0.25, 0.6]], [], [["G3", 0.3, 0.5]], [] ],
+      render(t, c, bar, mel) { softBass(t, c[0], bar); softPad(t, c, bar); playMelody(t, bar, mel, { vol: 0.026, wave: "sine", attack: 0.35 }); } },
   };
 
   function currentStyle() {
@@ -2563,26 +2497,37 @@ function endGame() {
     dingbats: `Decoded ${correct} of ${answered}!`,
   }[mode];
   $("new-best").hidden = !isBest;
-  countUp($("results-score"), score);
   $("stat-correct").textContent = String(correct);
   $("stat-accuracy").textContent = accuracy + "%";
   $("stat-streak").textContent = String(bestStreak);
-
   $("btn-share").hidden = mode !== "daily";
   renderHome();
 
-  const reveal = () => {
+  // A genuine failure (missed daily, a poor run) is treated soberly — quieter,
+  // slower, desaturated — rather than with celebration. A personal best is
+  // never sombre, even on low accuracy.
+  const somber = !isBest && ((mode === "daily" && !dailyWon) || (answered >= 4 && accuracy < 35));
+  const perfect = (mode === "classic" || mode === "custom") && state.maxLevelCorrect >= 10;
+  $("screen-results").classList.toggle("somber", somber);
+
+  const reveal = (quiet) => {
     showScreen("results");
+    stageResultsReveal(score, somber);
     showBadgeToast(newBadges);
-  };
-  if (mode === "daily" && dailyWon) {
-    // the emotional peak of a streak day gets the full cinematic
-    playCelebration({ big: "DAILY SOLVED!", sub: `🔥 ${liveDailyStreak()}-day streak` }, reveal);
-  } else {
-    reveal();
-    if (isBest || ((mode === "classic" || mode === "custom") && state.maxLevelCorrect >= 10)) confetti();
-    if (isBest || newBadges.length) Sound.best();
+    if (quiet) return;
+    if (somber) Sound.somber();
+    else if (isBest || newBadges.length) Sound.best();
     else Sound.fanfare();
+    if (!somber && (isBest || perfect)) setTimeout(confetti, 950);
+  };
+
+  if (mode === "daily" && dailyWon) {
+    playCelebration({ big: "DAILY SOLVED!", sub: `🔥 ${liveDailyStreak()}-day streak` }, () => reveal(true));
+  } else if (titleChanged) {
+    // reaching a new rank is a grand, earned moment
+    playMilestone({ kicker: "NEW RANK", title: titleForLevel(lvlAfter).toUpperCase(), sub: `Reached Level ${lvlAfter}` }, () => reveal(true));
+  } else {
+    reveal(false);
   }
 }
 
@@ -2633,6 +2578,30 @@ function countUp(el, target, dur = 900) {
     if (p < 1) requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
+}
+
+// Reveal the results one element at a time (result → score → progression →
+// stats → actions) so each beat feels considered. The score counts up on cue;
+// a lost run reveals more slowly and quietly.
+function stageResultsReveal(score, somber) {
+  const card = document.querySelector("#screen-results .results-card");
+  card.classList.add("reveal-stage");
+  card.classList.toggle("somber-reveal", somber);
+  const kids = [...card.children].filter((el) => !el.hidden && getComputedStyle(el).display !== "none");
+  kids.forEach((el) => el.classList.remove("shown"));
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    kids.forEach((el) => el.classList.add("shown"));
+    countUp($("results-score"), score);
+    card.classList.remove("reveal-stage", "somber-reveal");
+    return;
+  }
+  const gap = somber ? 560 : 430;
+  const start = 700;
+  kids.forEach((el, i) => setTimeout(() => {
+    el.classList.add("shown");
+    if (el.id === "results-score") countUp($("results-score"), score, somber ? 1500 : 1000);
+  }, start + i * gap));
+  setTimeout(() => card.classList.remove("reveal-stage", "somber-reveal"), start + kids.length * gap + 900);
 }
 
 // ---------- Level-up cinematic ----------
