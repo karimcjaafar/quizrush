@@ -1099,7 +1099,8 @@ const IMPORTED = (typeof IMPORTED_BANK !== "undefined" && Array.isArray(IMPORTED
 // Wikidata-generated questions (CC0): world-balanced history + UK sport history.
 const GENERATED = (typeof GENERATED_BANK !== "undefined" && Array.isArray(GENERATED_BANK)) ? GENERATED_BANK : [];
 const GENERATED_SPORT = (typeof GENERATED_SPORT_BANK !== "undefined" && Array.isArray(GENERATED_SPORT_BANK)) ? GENERATED_SPORT_BANK : [];
-const BANK_ALL = QUIZRUSH_BANK.concat(IMPORTED, GENERATED, GENERATED_SPORT);
+const GENERATED_EXTRA = (typeof GENERATED_EXTRA_BANK !== "undefined" && Array.isArray(GENERATED_EXTRA_BANK)) ? GENERATED_EXTRA_BANK : [];
+const BANK_ALL = QUIZRUSH_BANK.concat(IMPORTED, GENERATED, GENERATED_SPORT, GENERATED_EXTRA);
 
 function fetchFromBank({ amount, catId, difficulty }) {
   const pool = BANK_ALL.filter(
