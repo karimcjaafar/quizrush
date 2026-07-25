@@ -363,7 +363,7 @@ const levelScope = (lvl) => (lvl <= 3 ? "common" : "core");
 // Classic / Sudden / Blitz stick to core trivia; niche topics (celebrities,
 // niche pop-culture) are left to their own Specials packs, appearing here only
 // rarely. "Common" is the most broadly-known subset used for very-easy play.
-const CORE_TRIVIA_CATIDS = ["general", "geography", "sport", "science", "history", "entertainment", "arts", "politics"];
+const CORE_TRIVIA_CATIDS = ["general", "geography", "sport", "science", "history", "entertainment", "arts", "politics", "popculture"];
 const COMMON_TRIVIA_CATIDS = ["general", "geography", "sport", "science", "history", "entertainment"];
 // OpenTDB's Sports category (21) is heavily American (NFL/NBA/MLB), which
 // alienates a UK audience — sport in the mix comes from The Trivia API (UK-made,
@@ -507,6 +507,7 @@ const CATEGORIES = [
   { id: "entertainment", name: "Music & Entertainment", emoji: "🎬", otdb: [11, 12, 13, 14, 15, 29, 31, 32], tta: ["film_and_tv", "music"] },
   { id: "arts",      name: "Arts & Literature",    emoji: "📚", otdb: [10, 25],                       tta: ["arts_and_literature"] },
   { id: "celebs",    name: "Celebrity Culture",    emoji: "⭐", otdb: [26],                           tta: [], ttaTags: ["actors", "musicians", "singers"] },
+  { id: "popculture", name: "Pop Culture",         emoji: "🕶️", otdb: [], tta: [], bank: true },
   { id: "food",      name: "Food & Drink",         emoji: "🍕", otdb: [],                             tta: ["food_and_drink"] },
   { id: "general",   name: "General Knowledge",    emoji: "🧠", otdb: [9],                            tta: ["general_knowledge"] },
   { id: "logic",     name: "Logic & Riddles",      emoji: "🧩", otdb: [],                             tta: [], bank: true },
@@ -1125,7 +1126,7 @@ function fetchFromBank({ amount, catId, difficulty }) {
 // for a UK audience. (Players who pick Entertainment/Celebs explicitly get the full pool.)
 const CORE_MIX_WEIGHT = {
   general: 1, geography: 1, science: 1, history: 1,
-  arts: 0.6, sport: 0.5, politics: 0.3, entertainment: 0.45, celebs: 0.15,
+  arts: 0.6, sport: 0.5, politics: 0.3, entertainment: 0.45, popculture: 0.35, celebs: 0.15,
 };
 function buildLocalCore(scope, amount) {
   const cats = scope === "common" ? COMMON_TRIVIA_CATIDS : CORE_TRIVIA_CATIDS;
