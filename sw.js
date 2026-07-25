@@ -1,10 +1,11 @@
 // QuizRush service worker: network-first with cache fallback, so updates land
 // immediately when online while the whole app keeps working offline.
 // Bump the version on breaking cache changes.
-const CACHE = "quizrush-v2";
+const CACHE = "quizrush-v4";
 const SHELL = [
-  "./", "./index.html", "./style.css", "./app.js", "./bank.js", "./shapes.js",
+  "./", "./index.html", "./style.css", "./app.js", "./bank.js", "./bank-imported.js", "./shapes.js",
   "./manifest.json", "./icon-bolt.svg", "./icon-bolt.png",
+  "./music/ambient-synth-overture.mp3", "./music/soft-neon.mp3", "./music/trance-overture.mp3",
 ];
 
 self.addEventListener("install", (e) => {
@@ -26,8 +27,13 @@ self.addEventListener("fetch", (e) => {
   e.respondWith(
     fetch(e.request)
       .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(e.request, copy));
+        // Only cache full, OK responses — audio Range requests return 206, which
+        // the Cache API rejects; skip those (they still play from the network,
+        // and the precached full file serves them when offline).
+        if (res.ok && res.status === 200) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
+        }
         return res;
       })
       .catch(() => caches.match(e.request).then((m) => m || caches.match("./index.html")))

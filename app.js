@@ -123,6 +123,11 @@ const Sound = (() => {
       tone(196.0 * v, { type: "sine", dur: 0.17, vol: 0.035, attack: 0.03 });
       tone(130.81 * v, { type: "sine", dur: 0.2, vol: 0.02, attack: 0.03 });
     },
+    gem() {  // rarer, more precious than coin: a soft warm bell-swell, still low
+      tone(130.81, { type: "sine", dur: 1.1, vol: 0.05, attack: 0.14 });                 // C3 body
+      tone(196.0,  { type: "sine", dur: 1.0, vol: 0.04, when: 0.08, attack: 0.16 });      // G3 fifth
+      tone(261.63, { type: "sine", dur: 0.9, vol: 0.03, when: 0.16, attack: 0.18 });      // C4 shimmer, gentle
+    },
     notify() {  // two low warm notes, calm and unhurried
       tone(130.81, { type: "sine", dur: 0.45, vol: 0.05, attack: 0.06 });
       tone(196.0, { type: "sine", dur: 0.6, vol: 0.04, when: 0.18, attack: 0.07 });
@@ -170,286 +175,138 @@ const Sound = (() => {
 // ---------- Background music (generative, no audio files) ----------
 // A faint loop: soft bass + sustained pad + plucked arpeggio over C–G–Am–F.
 // Light randomization keeps it from feeling mechanical on repeat.
+// ---------- Music: file-based background player ----------
+// The player's own MP3 tracks (music/) replace the earlier synthesized engine.
+// "auto" (default) plays a calm bed in the menus and a driving track in-game;
+// or the player can pick a specific song in Customize. Same public API as before
+// (start/stop/intro/skipIntro/duck/dip/setVolume/applyTrackChange/toggle) so every
+// call site keeps working. Volume, mute and ducking are honoured; the browser
+// caches the files after first play (service worker) for offline use.
 const Music = (() => {
-  let ctx = null, master = null, lp = null, timer = null, previewTimer = null;
-  let nextBarTime = 0, barIndex = 0, playing = false, style = null;
-  let enabled = localStorage.getItem("quizrush-music") !== "off";
-
-  // Chord voicings (Hz)
-  // Low, warm voicings (octave 3 pads → octave 2 bass) for a dark, adult bed
-  const C = [130.81, 164.81, 196.0], G = [146.83, 196.0, 246.94];
-  const Am = [130.81, 164.81, 220.0], F = [130.81, 174.61, 220.0];
-  const Em = [123.47, 164.81, 196.0], Dm = [146.83, 174.61, 220.0];
-  const Cmaj7 = [261.63, 329.63, 392.0, 493.88], Am7 = [220.0, 261.63, 329.63, 392.0];
-  const Fmaj7 = [174.61, 220.0, 261.63, 329.63], G7 = [196.0, 246.94, 293.66, 349.23];
-
-  function ensureCtx() {
-    if (!ctx) {
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
-      try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch { /* older iOS */ }
-      master = ctx.createGain();
-      lp = ctx.createBiquadFilter();
-      lp.type = "lowpass";
-      master.connect(lp).connect(ctx.destination);
-    }
-    if (ctx.state === "suspended") ctx.resume();
-  }
-
-  function note(freq, when, dur, vol, type = "triangle", attack = 0.05, out = null, slideTo = null) {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = type;
-    osc.frequency.value = freq;
-    if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, when + dur);
-    gain.gain.setValueAtTime(0.0001, when);
-    gain.gain.linearRampToValueAtTime(vol, when + attack);
-    gain.gain.exponentialRampToValueAtTime(0.001, when + dur);
-    osc.connect(gain).connect(out || master);
-    osc.start(when);
-    osc.stop(when + dur + 0.1);
-  }
-
-  // ----- Melody support: composed hooks, written as note names -----
-  const SEMI = { C: -9, "C#": -8, D: -7, "D#": -6, E: -5, F: -4, "F#": -3, G: -2, "G#": -1, A: 0, "A#": 1, B: 2 };
-  function N(name) { // "E5" → Hz
-    const oct = Number(name.slice(-1));
-    return 440 * Math.pow(2, (SEMI[name.slice(0, -1)] + (oct - 4) * 12) / 12);
-  }
-  // One melody bar = [noteName|null, startFraction, durFraction][]
-  function playMelody(t, bar, phrase, { vol = 0.05, wave = "sine", attack = 0.02 } = {}) {
-    phrase.forEach(([n, start, dur]) => {
-      if (n) note(N(n), t + start * bar, dur * bar, vol, wave, attack);
-    });
-  }
-  const E8 = (notes) => notes.map((n, i) => [n, i / 8, 0.13]); // straight eighth-note bar
-
-  // ----- Track styles -----
-  // All tracks are dark, low and slow: deep sustained bass, warm sine pads,
-  // sparse low melody notes with long rests, heavy low-pass filtering. Nothing
-  // bright, busy or high. Long evolving progressions so it never feels looped.
-  const softBass = (t, root, bar, vol = 0.055) => note(root / 2, t, bar * 0.98, vol, "sine", bar * 0.16);
-  const softPad = (t, c, bar, vol = 0.02) => c.forEach((f) => note(f, t, bar * 0.95, vol, "sine", bar * 0.22));
-
-  const STYLES = {
-    breeze: { bar: 4.0, lp: 850, chords: [C, Am, F, G, C, Em, Dm, G],
-      theme: [ // a low note drifts by every other bar — calm, unhurried
-        [["G3", 0.25, 0.65]], [], [["E3", 0.3, 0.6]], [],
-        [["A3", 0.2, 0.7]], [], [["G3", 0.3, 0.4], ["E3", 0.65, 0.4]], [],
-      ],
-      render(t, c, bar, mel) { softBass(t, c[0], bar); softPad(t, c, bar); playMelody(t, bar, mel, { vol: 0.028, wave: "sine", attack: 0.35 }); } },
-    ivory: { bar: 3.6, lp: 950, chords: [C, Am, F, G, Em, Am, Dm, G],
-      theme: [ // sparse low piano phrases
-        [["E4", 0.2, 0.5], ["C4", 0.55, 0.4]], [], [["D4", 0.2, 0.5], ["A3", 0.55, 0.4]], [],
-        [["C4", 0.2, 0.6]], [], [["E4", 0.2, 0.4], ["G3", 0.55, 0.45]], [],
-      ],
-      render(t, c, bar, mel) {
-        softBass(t, c[0], bar, 0.05);
-        softPad(t, c, bar, 0.018);
-        mel.forEach(([n, start, dur]) => { if (n) note(N(n), t + start * bar, dur * bar + 0.5, 0.035, "sine", 0.06); });
-      } },
-    minuet: { bar: 4.4, lp: 800, chords: [Am, Em, F, C, Dm, Am, Dm, Em],
-      theme: [ // long, legato low cello-like lines
-        [["A3", 0.1, 0.85]], [], [["G3", 0.1, 0.85]], [],
-        [["F3", 0.1, 0.85]], [], [["E3", 0.1, 0.9]], [],
-      ],
-      render(t, c, bar, mel) { softBass(t, c[0], bar, 0.05); softPad(t, c, bar, 0.022); playMelody(t, bar, mel, { vol: 0.03, wave: "sine", attack: 0.6 }); } },
-    pulse: { bar: 3.2, lp: 800, chords: [Am, F, C, G], // slow, brooding downtempo
-      theme: [ [["E3", 0.35, 0.5]], [], [["A3", 0.35, 0.5]], [] ],
-      render(t, c, bar, mel) {
-        note(55, t, 0.22, 0.09, "sine", 0.01);                 // deep soft kick, beat 1
-        note(55, t + bar / 2, 0.22, 0.07, "sine", 0.01);       // and beat 3
-        softBass(t, c[0], bar, 0.045);
-        softPad(t, c, bar, 0.016);
-        playMelody(t, bar, mel, { vol: 0.026, wave: "sine", attack: 0.3 });
-      } },
-    chip: { bar: 3.0, lp: 900, chords: [C, Am, F, G], // warm, muted low pulse (retro, not bright)
-      theme: [ [["G3", 0.2, 0.4], ["E3", 0.55, 0.4]], [], [["C4", 0.2, 0.4], ["A3", 0.55, 0.4]], [] ],
-      render(t, c, bar, mel) { note(c[0] / 2, t, 0.5, 0.05, "sine", 0.05); softPad(t, c, bar, 0.018); playMelody(t, bar, mel, { vol: 0.03, wave: "sine", attack: 0.15 }); } },
-    cosmos: { bar: 4.8, lp: 700, chords: [Am, F, C, Em], // deep space drone
-      theme: [ [["E3", 0.15, 0.75]], [], [["A3", 0.15, 0.8]], [] ],
-      render(t, c, bar, mel) {
-        note(c[0] / 2, t, bar * 0.98, 0.05, "sine", 1.2);      // deep drone
-        softPad(t, c, bar, 0.016);
-        playMelody(t, bar, mel, { vol: 0.024, wave: "sine", attack: 0.8 });
-      } },
-    // The menu theme the intro resolves into — dark, warm, calm ambient.
-    anthem: { bar: 4.0, lp: 850, chords: [C, Am, F, G, Am, F, C, G],
-      theme: [ [["E3", 0.25, 0.6]], [], [["C4", 0.3, 0.5]], [], [["A3", 0.25, 0.6]], [], [["G3", 0.3, 0.5]], [] ],
-      render(t, c, bar, mel) { softBass(t, c[0], bar); softPad(t, c, bar); playMelody(t, bar, mel, { vol: 0.026, wave: "sine", attack: 0.35 }); } },
+  const FILES = {
+    ambient: "music/ambient-synth-overture.mp3",
+    neon:    "music/soft-neon.mp3",
+    trance:  "music/trance-overture.mp3",
   };
+  const MENU_TRACK = "ambient"; // calm, for menus / traversing screens
+  const GAME_TRACK = "trance";  // more drive, for an active round
 
-  function currentStyle() {
-    return STYLES[localStorage.getItem("quizrush-music-track") || "breeze"] || STYLES.breeze;
+  let enabled = localStorage.getItem("quizrush-music") !== "off";
+  let audio = null, currentKey = null;
+  let fadeTimer = null, swapTimer = null, duckTimer = null;
+
+  const userVol = () => Math.max(Number(localStorage.getItem("quizrush-vol-music") ?? 100) / 100, 0);
+  const chosen = () => localStorage.getItem("quizrush-music-track") || "auto";
+  const inGame = () => (typeof state !== "undefined" && state && !state.ended);
+
+  // Which file to play: an explicit pick always wins; otherwise auto by context.
+  function resolveKey(which) {
+    const pick = chosen();
+    if (pick !== "auto" && FILES[pick]) return pick;
+    if (which === "anthem") return MENU_TRACK;
+    return inGame() ? GAME_TRACK : MENU_TRACK;
   }
 
-  function tick() {
-    while (nextBarTime < ctx.currentTime + 0.5) {
-      style.render(
-        nextBarTime,
-        style.chords[barIndex % style.chords.length],
-        style.bar,
-        style.theme[barIndex % style.theme.length]
-      );
-      nextBarTime += style.bar;
-      barIndex++;
+  function ensureAudio() {
+    if (!audio) {
+      audio = new Audio();
+      audio.loop = true;
+      audio.preload = "auto";
+    }
+    return audio;
+  }
+
+  // Smoothly ramp audio.volume toward target over ms.
+  function fadeTo(target, ms) {
+    clearInterval(fadeTimer);
+    if (!audio) return;
+    target = Math.min(1, Math.max(0, target));
+    const from = audio.volume, t0 = performance.now();
+    fadeTimer = setInterval(() => {
+      const k = Math.min(1, (performance.now() - t0) / ms);
+      audio.volume = Math.min(1, Math.max(0, from + (target - from) * k));
+      if (k >= 1) clearInterval(fadeTimer);
+    }, 40);
+  }
+
+  // Switch to a track with a short cross-dip (fade out old → swap → fade in new).
+  function playKey(key) {
+    ensureAudio();
+    if (!FILES[key]) return;
+    clearTimeout(swapTimer); // cancel any pending stop/pause first (mute→unmute race)
+    if (currentKey === key && !audio.paused) { fadeTo(userVol(), 400); return; }
+    const startNew = () => {
+      currentKey = key;
+      audio.src = FILES[key];
+      try { audio.currentTime = 0; } catch { /* not yet seekable */ }
+      audio.volume = 0;
+      const p = audio.play();
+      if (p && p.catch) p.catch(() => { /* autoplay blocked until a gesture */ });
+      fadeTo(userVol(), 800);
+    };
+    if (!audio.paused && audio.src) {
+      fadeTo(0, 260);
+      swapTimer = setTimeout(startNew, 280);
+    } else {
+      startNew();
     }
   }
-
-  let activeKey = null, introGain = null, introTimer = null;
 
   return {
     get enabled() { return enabled; },
-    get playing() { return playing; },
-    get activeKey() { return activeKey; },
+    get playing() { return !!(audio && !audio.paused); },
+    get activeKey() { return currentKey; },
     toggle() {
       enabled = !enabled;
       try { localStorage.setItem("quizrush-music", enabled ? "on" : "off"); } catch { /* play on */ }
-      if (!enabled) this.stop();
+      if (!enabled) this.stop(); else this.start();
       return enabled;
     },
-    // which: a style key ("anthem"), or omit for the player's selected track.
-    // Switches live if something else is already playing.
+    // which: "anthem" forces the menu bed; omit for context-based (menu vs game).
+    // An explicit track choice in Customize overrides both.
     start(which) {
       if (!enabled) return;
-      const key = which || (localStorage.getItem("quizrush-music-track") || "breeze");
-      if (playing && activeKey === key) return;
-      try {
-        ensureCtx();
-        const switching = playing;
-        clearInterval(timer);
-        playing = true;
-        activeKey = key;
-        style = STYLES[key] || STYLES.breeze;
-        lp.frequency.value = style.lp;
-        const target = Math.max(Number(localStorage.getItem("quizrush-vol-music") ?? 100) / 100, 0.0001);
-        master.gain.cancelScheduledValues(ctx.currentTime);
-        if (switching) {
-          // brief dip so the old track's tail ducks under the new one
-          master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
-          master.gain.linearRampToValueAtTime(target * 0.25, ctx.currentTime + 0.2);
-          master.gain.linearRampToValueAtTime(target, ctx.currentTime + 1.0);
-        } else {
-          master.gain.setValueAtTime(0.0001, ctx.currentTime);
-          master.gain.linearRampToValueAtTime(target, ctx.currentTime + 1.4);
-        }
-        nextBarTime = ctx.currentTime + 0.05;
-        barIndex = 0;
-        tick();
-        timer = setInterval(tick, 200);
-      } catch { playing = false; /* music is never worth an error */ }
-    },
-    // The 10-second intro score: boom → riser → four beat hits → build → drop,
-    // resolving into the anthem. Routed through its own gain so a skip can
-    // silence it instantly.
-    intro() {
-      if (!enabled) return;
-      try {
-        ensureCtx();
-        introGain = ctx.createGain();
-        introGain.gain.value = 1;
-        introGain.connect(ctx.destination);
-        const g = introGain;
-        const t = ctx.currentTime + 0.05;
-        note(55, t, 1.4, 0.22, "sine", 0.005, g);                       // opening boom
-        note(110, t, 0.9, 0.1, "sine", 0.005, g);
-        note(80, t + 0.4, 3.6, 0.028, "sawtooth", 1.6, g, 900);         // long riser
-        note(160, t + 0.4, 3.6, 0.02, "sawtooth", 1.6, g, 1800);
-        // bolt impact at 1.0s
-        note(70, t + 1.0, 0.5, 0.2, "sine", 0.004, g);
-        [N("A3"), N("E4"), N("A4")].forEach((f) => note(f, t + 1.0, 0.5, 0.05, "square", 0.006, g));
-        // letter slams: four rising hits 2.0 → 4.1s
-        [N("A3"), N("C4"), N("E4"), N("G4")].forEach((f, i) => {
-          const w = t + 2.0 + i * 0.7;
-          note(120, w, 0.16, 0.18, "sine", 0.004, g, 45);
-          note(f, w, 0.3, 0.06, "square", 0.006, g);
-          note(f * 2, w, 0.3, 0.03, "square", 0.006, g);
-        });
-        // build 5.0 → 7.9s: driving eighth-note bass + climbing arps + riser
-        for (let i = 0; i < 13; i++) {
-          note(N("A2"), t + 5.0 + i * 0.22, 0.14, 0.08, "square", 0.005, g);
-          note(4200, t + 5.0 + i * 0.22 + 0.11, 0.03, 0.012, "triangle", 0.004, g);
-        }
-        ["A4", "C5", "E5", "A5", "C6", "E6"].forEach((n, i) =>
-          note(N(n), t + 5.4 + i * 0.42, 0.3, 0.045, "sawtooth", 0.01, g));
-        note(100, t + 5.0, 2.9, 0.025, "sawtooth", 2.4, g, 1400);
-        // the drop at 8.0s
-        note(40, t + 8.0, 1.4, 0.3, "sine", 0.004, g);
-        [N("C5"), N("E5"), N("G5"), N("C6")].forEach((f) => note(f, t + 8.0, 1.6, 0.05, "triangle", 0.01, g));
-        introTimer = setTimeout(() => this.start("anthem"), 8300);
-      } catch { /* the show goes on silently */ }
-    },
-    skipIntro() {
-      clearTimeout(introTimer);
-      try {
-        if (introGain) {
-          introGain.gain.cancelScheduledValues(ctx.currentTime);
-          introGain.gain.setValueAtTime(introGain.gain.value, ctx.currentTime);
-          introGain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
-        }
-      } catch { /* already gone */ }
-      if (activeKey !== "anthem") this.start("anthem");
+      playKey(resolveKey(which));
     },
     stop() {
-      if (!playing) return;
-      playing = false;
-      activeKey = null;
-      clearInterval(timer);
-      try {
-        master.gain.cancelScheduledValues(ctx.currentTime);
-        master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
-        master.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.8); // fade out
-      } catch { /* already gone */ }
+      clearTimeout(swapTimer);
+      if (!audio) return;
+      fadeTo(0, 600);
+      swapTimer = setTimeout(() => { try { audio.pause(); currentKey = null; } catch { /* gone */ } }, 640);
     },
-    // Briefly dip under a transition so the whoosh sits in a warm pocket,
-    // then swell back — makes the music feel woven into the movement.
+    // On the splash: begin the menu bed (the gate tap is the audio unlock).
+    intro() {
+      if (!enabled) return;
+      playKey(MENU_TRACK);
+    },
+    skipIntro() { if (enabled) this.start("anthem"); },
+    // Briefly dip under a transition, then swell back.
     duck() {
-      try {
-        if (!ctx || !playing) return;
-        const base = Math.max(Number(localStorage.getItem("quizrush-vol-music") ?? 100) / 100, 0.0001);
-        const now = ctx.currentTime;
-        master.gain.cancelScheduledValues(now);
-        master.gain.setValueAtTime(master.gain.value, now);
-        master.gain.linearRampToValueAtTime(base * 0.35, now + 0.18); // dip
-        master.gain.linearRampToValueAtTime(base, now + 1.1);          // swell back
-      } catch { /* cosmetic */ }
+      if (!audio || audio.paused) return;
+      const base = userVol();
+      fadeTo(base * 0.4, 180);
+      clearTimeout(duckTimer);
+      duckTimer = setTimeout(() => fadeTo(base, 900), 400);
     },
-    // Hold the music low under a long cinematic, then swell back afterwards.
+    // Hold low under a long cinematic, then swell back.
     dip(depth = 0.14, holdMs = 13000) {
-      try {
-        if (!ctx || !playing) return;
-        const base = Math.max(Number(localStorage.getItem("quizrush-vol-music") ?? 100) / 100, 0.0001);
-        const now = ctx.currentTime;
-        master.gain.cancelScheduledValues(now);
-        master.gain.setValueAtTime(master.gain.value, now);
-        master.gain.linearRampToValueAtTime(base * depth, now + 0.7);
-        master.gain.setValueAtTime(base * depth, now + holdMs / 1000);
-        master.gain.linearRampToValueAtTime(base, now + holdMs / 1000 + 1.3);
-      } catch { /* cosmetic */ }
+      if (!audio || audio.paused) return;
+      const base = userVol();
+      fadeTo(base * depth, 700);
+      clearTimeout(duckTimer);
+      duckTimer = setTimeout(() => fadeTo(base, 1300), Math.max(0, holdMs));
     },
-    // Live volume from the mixer slider
+    // Live volume from the mixer slider (0..1).
     setVolume(v) {
-      try {
-        if (ctx && playing) {
-          master.gain.cancelScheduledValues(ctx.currentTime);
-          master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
-          master.gain.linearRampToValueAtTime(Math.max(v, 0.0001), ctx.currentTime + 0.15);
-        }
-      } catch { /* mixer is cosmetic */ }
+      if (audio && !audio.paused) fadeTo(v, 150);
     },
-    // Called after the selected track changes: switch live in a round, or play
-    // a short preview from the menu before the anthem returns
+    // The Customize track picker changed: switch live, respecting the new choice.
     applyTrackChange() {
-      clearTimeout(previewTimer);
-      if (state && !state.ended) {
-        this.start(); // live switch to the newly selected track
-      } else {
-        this.start(localStorage.getItem("quizrush-music-track") || "breeze");
-        previewTimer = setTimeout(() => { if (!state) this.start("anthem"); }, 3400);
-      }
+      if (!enabled) return;
+      this.start(inGame() ? undefined : "anthem");
     },
   };
 })();
-
 const OTDB_API = "https://opentdb.com";
 const TTA_API = "https://the-trivia-api.com/v2";
 // The Trivia API is CC BY-NC (non-commercial). Flip this to false for a
@@ -619,13 +476,13 @@ const MASTERY = [
 
 // Unlockable music tracks — criteria deliberately span different systems, so
 // different play styles unlock different songs. Checked lazily at paint time.
+// The player's own tracks. "Auto" plays a calm bed in menus and a driving track
+// in a round; the three songs can also be chosen outright. All freely available.
 const MUSIC_TRACKS = [
-  { id: "breeze", name: "Breeze", icon: "🍃", req: "", unlock: () => true },
-  { id: "ivory",  name: "Ivory",  icon: "🎹", req: "Reach player level 3",     unlock: () => levelFromXp(player.xp) >= 3 },
-  { id: "minuet", name: "Minuet", icon: "🎻", req: "Earn 4 badges",            unlock: () => player.badges.length >= 4 },
-  { id: "pulse",  name: "Pulse",  icon: "🎛️", req: "Reach Level 4 in Classic", unlock: () => player.bestClassicLevel >= 4 },
-  { id: "chip",   name: "8-Bit",  icon: "👾", req: "Earn a category medal",    unlock: () => CATEGORIES.some((c) => medalFor(c.id)) },
-  { id: "cosmos", name: "Cosmos", icon: "🌌", req: "3-day daily streak",       unlock: () => player.bestDailyStreak >= 3 },
+  { id: "auto",    name: "Auto",          icon: "✨", req: "Calm in menus, driving in a round", unlock: () => true },
+  { id: "ambient", name: "Ambient Synth", icon: "🌌", req: "",                                  unlock: () => true },
+  { id: "neon",    name: "Soft Neon",     icon: "🌆", req: "",                                  unlock: () => true },
+  { id: "trance",  name: "Trance",        icon: "🎛️", req: "",                                  unlock: () => true },
 ];
 
 // Unlockable color themes — the Daily Challenge reward. Unlocks are keyed to the
@@ -723,6 +580,13 @@ const player = {
   set bestClassicLevel(v) { safeSetItem("quizrush-best-level", String(v)); },
   get tokens() { return Number(localStorage.getItem("quizrush-tokens") || 0); },
   set tokens(v) { safeSetItem("quizrush-tokens", String(Math.max(0, v))); },
+  // Gems: the rare, precious currency. Earned only at big moments (milestone
+  // levels, perfect rounds, daily-streak milestones) or bought; spent on exclusive
+  // things. `gold` is just a friendlier alias for the plentiful `tokens` currency.
+  get gold() { return this.tokens; },
+  set gold(v) { this.tokens = v; },
+  get gems() { return Number(localStorage.getItem("quizrush-gems") || 0); },
+  set gems(v) { safeSetItem("quizrush-gems", String(Math.max(0, v))); },
   get streakFreezes() { return Number(localStorage.getItem("quizrush-freezes") || 0); },
   set streakFreezes(v) { safeSetItem("quizrush-freezes", String(Math.max(0, v))); },
   get ownedThemes() { return getJSON("quizrush-owned-themes", []); },
@@ -737,7 +601,7 @@ const player = {
   set appIcon(v) { safeSetItem("quizrush-appicon", v); },
   get profile() { return getJSON("quizrush-profile", null); }, // { name, avatar }
   set profile(v) { setJSON("quizrush-profile", v); },
-  get musicTrack() { return localStorage.getItem("quizrush-music-track") || "breeze"; },
+  get musicTrack() { return localStorage.getItem("quizrush-music-track") || "auto"; },
   set musicTrack(v) { safeSetItem("quizrush-music-track", v); },
 };
 
@@ -770,12 +634,20 @@ const BADGE_TOKENS = 10;      // per new badge earned
 const STREAK_FREEZE_COST = 40;
 const MAX_FREEZES = 3;
 
-// Premium themes — buyable only with tokens (takes a while to afford), never
-// handed out through gameplay. Palettes are defined in style.css.
+// ---------- Gems: the rare, precious currency ----------
+// Gems are hard to earn (big moments only) and unlock exclusive things Gold can't.
+// Being the superior currency, they can also be melted down into a pile of Gold.
+const GEM_MILESTONE = { 5: 2, 10: 5 };  // Classic milestone levels → gems
+const GEM_PERFECT = 1;                  // a flawless 10/10 Classic level
+const GEM_STREAK = { 3: 1, 7: 3, 14: 5, 30: 12 }; // daily-streak milestones → gems
+const GOLD_PER_GEM = 60;                // exchange rate when melting gems into Gold
+
+// Premium themes — now EXCLUSIVE (gem-priced): the rare currency buys the rare
+// cosmetics. Palettes are defined in style.css.
 const SHOP_THEMES = [
-  { id: "aurora",  name: "Aurora",  cost: 250 },
-  { id: "crimson", name: "Crimson", cost: 250 },
-  { id: "mono",    name: "Mono",    cost: 180 },
+  { id: "aurora",  name: "Aurora",  gems: 12 },
+  { id: "crimson", name: "Crimson", gems: 12 },
+  { id: "mono",    name: "Mono",    gems: 8 },
 ];
 
 // Real-money packs — shown with real prices so testers see the true flow, but
@@ -786,6 +658,24 @@ const TOKEN_PACKS = [
   { id: "medium", tokens: 150, price: "£1.99", tag: "Popular" },
   { id: "large",  tokens: 500, price: "£4.99", tag: "Best value" },
 ];
+// Premium gem packs — the exclusive currency, small amounts, honestly priced.
+const GEM_PACKS = [
+  { id: "gsmall",  gems: 10, price: "£1.99" },
+  { id: "gmedium", gems: 30, price: "£4.99", tag: "Popular" },
+  { id: "glarge",  gems: 75, price: "£9.99", tag: "Best value" },
+];
+
+// Award gems for a big moment: bank them, then celebrate (animation + toast).
+// Kept deliberately rare so a gem always feels earned. Returns the amount given.
+function awardGems(n, reason) {
+  if (!n || n <= 0) return 0;
+  player.gems += n;
+  window.__gemGain = (window.__gemGain || 0) + n;
+  if (reason) toast(`💎 +${n} — ${reason}`);
+  try { Sound.gem && Sound.gem(); } catch {}
+  paintCurrencies();
+  return n;
+}
 
 function dateKeyOffset(n) {
   const d = new Date(Date.now() + n * 86400000);
@@ -1201,12 +1091,20 @@ async function fetchFromTTA({ amount, ttaCats, ttaTags, difficulty }) {
   })).filter((q) => q.text && q.answers.length === 4);
 }
 
+// The local question pool: our hand-written originals (QUIZRUSH_BANK, which also
+// holds flags / specials / daily) PLUS the large imported bank (bank-imported.js,
+// OpenTriviaQA / CC BY-SA, cleaned + UK-filtered + difficulty-graded). Imported
+// questions only add core-trivia categories, so flags/pictures/daily are untouched.
+const IMPORTED = (typeof IMPORTED_BANK !== "undefined" && Array.isArray(IMPORTED_BANK)) ? IMPORTED_BANK : [];
+const BANK_ALL = QUIZRUSH_BANK.concat(IMPORTED);
+
 function fetchFromBank({ amount, catId, difficulty }) {
-  const pool = QUIZRUSH_BANK.filter(
+  const pool = BANK_ALL.filter(
     (q) => (!catId || q.cat === catId) && (!difficulty || q.difficulty === difficulty)
   );
   return shuffle(pool).slice(0, amount).map((q) => ({
     category: CATEGORIES.find((c) => c.id === q.cat)?.name || "QuizRush",
+    catId: q.cat,
     difficulty: q.difficulty,
     text: q.text,
     big: q.big || "",
@@ -1215,6 +1113,24 @@ function fetchFromBank({ amount, catId, difficulty }) {
     correct: q.correct,
     answers: shuffle([q.correct, ...q.wrong]),
   }));
+}
+
+// Weighted local pool for mixed Classic / Sudden / Blitz rounds. Universal topics
+// dominate; entertainment & celebs are down-weighted because the imported bank's
+// entertainment skews US pop-culture — fine as a garnish, wrong as the main course
+// for a UK audience. (Players who pick Entertainment/Celebs explicitly get the full pool.)
+const CORE_MIX_WEIGHT = {
+  general: 1, geography: 1, science: 1, history: 1,
+  arts: 0.6, sport: 0.5, politics: 0.3, entertainment: 0.45, celebs: 0.15,
+};
+function buildLocalCore(scope, amount) {
+  const cats = scope === "common" ? COMMON_TRIVIA_CATIDS : CORE_TRIVIA_CATIDS;
+  let pool = [];
+  for (const c of cats) {
+    const per = Math.max(4, Math.round(amount * (CORE_MIX_WEIGHT[c] ?? 0.5)));
+    pool = pool.concat(fetchFromBank({ amount: per, catId: c, difficulty: "" }));
+  }
+  return pool;
 }
 
 // Smart difficulty: weight the mix by the player's track record — strong
@@ -1234,6 +1150,32 @@ function smartWeights(catId) {
   return { easy: 0.5, medium: 0.35, hard: 0.15 };
 }
 
+// Reorder a chosen set so the same topic never lands back-to-back and each topic
+// is spread as evenly as the set allows (no "three geography in a row" clusters).
+// Classic max-heap-by-remaining interleave: always take from the largest topic
+// bucket that isn't the one we just served. Keys are sub-topic aware (splits sport
+// by discipline), so two different sports may sit adjacent but two footballs won't.
+function spaceOut(items) {
+  if (items.length < 3) return items;
+  const buckets = new Map();
+  for (const q of items) {
+    const k = topicKey(q);
+    if (!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k).push(q);
+  }
+  const out = [];
+  let last = null;
+  while (out.length < items.length) {
+    const avail = [...buckets.entries()].filter(([, a]) => a.length);
+    avail.sort((a, b) => b[1].length - a[1].length);
+    // prefer the fullest bucket that isn't the last-served topic
+    const pick = avail.find(([k]) => k !== last) || avail[0];
+    out.push(pick[1].shift());
+    last = pick[0];
+  }
+  return out;
+}
+
 // Compose a level's blend from an unfiltered pool: take the requested count
 // of each tier, then fill any shortfall starting from medium (adjacent to both).
 function composeMix(pool, mix, amount) {
@@ -1249,8 +1191,12 @@ function composeMix(pool, mix, amount) {
     for (const q of list) {
       if (need <= 0) break;
       if (chosen.has(q)) continue;
-      const c = topicKey(q); // sub-topic aware (splits sport by discipline)
-      if (cap && (catCount[c] || 0) >= cap) continue; // spread across topics
+      // Cap by CATEGORY, not sub-topic: sport splits into ~10 disciplines, so a
+      // sub-topic cap let sport grab one slot per discipline and flood the round.
+      // Category capping keeps every topic to its fair share (and still stops
+      // "three football" — they're all `sport`). spaceOut handles same-discipline adjacency.
+      const c = q.catId || topicKey(q);
+      if (cap && (catCount[c] || 0) >= cap) continue; // spread across categories
       chosen.add(q); picked.push(q); catCount[c] = (catCount[c] || 0) + 1; need--;
     }
     return need;
@@ -1312,24 +1258,25 @@ function applyBlitzTiers(pool, count) {
 }
 
 // Fetch a broad pool from CORE (or COMMON) trivia topics only — the engine for
-// mixed Classic / Sudden / Blitz rounds. TTA takes a category list in one call;
-// one OTDB category is rotated in for variety without tripping its rate limit.
+// mixed Classic / Sudden / Blitz rounds. Now LOCAL-FIRST: the bundled bank is the
+// source of truth (instant, offline, commercially licensed), so rounds never
+// freeze on a slow network and never depend on the non-commercial Trivia API.
+// OpenTDB (CC BY-SA, commercial-OK) is folded in only as a best-effort supplement
+// when it happens to answer quickly — it is never awaited long enough to stall.
 async function fetchCoreMix({ scope = "core", amount = 60 } = {}) {
-  const ttaCats = scope === "common" ? COMMON_TTA : CORE_TTA;
+  const local = buildLocalCore(scope, amount);
+  // Best-effort freshness from OpenTDB; if it isn't ready within ~1.2s, ship local alone.
   const otdbCats = scope === "common" ? COMMON_OTDB : CORE_OTDB;
-  // OpenTDB self-throttles to 1 request/5s; never let that stall the round —
-  // if it isn't ready within ~1.2s, proceed on The Trivia API alone.
-  const otdbCapped = Promise.race([
-    fetchFromOTDB({ amount: 20, otdbCats, difficulty: "" }).catch(() => []),
-    new Promise((r) => setTimeout(() => r([]), 1200)),
-  ]);
-  const [tta, otdb] = await Promise.allSettled([
-    fetchFromTTA({ amount: Math.min(amount, 50), ttaCats, difficulty: "" }),
-    otdbCapped,
-  ]);
-  const pool = [tta, otdb].flatMap((r) => (r.status === "fulfilled" ? r.value : []))
-    .filter((q) => !isUnfriendly(q)); // drop American football & US-only sports
-  pool.forEach((q) => { q.catId = NAME_TO_CAT[q.category.toLowerCase()] || ""; });
+  let extra = [];
+  try {
+    extra = await Promise.race([
+      fetchFromOTDB({ amount: 20, otdbCats, difficulty: "" }).catch(() => []),
+      new Promise((r) => setTimeout(() => r([]), 1200)),
+    ]);
+    extra = (extra || []).filter((q) => !isUnfriendly(q));
+    extra.forEach((q) => { q.catId = NAME_TO_CAT[q.category.toLowerCase()] || ""; });
+  } catch { extra = []; }
+  const pool = local.concat(extra);
   // de-dupe by text+visual
   const seen = new Set();
   return pool.filter((q) => {
@@ -1398,9 +1345,10 @@ async function getQuestions({ catId = "", difficulty = "", amount = 10, mix = nu
     const qKey = (q) => q.text + (q.big || "");
     const nemesisKeys = new Set(nemeses.map(qKey));
     const base = shaped.filter((q) => !nemesisKeys.has(qKey(q))).slice(0, Math.max(amount - nemeses.length, 1));
-    return shuffle(base.concat(nemeses)).slice(0, amount);
+    return spaceOut(shuffle(base.concat(nemeses)).slice(0, amount));
   }
-  return shaped.slice(0, amount);
+  // Space topics apart so a round never clusters (e.g. three geography back-to-back)
+  return spaceOut(shaped.slice(0, amount));
 }
 
 // ---------- Game flow ----------
@@ -1659,7 +1607,7 @@ function paintLifelines() {
     btn.disabled = lockedNow || (!avail && !refillable);
     btn.classList.toggle("used", !avail && !refillable);
     btn.classList.toggle("refill", refillable);
-    if (refillable) btn.title = "Used — tap to refill for 2 🪙";
+    if (refillable) btn.title = "Used — tap to refill for 2 Gold";
   }
 }
 
@@ -1748,11 +1696,9 @@ function selectAnswer(btn, answer) {
       const points = Math.round((100 + speedBonus) * diffMult);
       p.score += points;
       popPoints("+" + points.toLocaleString());
-      Sound.correct();
       flash("green");
     } else {
       $("question-card").classList.add("shake");
-      Sound.wrong();
       flash("red");
     }
     updateScoreUI();
@@ -1769,14 +1715,12 @@ function selectAnswer(btn, answer) {
     const points = scoreFor(q);
     state.score += points;
     popPoints("+" + points.toLocaleString());
-    Sound.correct();
     flash("green");
     if (q.nemesis) clearNemesis(q); // revenge complete
   } else {
     state.streak = 0;
     recordNemesis(q);
     $("question-card").classList.add("shake");
-    Sound.wrong();
     flash("red");
     if (state.mode === "sudden") {
       updateScoreUI();
@@ -1821,7 +1765,6 @@ function onTimeout() {
     else b.classList.add("dim");
   });
   $("question-card").classList.add("shake");
-  Sound.wrong();
   flash("red");
   updateScoreUI();
 
@@ -1837,7 +1780,7 @@ function onTimeout() {
 function showReviveOffer() {
   if (!state || state.ended) return; // player quit during the reveal delay
   $("revive-offer").hidden = false;
-  $("revive-balance").textContent = `You have ${player.tokens} 🪙`;
+  $("revive-balance").textContent = `You have ${player.tokens} Gold`;
   // on small screens the offer can render below the fold — bring it into view
   $("revive-offer").scrollIntoView({ behavior: "smooth", block: "center" });
 }
@@ -1876,20 +1819,42 @@ function popPoints(text) {
   pop.classList.add("show");
 }
 
-// Little celebration when the token counter ticks up
-let tokensSeen = null;
-function tokenJuice(v) {
-  if (tokensSeen !== null && v > tokensSeen) {
-    ["game-tokens", "player-tokens"].forEach((id) => {
-      const el = $(id);
-      el.classList.remove("token-bump");
-      void el.offsetWidth;
-      el.classList.add("token-bump");
-    });
-    Sound.coin(); // bright sparkle when tokens are gained
-  }
-  tokensSeen = v;
+// Currency icons — inline SVG so they render crisply and identically everywhere.
+// (The coin emoji showed as a dull grey ball on some systems.) Gold is a bullion
+// bar; Gems are a cut diamond. Both scale into visible piles for the shop packs.
+const GOLD_BAR_SVG = `<svg class="cur-ico" viewBox="0 0 30 20" aria-hidden="true"><path d="M6 4h18l4 13H2z" fill="#f4b52e" stroke="#9c6a15" stroke-width="1.4"/><path d="M6.4 4.3h17.2l1.3 4.6H4.7z" fill="#ffe491"/></svg>`;
+const GEM_SVG = `<svg class="cur-ico" viewBox="0 0 24 22" aria-hidden="true"><path d="M6 2h12l5 6-11 13L1 8z" fill="#57c8ff" stroke="#2b7fb0" stroke-width="1.3"/><path d="M1 8h22M6 2l6 19M18 2l-6 19" stroke="#e2f6ff" stroke-width=".8" fill="none" opacity=".7"/></svg>`;
+const goldLabel = (n) => `<span class="cur">${GOLD_BAR_SVG}<b>${n}</b></span>`;
+const gemLabel = (n) => `<span class="cur cur-gem">${GEM_SVG}<b>${n}</b></span>`;
+// A pile whose size grows with the pack — small buys a bar, big buys a hoard.
+const pile = (svg, count, cls) =>
+  `<span class="pile ${cls}">${Array.from({ length: count }, () => svg).join("")}</span>`;
+const goldPileFor = (amt) => pile(GOLD_BAR_SVG, amt >= 400 ? 6 : amt >= 120 ? 3 : 1, "gold-pile");
+const gemPileFor = (amt) => pile(GEM_SVG, amt >= 60 ? 6 : amt >= 25 ? 3 : 1, "gem-pile");
+
+// Paint both currencies everywhere they appear, and celebrate on a gain: Gold
+// gives a quick bump; Gems get a rarer, more precious shine. Called wherever a
+// balance might have changed, so the HUD, player bar and shop stay in sync.
+let goldSeen = null, gemsSeen = null;
+function bumpEl(id, cls) {
+  const el = $(id);
+  if (!el) return;
+  el.classList.remove(cls);
+  void el.offsetWidth; // restart the animation
+  el.classList.add(cls);
 }
+function paintCurrencies() {
+  const g = player.gold, m = player.gems;
+  ["game-tokens", "player-tokens"].forEach((id) => { const el = $(id); if (el) el.innerHTML = goldLabel(g); });
+  ["game-gems", "player-gems"].forEach((id) => { const el = $(id); if (el) el.innerHTML = gemLabel(m); });
+  const sg = $("shop-gold-bal"); if (sg) sg.innerHTML = goldLabel(g);
+  const sm = $("shop-gem-bal"); if (sm) sm.innerHTML = gemLabel(m);
+  if (goldSeen !== null && g > goldSeen) { ["game-tokens", "player-tokens"].forEach((id) => bumpEl(id, "token-bump")); try { Sound.coin(); } catch {} }
+  if (gemsSeen !== null && m > gemsSeen) { ["game-gems", "player-gems"].forEach((id) => bumpEl(id, "gem-bump")); }
+  goldSeen = g; gemsSeen = m;
+}
+// Back-compat shim: older call sites pass the gold value but we now repaint both.
+function tokenJuice() { paintCurrencies(); }
 
 function updateScoreUI() {
   if (state.mode === "party") {
@@ -1899,8 +1864,7 @@ function updateScoreUI() {
     return;
   }
   $("score-value").textContent = state.score.toLocaleString();
-  $("game-tokens").textContent = "🪙 " + player.tokens;
-  tokenJuice(player.tokens);
+  paintCurrencies();
   const badge = $("streak-badge");
   badge.textContent = "🔥 " + state.streak;
   badge.classList.toggle("hot", state.streak >= 3);
@@ -2016,7 +1980,6 @@ function submitWhoamiGuess() {
     state.answered++;
     state.streak++;
     state.bestStreak = Math.max(state.bestStreak, state.streak);
-    Sound.correct();
     flash("green");
     resolveWhoami(`✓ ${ch.answer} · +${points} pts`, true);
   } else {
@@ -2025,7 +1988,6 @@ function submitWhoamiGuess() {
     document.querySelector("#screen-whoami .question-card").classList.remove("shake");
     void document.querySelector("#screen-whoami .question-card").offsetWidth;
     document.querySelector("#screen-whoami .question-card").classList.add("shake");
-    Sound.wrong();
     flash("red");
     if (state.stage < 3) {
       state.stage++; // a wrong guess burns a clue
@@ -2043,7 +2005,6 @@ function giveUpWhoami() {
   const ch = state.characters[state.index];
   state.answered++;
   state.streak = 0;
-  Sound.wrong();
   resolveWhoami(`It was ${ch.answer}`, false);
 }
 
@@ -2163,8 +2124,13 @@ function levelComplete() {
   if (state.levelCorrect < needed) return endGame(); // run over
 
   const nextLevel = state.level + 1;
+  const prevBest = player.bestClassicLevel;
   if (nextLevel > player.bestClassicLevel) player.bestClassicLevel = nextLevel;
-  player.tokens += 1; // clearing a level pays a token
+  player.gold += 1; // clearing a level pays a Gold
+  // Gems are rare: only a milestone level reached for the FIRST time, plus any
+  // flawless (10/10) level — both real achievements, so a gem always feels earned.
+  if (GEM_MILESTONE[nextLevel] && nextLevel > prevBest) awardGems(GEM_MILESTONE[nextLevel], `Level ${nextLevel} milestone`);
+  if (state.levelCorrect === state.questions.length && state.questions.length >= 10) awardGems(GEM_PERFECT, "flawless level");
 
   state.awaitingContinue = true;
   $("btn-share").hidden = true;
@@ -2175,7 +2141,7 @@ function levelComplete() {
   $("results-score-label").textContent = "points so far";
   const nr = LEVEL_RULES(nextLevel);
   $("results-xp").innerHTML =
-    `${state.levelCorrect} / ${state.questions.length} correct · +1 🪙 — ` +
+    `${state.levelCorrect} / ${state.questions.length} correct · +1 Gold — ` +
     `next: Level ${nextLevel} · ${mixLabel(nr.mix)} · ${nr.need}/10 to pass`;
   $("results-badges").hidden = true;
   $("stat-correct").textContent = String(state.correct);
@@ -2313,7 +2279,6 @@ function submitDingbatGuess() {
     state.answered++;
     state.streak++;
     state.bestStreak = Math.max(state.bestStreak, state.streak);
-    Sound.correct();
     flash("green");
     resolveDingbat(`✓ ${p.answer} · +${state.value} pts`, true);
   } else {
@@ -2324,7 +2289,6 @@ function submitDingbatGuess() {
     card.classList.remove("shake");
     void card.offsetWidth;
     card.classList.add("shake");
-    Sound.wrong();
     flash("red");
     paintDingbats();
   }
@@ -2345,7 +2309,6 @@ function giveUpDingbat() {
   if (state.resolved) return;
   state.answered++;
   state.streak = 0;
-  Sound.wrong();
   resolveDingbat(`It says: ${state.puzzles[state.index].answer}`, false);
 }
 
@@ -2414,6 +2377,8 @@ function endGame() {
       if (count > prevBest) {
         player.bestDailyStreak = count;
         newThemes = THEMES.filter((t) => t.streak > prevBest && t.streak <= count);
+        // Gems for hitting a daily-streak milestone in new territory (no farm by rebuilding)
+        if (GEM_STREAK[count]) awardGems(GEM_STREAK[count], `${count}-day streak`);
       }
     } else {
       player.dailyStreak = { count: 0, last: "" };
@@ -2447,7 +2412,7 @@ function endGame() {
   const titleChanged = titleForLevel(lvlAfter) !== titleForLevel(lvlBefore);
   $("results-xp").innerHTML =
     `+${xpGained} XP` +
-    (mode === "daily" && dailyWon ? ` · +2 🪙 · 🔥 ${liveDailyStreak()}-day daily streak` : "") +
+    (mode === "daily" && dailyWon ? ` · +2 Gold · 🔥 ${liveDailyStreak()}-day daily streak` : "") +
     (lvlAfter > lvlBefore ? ` <span class="level-up">⬆ Level ${lvlAfter}!</span>` : "") +
     (titleChanged ? ` <span class="level-up">🎖 ${titleForLevel(lvlAfter)}</span>` : "");
 
@@ -2772,8 +2737,7 @@ function paintPlayerBar() {
   const p = player.profile;
   $("player-name").textContent = p ? `${p.avatar} ${p.name}` : "";
   $("player-title").textContent = "🎖 " + titleForLevel(lvl);
-  $("player-tokens").textContent = "🪙 " + player.tokens;
-  tokenJuice(player.tokens);
+  paintCurrencies();
 }
 
 function paintCategoryChips() {
@@ -2864,7 +2828,7 @@ function themeUnlocked(id) {
 
 function paintThemes() {
   const rows = THEMES.map((t) => ({ id: t.id, name: t.name, unlocked: themeUnlocked(t.id), need: `reach a ${t.streak}-day daily streak` }))
-    .concat(SHOP_THEMES.map((t) => ({ id: t.id, name: t.name, unlocked: themeUnlocked(t.id), need: `buy in the Shop · ${t.cost} 🪙` })));
+    .concat(SHOP_THEMES.map((t) => ({ id: t.id, name: t.name, unlocked: themeUnlocked(t.id), need: `buy in the Shop · ${t.gems} Gems` })));
   $("theme-row").innerHTML = rows.map((t) => {
     const active = player.theme === t.id;
     const title = t.unlocked ? t.name : `${t.name} — ${t.need}`;
@@ -2894,35 +2858,54 @@ function toast(msg) {
 }
 
 function paintShop() {
-  $("shop-balance").textContent = "🪙 " + player.tokens;
+  paintCurrencies(); // fills #shop-gold-bal + #shop-gem-bal
   $("shop-demo-note").textContent = DEMO_STORE
     ? "Preview mode — these show real prices but nothing is charged yet."
     : "";
 
-  // Spend: streak freeze + premium themes
+  // Spend Gold: common comforts.
   const freezeFull = player.streakFreezes >= MAX_FREEZES;
-  const spend = [
+  const goldSpend = [
     `<button class="shop-item" data-buy="freeze" ${freezeFull ? "disabled" : ""}>
        <span class="shop-emoji">🧊</span>
        <span class="shop-info"><b>Streak Freeze</b><small>Saves your daily streak if you miss a day (hold ${player.streakFreezes}/${MAX_FREEZES})</small></span>
-       <span class="shop-cost">${freezeFull ? "Full" : STREAK_FREEZE_COST + " 🪙"}</span>
+       <span class="shop-cost">${freezeFull ? "Full" : goldLabel(STREAK_FREEZE_COST)}</span>
      </button>`,
+  ];
+  $("shop-spend").innerHTML = goldSpend.join("");
+
+  // Spend Gems: exclusive cosmetics + melt down into Gold.
+  const gemSpend = [
     ...SHOP_THEMES.map((t) => {
       const owned = player.ownedThemes.includes(t.id);
-      return `<button class="shop-item" data-buy="theme:${t.id}" ${owned ? "disabled" : ""}>
+      return `<button class="shop-item gem-item" data-buy="theme:${t.id}" ${owned ? "disabled" : ""}>
         <span class="shop-emoji swatch-${t.id} shop-swatch"></span>
-        <span class="shop-info"><b>${t.name} theme</b><small>Exclusive colour theme</small></span>
-        <span class="shop-cost">${owned ? "Owned ✓" : t.cost + " 🪙"}</span>
+        <span class="shop-info"><b>${t.name} theme</b><small>Exclusive — gems only</small></span>
+        <span class="shop-cost gem-cost">${owned ? "Owned ✓" : gemLabel(t.gems)}</span>
       </button>`;
     }),
+    `<button class="shop-item gem-item" data-buy="melt">
+       <span class="shop-emoji">${GOLD_BAR_SVG}</span>
+       <span class="shop-info"><b>Sack of Gold</b><small>Melt 1 gem into ${GOLD_PER_GEM} gold</small></span>
+       <span class="shop-cost gem-cost">${gemLabel(1)}</span>
+     </button>`,
   ];
-  $("shop-spend").innerHTML = spend.join("");
+  const gemEl = $("shop-gem-spend"); if (gemEl) gemEl.innerHTML = gemSpend.join("");
 
-  // Real-money packs (simulated)
+  // Real-money Gold packs (simulated) — the pile grows with the pack size
   $("shop-packs").innerHTML = TOKEN_PACKS.map((p) =>
     `<button class="shop-item" data-pack="${p.id}">
-       <span class="shop-emoji">🪙</span>
-       <span class="shop-info"><b>${p.tokens} tokens</b>${p.tag ? `<small>${p.tag}</small>` : "<small>Top-up</small>"}</span>
+       <span class="shop-emoji shop-pile">${goldPileFor(p.tokens)}</span>
+       <span class="shop-info"><b>${p.tokens} Gold</b>${p.tag ? `<small>${p.tag}</small>` : "<small>Top-up</small>"}</span>
+       <span class="shop-cost price">${p.price}</span>
+     </button>`).join("");
+
+  // Real-money Gem packs (simulated) — the hoard grows with the pack size
+  const gemPackEl = $("shop-gem-packs");
+  if (gemPackEl) gemPackEl.innerHTML = GEM_PACKS.map((p) =>
+    `<button class="shop-item gem-item" data-gempack="${p.id}">
+       <span class="shop-emoji shop-pile">${gemPileFor(p.gems)}</span>
+       <span class="shop-info"><b>${p.gems} Gems</b>${p.tag ? `<small>${p.tag}</small>` : "<small>Premium</small>"}</span>
        <span class="shop-cost price">${p.price}</span>
      </button>`).join("");
 }
@@ -2932,16 +2915,21 @@ function openShop() { Sound.click(); paintShop(); showScreen("shop"); }
 function buyShopItem(what) {
   if (what === "freeze") {
     if (player.streakFreezes >= MAX_FREEZES) return;
-    if (player.tokens < STREAK_FREEZE_COST) return notEnough();
-    player.tokens -= STREAK_FREEZE_COST;
+    if (player.gold < STREAK_FREEZE_COST) return notEnough("gold");
+    player.gold -= STREAK_FREEZE_COST;
     player.streakFreezes += 1;
     Sound.correct(); toast("🧊 Streak Freeze bought!");
+  } else if (what === "melt") {
+    if (player.gems < 1) return notEnough("gems");
+    player.gems -= 1;
+    player.gold += GOLD_PER_GEM;
+    Sound.correct(); toast(`+${GOLD_PER_GEM} Gold from 1 Gem`);
   } else if (what.startsWith("theme:")) {
     const id = what.slice(6);
     const t = SHOP_THEMES.find((x) => x.id === id);
     if (!t || player.ownedThemes.includes(id)) return;
-    if (player.tokens < t.cost) return notEnough();
-    player.tokens -= t.cost;
+    if (player.gems < t.gems) return notEnough("gems");
+    player.gems -= t.gems;
     player.ownedThemes = [...player.ownedThemes, id];
     applyTheme(id);
     Sound.best(); confetti(); toast(`🎨 ${t.name} theme unlocked!`);
@@ -2953,17 +2941,31 @@ function buyTokenPack(id) {
   const p = TOKEN_PACKS.find((x) => x.id === id);
   if (!p) return;
   if (DEMO_STORE) {
-    player.tokens += p.tokens;
+    player.gold += p.tokens;
     Sound.best(); confetti();
-    toast(`✅ Demo purchase — +${p.tokens} 🪙 (no charge)`);
+    toast(`✅ Demo purchase — +${p.tokens} Gold (no charge)`);
     paintShop(); renderHome();
   } else {
     // launch: hand off to Stripe checkout here
   }
 }
 
-function notEnough() {
-  toast("Not enough tokens — keep playing to earn more!");
+function buyGemPack(id) {
+  const p = GEM_PACKS.find((x) => x.id === id);
+  if (!p) return;
+  if (DEMO_STORE) {
+    awardGems(p.gems, "demo purchase (no charge)");
+    Sound.best(); confetti();
+    paintShop(); renderHome();
+  } else {
+    // launch: hand off to Stripe checkout here
+  }
+}
+
+function notEnough(kind = "gold") {
+  toast(kind === "gems"
+    ? "Not enough Gems — earn them at milestones, perfect rounds and daily streaks!"
+    : "Not enough Gold — keep playing to earn more!");
 }
 
 function paintStreakLine() {
@@ -3056,14 +3058,21 @@ $("btn-edit-profile").addEventListener("click", () => { Sound.click(); openProfi
 $("player-tokens").addEventListener("click", openShop);
 $("btn-open-shop").addEventListener("click", openShop);
 $("btn-shop-back").addEventListener("click", () => { Sound.click(); showScreen("customize"); });
-$("shop-spend").addEventListener("click", (e) => {
+const shopBuyHandler = (e) => {
   const b = e.target.closest(".shop-item");
   if (b && !b.disabled) buyShopItem(b.dataset.buy);
-});
+};
+$("shop-spend").addEventListener("click", shopBuyHandler);
+$("shop-gem-spend")?.addEventListener("click", shopBuyHandler);
 $("shop-packs").addEventListener("click", (e) => {
   const b = e.target.closest(".shop-item");
   if (b) buyTokenPack(b.dataset.pack);
 });
+$("shop-gem-packs")?.addEventListener("click", (e) => {
+  const b = e.target.closest(".shop-item");
+  if (b) buyGemPack(b.dataset.gempack);
+});
+$("player-gems")?.addEventListener("click", openShop);
 
 // Volume mixer
 $("vol-sfx").value = localStorage.getItem("quizrush-vol-sfx") ?? 100;
@@ -3228,27 +3237,22 @@ $("icon-row").addEventListener("click", (e) => {
   Sound.click();
 });
 
+// One button to rule them all: mute/unmute sound effects AND music together.
 function paintSoundButton() {
   const btn = $("btn-sound");
-  btn.textContent = Sound.enabled ? "🔊" : "🔇";
-  btn.title = Sound.enabled ? "Mute sounds" : "Unmute sounds";
+  const on = Sound.enabled || Music.enabled;
+  btn.textContent = on ? "🔊" : "🔇";
+  btn.title = on ? "Mute all" : "Unmute all";
 }
 $("btn-sound").addEventListener("click", () => {
-  Sound.toggle();
+  const muteNow = Sound.enabled || Music.enabled; // if anything is audible, silence everything
+  if (Sound.enabled !== !muteNow) Sound.toggle();
+  if (Music.enabled !== !muteNow) Music.toggle();
   paintSoundButton();
-  Sound.click(); // audible confirmation when turning sound on
-});
-
-function paintMusicButton() {
-  const btn = $("btn-music");
-  btn.classList.toggle("off", !Music.enabled);
-  btn.title = Music.enabled ? "Mute music" : "Unmute music";
-}
-$("btn-music").addEventListener("click", () => {
-  Music.toggle();
-  paintMusicButton();
-  // turning it back on mid-round should resume immediately
-  if (Music.enabled && state && !state.ended) Music.start();
+  if (!muteNow) { // just unmuted
+    Sound.click(); // audible confirmation
+    if (Music.enabled && state && !state.ended) Music.start();
+  }
 });
 
 $("btn-quit").addEventListener("click", () => { Sound.click(); quitGame(); });
@@ -3286,10 +3290,9 @@ applyTheme(themeUnlocked(player.theme) ? player.theme : "midnight");
   if (!SOUND_PACKS.some((p) => p.id === player.soundPack && badgeCount >= p.badges)) player.soundPack = "classic";
   const icon = APP_ICONS.find((i) => i.id === player.appIcon && badgeCount >= i.badges) ? player.appIcon : "bolt";
   applyAppIcon(icon);
-  if (!MUSIC_TRACKS.find((t) => t.id === player.musicTrack)?.unlock()) player.musicTrack = "breeze";
+  if (!MUSIC_TRACKS.find((t) => t.id === player.musicTrack)?.unlock()) player.musicTrack = "auto";
 }
 paintSoundButton();
-paintMusicButton();
 renderHome();
 
 // Prime the audio engine on the first touch anywhere (iOS gesture requirement)
@@ -3315,7 +3318,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
     // economy notices, once the stage is clear
     setTimeout(() => {
       if (window.__freezeUsed) { toast("🧊 Streak freeze used — your streak is safe!"); window.__freezeUsed = false; }
-      else if (window.__loginBonus) { toast(`📅 Daily login bonus: +${window.__loginBonus} 🪙`); window.__loginBonus = 0; }
+      else if (window.__loginBonus) { toast(`📅 Daily login bonus: +${window.__loginBonus} Gold`); window.__loginBonus = 0; }
     }, 900);
   };
   splash.addEventListener("click", () => {
