@@ -117,7 +117,7 @@ function drawDragon(cx,cy,size,glowP,alpha,rot,bright){
   gl.addColorStop(1,'rgba(0,0,0,0)');
   ctx.fillStyle=gl; ctx.beginPath(); ctx.arc(cx,cy,size*1.06,0,6.28); ctx.fill();
   ctx.translate(cx,cy); ctx.rotate(rot);
-  ctx.filter=`brightness(${(.6+glowP*.5+bright).toFixed(2)}) saturate(1.5) contrast(1.08) drop-shadow(0 0 ${(16+glowP*26)|0}px rgba(255,88,44,.9)) drop-shadow(0 0 50px rgba(124,92,255,.5))`;
+  ctx.filter=`brightness(${(.28+glowP*.44+bright).toFixed(2)}) saturate(1.3) contrast(1.2) drop-shadow(0 0 ${(20+glowP*34)|0}px rgba(255,66,28,.95)) drop-shadow(0 0 66px rgba(150,58,255,.55))`;
   ctx.font=size+'px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
   ctx.fillText('\uD83D\uDC09',0,0);
   ctx.filter='none'; ctx.restore();
@@ -183,14 +183,16 @@ function loop(now){
     if(roarE>.45){const bx=W/2+rnd(-60,-150),by=H*.42+(1-dragon.rise)*H*.55+rnd(-6,46);
       for(let n=0;n<2;n++)sparks.push({x:bx,y:by,vx:rnd(-170,-50),vy:rnd(-40,50),life:rnd(.4,.95),t:0,r:rnd(2,4.5),col:['#ffe0a0','#ff8a3c','#ff5326'][Math.random()*3|0]});}
     if(!flags.has('slash')&&t>=12.3){flags.add('slash');slashX=-.2;}
-    if(!flags.has('kill')&&t>=12.6){flags.add('kill');dragon.slain=true;dragon.bright=3.2;
+    if(!flags.has('kill')&&t>=12.6){flags.add('kill');dragon.slain=true;dragon.killAt=t;dragon.bright=3.8;
       $('flash').animate([{opacity:0},{opacity:1,offset:.1},{opacity:0}],{duration:640,easing:'ease-out'});
       if(!reduce)$('cine').animate([{transform:'translate(0,0)'},{transform:'translate(-13px,8px)'},{transform:'translate(11px,-6px)'},{transform:'translate(0,0)'}],{duration:580});
       for(let n=0;n<150;n++)spark(W/2,H*.44,['#fff','#ffc64b','#ff7a3c','#c8a6ff'][n%4],1,rnd(70,560));
       $('line').classList.remove('show');
     }
-    if(dragon.slain){dragon.alpha=Math.max(0,dragon.alpha-dt*1.45);dragon.spin+=dt*2.2;dragon.sink+=dt*80;dragon.bright=Math.max(0,dragon.bright-dt*4);
-      if(dragon.alpha>0)for(let n=0;n<4;n++)embers.push({x:W/2+rnd(-110,110),y:H*.46+rnd(-50,70),vy:rnd(-80,-34),r:rnd(1,3.2),h:rnd(18,42),a:rnd(.5,.95),d:rnd(0,1)});
+    if(dragon.slain){const held=t-dragon.killAt;
+      if(held>0.24){dragon.alpha=Math.max(0,dragon.alpha-dt*1.7);dragon.spin+=dt*2.6;dragon.sink+=dt*96;}
+      dragon.bright=Math.max(0,dragon.bright-dt*3.2);
+      if(dragon.alpha>0&&held>0.12)for(let n=0;n<5;n++)embers.push({x:W/2+rnd(-120,120),y:H*.46+rnd(-60,80),vy:rnd(-90,-38),r:rnd(1,3.4),h:rnd(16,42),a:rnd(.5,.98),d:rnd(0,1)});
     }
   }
   if(!flags.has('title')&&t>=13.6){flags.add('title');forgeTitle();}
@@ -214,10 +216,23 @@ function render(t,dt){
 
   // DRAGON
   if(dragon && dragon.alpha>0.01 && t>2.6){
-    const size=Math.min(W,H)*(0.52+0.12*dragon.rise);
-    const cy=H*0.42 + (1-dragon.rise)*H*0.55 + dragon.sink;
+    const lunge=dragon.slain?0:Math.max(0,Math.min(1,(t-10.8)/1.5));
+    const size=Math.min(W,H)*(0.52+0.12*dragon.rise)*(1+lunge*0.34);
+    const cy=H*0.42 + (1-dragon.rise)*H*0.55 + dragon.sink + lunge*H*0.05;
     const bob=dragon.slain?dragon.spin:Math.sin(t*1.4)*0.022;
     drawDragon(W/2, cy, size, dragon.glow, dragon.alpha, bob, dragon.bright);
+  }
+  // blade of light forms, then it swings
+  if(t>8.8 && t<12.55){
+    const grow=Math.min(1,(t-8.8)/2.0), fade=t>12.3?Math.max(0,(12.55-t)/0.25):1;
+    const bx=W/2, topY=H*0.5-H*0.36*grow, botY=H*0.5+H*0.12*grow, bw=2+5*grow;
+    ctx.globalAlpha=Math.min(1,grow)*fade;
+    const lg=ctx.createLinearGradient(bx-bw,0,bx+bw,0);
+    lg.addColorStop(0,'rgba(124,224,255,0)');lg.addColorStop(.5,'rgba(255,255,255,.95)');lg.addColorStop(1,'rgba(124,92,255,0)');
+    ctx.fillStyle=lg; ctx.shadowColor='#8fe6ff'; ctx.shadowBlur=30; ctx.fillRect(bx-bw,topY,bw*2,botY-topY); ctx.shadowBlur=0;
+    ctx.fillStyle='#eadfff'; ctx.font='15px serif'; ctx.shadowColor='#c8a6ff'; ctx.shadowBlur=10; ctx.globalAlpha=grow*fade;
+    for(let i=0;i<6;i++){const yy=botY-((t*80+i*38)%Math.max(1,botY-topY)); ctx.fillText(RUNES[(i*3+((t*4)|0))%RUNES.length],bx,yy);}
+    ctx.shadowBlur=0; ctx.globalAlpha=1;
   }
   // slash streak across the dragon
   if(slashX!==null && slashX<1.3){ slashX+=dt*3.2; const sx=slashX*W, sy=H*.2;
