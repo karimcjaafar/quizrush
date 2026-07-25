@@ -1096,7 +1096,10 @@ async function fetchFromTTA({ amount, ttaCats, ttaTags, difficulty }) {
 // OpenTriviaQA / CC BY-SA, cleaned + UK-filtered + difficulty-graded). Imported
 // questions only add core-trivia categories, so flags/pictures/daily are untouched.
 const IMPORTED = (typeof IMPORTED_BANK !== "undefined" && Array.isArray(IMPORTED_BANK)) ? IMPORTED_BANK : [];
-const BANK_ALL = QUIZRUSH_BANK.concat(IMPORTED);
+// Wikidata-generated questions (CC0): world-balanced history + UK sport history.
+const GENERATED = (typeof GENERATED_BANK !== "undefined" && Array.isArray(GENERATED_BANK)) ? GENERATED_BANK : [];
+const GENERATED_SPORT = (typeof GENERATED_SPORT_BANK !== "undefined" && Array.isArray(GENERATED_SPORT_BANK)) ? GENERATED_SPORT_BANK : [];
+const BANK_ALL = QUIZRUSH_BANK.concat(IMPORTED, GENERATED, GENERATED_SPORT);
 
 function fetchFromBank({ amount, catId, difficulty }) {
   const pool = BANK_ALL.filter(
