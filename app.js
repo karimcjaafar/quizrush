@@ -3357,6 +3357,16 @@ document.addEventListener("pointerdown", () => Sound.unlock(), { once: true });
   const ctx = cv.getContext("2d");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const COLORS = ["255,198,75", "200,166,255", "124,224,255", "255,122,60"]; // gold, rune, frost, ember
+  // pre-render a soft glow sprite per colour once (cheaper than per-frame shadowBlur — smooth on phones)
+  const sprites = {};
+  for (const col of COLORS) {
+    const s = document.createElement("canvas"); s.width = s.height = 48;
+    const c = s.getContext("2d");
+    const g = c.createRadialGradient(24, 24, 0, 24, 24, 24);
+    g.addColorStop(0, `rgba(${col},1)`); g.addColorStop(0.3, `rgba(${col},0.65)`); g.addColorStop(1, `rgba(${col},0)`);
+    c.fillStyle = g; c.fillRect(0, 0, 48, 48);
+    sprites[col] = s;
+  }
   let W, H, DPR, motes = [], glows = [], t = 0;
   function resize() {
     DPR = Math.min(2, window.devicePixelRatio || 1);
@@ -3398,11 +3408,10 @@ document.addEventListener("pointerdown", () => Sound.unlock(), { once: true });
       if (m.y < -6) { m.y = H + 6; m.x = Math.random() * W; }
       const tw = 0.55 + 0.45 * Math.sin(t * 0.03 + m.phase);
       ctx.globalAlpha = m.a * tw;
-      ctx.fillStyle = `rgb(${m.col})`;
-      ctx.shadowColor = `rgb(${m.col})`; ctx.shadowBlur = m.r * 4;
-      ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, 6.28); ctx.fill();
+      const sz = m.r * 6;
+      ctx.drawImage(sprites[m.col], m.x - sz / 2, m.y - sz / 2, sz, sz);
     }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
     if (!reduce) requestAnimationFrame(frame);
   }
   resize(); seed();
