@@ -3,38 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>QuizRush</title>
+  <title>Riddle &amp; Rune</title>
   <meta name="theme-color" content="#0b0d17" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="QuizRush" />
+  <meta name="apple-mobile-web-app-title" content="Riddle &amp; Rune" />
   <link rel="manifest" id="manifest-link" href="manifest.json" />
   <link rel="apple-touch-icon" id="touch-icon-link" href="icon-bolt.png" />
   <link rel="icon" id="favicon-link" href="icon-bolt.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- Animated intro: tap gate, then the 10-second show -->
+  <!-- Cinematic intro: tap gate (audio unlock) → the dragon film → home -->
   <div class="splash" id="splash">
     <div class="splash-gate" id="splash-gate">
-      <div class="gate-bolt">⚡</div>
-      <h1 class="gate-title"><span class="splash-quiz">Quiz</span><span class="splash-rush">Rush</span></h1>
-      <p class="gate-tap">TAP TO START</p>
+      <div class="gate-rune">ᛟ</div>
+      <h1 class="gate-title"><span class="splash-quiz">Riddle</span> <span class="gate-amp">&amp;</span> <span class="splash-rush">Rune</span></h1>
+      <p class="gate-tap">TAP TO BEGIN</p>
+      <p class="gate-hint">headphones recommended · sound on</p>
     </div>
-    <div class="splash-show" id="splash-show" hidden>
-      <div class="emoji-storm" aria-hidden="true">
-        <i>🧠</i><i>⚽</i><i>🎬</i><i>🌍</i><i>🎵</i><i>🦁</i><i>🚀</i><i>🧩</i><i>🍕</i><i>⭐</i><i>👑</i><i>🎯</i><i>🎸</i><i>🐼</i>
-      </div>
-      <div class="show-rings"><i></i><i></i><i></i><i></i></div>
-      <div class="splash-inner">
-        <div class="splash-bolt">⚡</div>
-        <h1 class="splash-title show-title">
-          <span class="lq">Q</span><span class="lq">u</span><span class="lq">i</span><span class="lq">z</span><span class="lq lr">R</span><span class="lq lr">u</span><span class="lq lr">s</span><span class="lq lr">h</span>
-        </h1>
-        <p class="splash-tag">Pick a mode. Beat your best.</p>
-      </div>
-      <div class="whiteout"></div>
-    </div>
+    <video class="splash-video" id="splash-video" playsinline preload="none" hidden></video>
+    <button class="splash-mute" id="splash-mute" hidden aria-label="Mute sound">🔊</button>
+    <div class="splash-skip" id="splash-skip" hidden>Skip&nbsp;▸</div>
   </div>
 
   <!-- Celebration overlay (daily solved, big wins) -->
@@ -83,11 +73,55 @@
   </div>
 
   <!-- ============ HOME SCREEN ============ -->
-  <main id="screen-home" class="screen active">
+  <!-- ============ HUB — the two paths ============ -->
+  <main id="screen-hub" class="screen active">
+    <div class="hub-wrap">
+      <header class="hub-header">
+        <div class="hub-crest">ᛟ</div>
+        <h1 class="hub-title">Riddle <span class="hub-amp">&amp;</span> <span class="hub-rune">Rune</span></h1>
+        <p class="hub-tag">Trivia &amp; Tribulations</p>
+      </header>
+      <div class="hub-paths">
+        <button class="hub-card hub-descent" data-action="descent">
+          <span class="hub-badge">The Saga</span>
+          <span class="hub-card-icon">🐉</span>
+          <h2>The Reckoning</h2>
+          <p>Battle down through the dark — answer to strike, or be devoured — to face Malrune, the Unanswered.</p>
+        </button>
+        <button class="hub-card hub-quick" data-action="quickplay">
+          <span class="hub-card-icon">🎯</span>
+          <h2>Traditional Trivia</h2>
+          <p>Straight into the classic quiz — Daily, the Classic ladder, Blitz, Brain Games and more.</p>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============ THE DESCENT (teaser) ============ -->
+  <main id="screen-descent" class="screen">
+    <header class="submenu-header">
+      <button class="btn-quit" data-action="hub" title="Back to menu">←</button>
+      <div>
+        <h2>🐉 The Reckoning</h2>
+        <p class="submenu-sub">The saga awaits.</p>
+      </div>
+    </header>
+    <div class="descent-teaser">
+      <div class="descent-crest">🐉</div>
+      <h2>Malrune stirs in the deep.</h2>
+      <p>Descend through the monsters of the dark — each one felled by wit, not steel — gathering runes and gold, until you stand before the Unanswered One himself.</p>
+      <p class="descent-soon">⚔️ Coming soon</p>
+      <button class="btn btn-primary btn-full" data-action="quickplay">Play Traditional Trivia →</button>
+    </div>
+  </main>
+
+  <!-- ============ HOME — Quick Play ============ -->
+  <main id="screen-home" class="screen">
     <header class="home-header">
+      <button class="hub-return" data-action="hub" title="Back to menu">‹ Menu</button>
       <div class="logo">
-        <span class="logo-bolt">⚡</span>
-        <h1>Quiz<span class="logo-accent">Rush</span></h1>
+        <span class="logo-bolt">🐉</span>
+        <h1>Riddle <span class="logo-accent">&amp; Rune</span></h1>
       </div>
       <p class="tagline">Pick a mode. Beat your best.</p>
     </header>
@@ -331,7 +365,7 @@
   </main>
 
   <!-- ============ TAB BAR ============ -->
-  <nav class="tabbar" id="tabbar">
+  <nav class="tabbar hidden" id="tabbar">
     <button data-tab="home" class="active"><span class="tab-icon">▶️</span><span>Play</span></button>
     <button data-tab="progress"><span class="tab-icon">📊</span><span>Progress</span></button>
     <button data-tab="customize"><span class="tab-icon">🎨</span><span>Customize</span></button>
@@ -638,7 +672,7 @@
   <!-- First-run welcome -->
   <div class="welcome-overlay" id="welcome-overlay" hidden>
     <div class="welcome-card">
-      <h2>⚡ Welcome to QuizRush!</h2>
+      <h2>🐉 Welcome to Riddle &amp; Rune!</h2>
       <ul>
         <li><span>📅</span><div><b>The Daily</b> — one question, one shot, every day. Streaks unlock new looks.</div></li>
         <li><span><svg class="cur-ico" viewBox="0 0 30 20" aria-hidden="true"><path d="M6 4h18l4 13H2z" fill="#f4b52e" stroke="#9c6a15" stroke-width="1.4"/><path d="M6.4 4.3h17.2l1.3 4.6H4.7z" fill="#ffe491"/></svg></span><div><b>Gold</b> — earned from every game. Spend it on lifeline refills, revives and streak freezes.</div></li>

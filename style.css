@@ -137,6 +137,57 @@ button, .chip, .mode-card, .daily-card, .theme-swatch {
 }
 @keyframes tapBlink { from { opacity: 0.35; } to { opacity: 1; } }
 
+/* --- Riddle & Rune cinematic gate + video --- */
+.gate-rune { font-size: 76px; line-height: 1; color: #c8a6ff; text-shadow: 0 0 30px rgba(124, 92, 255, 0.7); animation: gatePulse 2.4s ease-in-out infinite alternate; }
+.gate-amp { display: inline-block; background: linear-gradient(180deg, #fff, #ffc64b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.gate-hint { margin-top: 12px; font-size: 11px; letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; opacity: 0.7; }
+.splash-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+.splash-video[hidden] { display: none; }
+.splash-skip {
+  position: absolute; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+  z-index: 3; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #cfd2ee;
+  background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 8px 16px; border-radius: 999px; cursor: pointer;
+}
+.splash-skip[hidden] { display: none; }
+.splash-mute {
+  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 14px); right: 14px;
+  z-index: 4; width: 44px; height: 44px; border-radius: 50%; padding: 0;
+  font-size: 20px; line-height: 44px; text-align: center; color: #fff;
+  background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.18); cursor: pointer;
+}
+.splash-mute[hidden] { display: none; }
+
+/* ============ HUB — the two paths ============ */
+.hub-wrap { margin: auto 0; width: 100%; display: flex; flex-direction: column; gap: 26px; }
+.hub-header { text-align: center; }
+.hub-crest { font-size: 72px; line-height: 1; color: #c8a6ff; text-shadow: 0 0 34px rgba(124, 92, 255, 0.7); }
+.hub-title { font-size: clamp(44px, 12vw, 66px); font-weight: 900; letter-spacing: -1px; margin-top: 8px; }
+.hub-amp { color: #ffc64b; }
+.hub-rune { background: linear-gradient(180deg, #c8a6ff, #ff7ac0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hub-tag { margin-top: 12px; font-size: 14px; letter-spacing: 5px; text-transform: uppercase; color: #a9a6d0; }
+.hub-paths { display: flex; flex-direction: column; gap: 18px; }
+.hub-card { position: relative; text-align: left; padding: 36px 30px; border-radius: 24px; border: 1px solid rgba(255, 255, 255, 0.1); cursor: pointer; overflow: hidden; color: #fff; transition: transform 0.18s ease, border-color 0.18s ease; }
+.hub-card h2 { font-size: 36px; font-weight: 800; margin: 16px 0 10px; }
+.hub-card p { font-size: 17px; line-height: 1.5; color: #d2d4ee; }
+.hub-card-icon { font-size: 72px; line-height: 1; }
+.hub-descent { background: radial-gradient(120% 120% at 20% 0%, rgba(124, 58, 255, 0.3), rgba(255, 90, 40, 0.15) 55%, rgba(20, 12, 34, 0.6) 100%); border-color: rgba(124, 92, 255, 0.42); }
+.hub-quick { background: radial-gradient(120% 120% at 20% 0%, rgba(124, 224, 255, 0.16), rgba(20, 20, 40, 0.6) 70%); border-color: rgba(124, 224, 255, 0.28); }
+.hub-badge { position: absolute; top: 18px; right: 18px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; font-weight: 800; color: #ffdf9b; background: rgba(255, 198, 75, 0.16); border: 1px solid rgba(255, 198, 75, 0.45); padding: 6px 13px; border-radius: 999px; }
+@media (hover: hover) { .hub-card:hover { transform: translateY(-3px); } }
+
+/* The Descent teaser */
+.descent-teaser { margin: auto 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.descent-crest { font-size: 118px; filter: drop-shadow(0 0 36px rgba(255, 90, 40, 0.55)); }
+.descent-teaser h2 { font-size: 34px; font-weight: 800; }
+.descent-teaser p { font-size: 17.5px; line-height: 1.6; color: #d2d4ee; max-width: 500px; }
+.descent-soon { font-size: 15px !important; letter-spacing: 3px; text-transform: uppercase; color: #ffc64b !important; font-weight: 800; margin-top: 8px; }
+.descent-teaser .btn { margin-top: 16px; max-width: 320px; }
+
+/* Home → back to hub */
+.home-header { position: relative; }
+.hub-return { position: absolute; top: 0; left: 0; z-index: 5; font-size: 13px; font-weight: 700; letter-spacing: 1px; color: #cfd2ee; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.14); padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+
 /* --- Phases 1–4: the ten-second show --- */
 .splash-show { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .splash-show[hidden] { display: none; }

@@ -911,6 +911,8 @@ function liveDailyStreak() {
 // ---------- DOM ----------
 const $ = (id) => document.getElementById(id);
 const screens = {
+  hub: $("screen-hub"),
+  descent: $("screen-descent"),
   home: $("screen-home"),
   progress: $("screen-progress"),
   customize: $("screen-customize"),
@@ -2510,7 +2512,7 @@ function dailyShareText() {
   const num = Math.round((new Date(todayKey()) - DAILY_EPOCH) / 86400000) + 1;
   const diffLabel = difficulty[0].toUpperCase() + difficulty.slice(1);
   const who = player.profile ? `${player.profile.avatar} ${player.profile.name}` : "";
-  const lines = [`⚡ QuizRush Daily #${num} — ${cat?.emoji || "🧠"} ${diffLabel}`];
+  const lines = [`🐉 Riddle & Rune Daily #${num} — ${cat?.emoji || "🧠"} ${diffLabel}`];
   if (d?.status === "right") {
     lines.push(`✅ ${who ? who + " solved" : "Solved"}${d.time ? ` in ${d.time}s` : ""} · ${d.score.toLocaleString()} pts` +
       (liveDailyStreak() > 1 ? ` · 🔥 ${liveDailyStreak()}-day streak` : ""));
@@ -3015,6 +3017,14 @@ function renderHome() {
 }
 
 // ---------- Wiring ----------
+// Hub (two paths): The Descent (saga) vs Quick Play (classic quiz)
+document.querySelectorAll('[data-action="descent"]').forEach((b) =>
+  b.addEventListener("click", () => { Sound.click(); showScreen("descent"); }));
+document.querySelectorAll('[data-action="quickplay"]').forEach((b) =>
+  b.addEventListener("click", () => { Sound.click(); renderHome(); showScreen("home"); }));
+document.querySelectorAll('[data-action="hub"]').forEach((b) =>
+  b.addEventListener("click", () => { Sound.click(); showScreen("hub"); }));
+
 document.querySelectorAll(".mode-card").forEach((card) => {
   card.addEventListener("click", () => {
     if (card.disabled) return;
@@ -3310,13 +3320,21 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
 // intro score → whiteout → home, where the anthem loops. Tap again to skip.
 {
   const splash = $("splash");
+  const video = $("splash-video");
+  const skip = $("splash-skip");
+  const mute = $("splash-mute");
+  if (mute) mute.onclick = (e) => { e.stopPropagation(); video.muted = !video.muted; mute.textContent = video.muted ? "🔇" : "🔊"; };
   let phase = "gate"; // gate → show → done
   let showTimer = null;
-  const finish = (skipped) => {
+  const INTRO_KEY = "rr-intro-seen-v2";
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let seen = false; try { seen = localStorage.getItem(INTRO_KEY) === "1"; } catch { /* private mode */ }
+  const finish = () => {
     if (phase === "done") return;
     phase = "done";
     clearTimeout(showTimer);
-    if (skipped) Music.skipIntro();
+    try { video.pause(); } catch { /* ignore */ }
+    Music.start("anthem"); // menu bed once the film (with its own audio) is done
     splash.classList.add("out");
     setTimeout(() => splash.remove(), 700);
     document.body.classList.add("intro-done");
@@ -3328,18 +3346,21 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
   };
   splash.addEventListener("click", () => {
     if (phase === "gate") {
-      Sound.unlock();
-      if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        Music.start("anthem");
-        return finish(false);
-      }
+      Sound.unlock(); // the gate tap is the browser's audio-unlock gesture
+      if (reduced || seen) return finish(); // repeat visits (or reduced-motion) skip straight in
       phase = "show";
       $("splash-gate").hidden = true;
-      $("splash-show").hidden = false;
-      Music.intro();
-      showTimer = setTimeout(() => finish(false), 10000);
+      video.hidden = false;
+      skip.hidden = false;
+      if (mute) mute.hidden = false;
+      try { localStorage.setItem(INTRO_KEY, "1"); } catch { /* private mode */ }
+      video.src = "media/riddle-rune-intro.mp4"; // load only when we actually play it
+      video.onended = finish;
+      video.onerror = finish; // offline / decode failure → just enter the app
+      video.play().catch(finish); // autoplay blocked → skip to home
+      showTimer = setTimeout(finish, 32000); // safety net if the film stalls
     } else {
-      finish(true); // impatient tap mid-show
+      finish(); // tap anywhere (or the Skip pill) during the film
     }
   });
 }
