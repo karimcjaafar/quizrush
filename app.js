@@ -3457,25 +3457,26 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
   const INTRO_KEY = "rr-intro-seen-v2";
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let seen = false; try { seen = localStorage.getItem(INTRO_KEY) === "1"; } catch { /* private mode */ }
-  const finish = () => {
+  const finish = (slow) => {
     if (phase === "done") return;
     phase = "done";
     clearTimeout(showTimer);
     try { video.pause(); } catch { /* ignore */ }
-    Music.start("anthem"); // menu bed once the film (with its own audio) is done
-    splash.classList.add("out");
-    setTimeout(() => splash.remove(), 700);
+    Music.start("anthem"); // menu bed once the film is done
+    // the film ends on black, so a long slow fade reveals the menu gently
+    splash.classList.add(slow ? "out-slow" : "out");
+    setTimeout(() => splash.remove(), slow ? 3200 : 700);
     document.body.classList.add("intro-done");
     // economy notices, once the stage is clear
     setTimeout(() => {
       if (window.__freezeUsed) { toast("🧊 Streak freeze used — your streak is safe!"); window.__freezeUsed = false; }
       else if (window.__loginBonus) { toast(`📅 Daily login bonus: +${window.__loginBonus} Gold`); window.__loginBonus = 0; }
-    }, 900);
+    }, slow ? 3400 : 900);
   };
   splash.addEventListener("click", () => {
     if (phase === "gate") {
       Sound.unlock(); // the gate tap is the browser's audio-unlock gesture
-      if (reduced) return finish(); // reduced-motion users skip straight to the hub
+      if (reduced) return finish(false); // reduced-motion users skip straight to the hub
       phase = "show";
       $("splash-gate").hidden = true;
       video.hidden = false;
@@ -3483,12 +3484,12 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
       if (mute) mute.hidden = false;
       try { localStorage.setItem(INTRO_KEY, "1"); } catch { /* private mode */ }
       video.src = "media/riddle-rune-intro.mp4"; // load only when we actually play it
-      video.onended = finish;
-      video.onerror = finish; // offline / decode failure → just enter the app
-      video.play().catch(finish); // autoplay blocked → skip to home
-      showTimer = setTimeout(finish, 32000); // safety net if the film stalls
+      video.onended = () => finish(true);  // film ended on black → slow, smooth reveal
+      video.onerror = () => finish(false); // offline / decode failure → just enter
+      video.play().catch(() => finish(false)); // autoplay blocked → skip to home
+      showTimer = setTimeout(() => finish(false), 42000); // safety net if the film stalls
     } else {
-      finish(); // tap anywhere (or the Skip pill) during the film
+      finish(false); // tap / Skip during the film → quicker
     }
   });
 }
