@@ -912,12 +912,15 @@ function dailyQuestion() {
   const cat = CATEGORIES.find((c) => c.id === q.cat);
   return {
     question: {
-      category: cat?.name || "QuizRush",
+      category: cat?.name || "Riddle & Rune",
       catId: q.cat,
       difficulty: q.difficulty,
       text: q.text,
       correct: q.correct,
       answers: shuffle([q.correct, ...q.wrong]),
+      big: q.big || "",       // flags / emoji rebuses show their picture
+      svgPath: q.svgPath || "", // country-shape silhouettes
+      vid: q.vid || "",
     },
     difficulty: q.difficulty,
     cat,
