@@ -195,7 +195,7 @@ const Music = (() => {
   let audio = null, currentKey = null;
   let fadeTimer = null, swapTimer = null, duckTimer = null;
 
-  const MUSIC_MAX = 0.4; // global softening cap — the bed was too loud; keep it gentle
+  const MUSIC_MAX = 0.25; // global softening cap — keep the bed quiet and gentle
   const userVol = () => Math.max(Number(localStorage.getItem("quizrush-vol-music") ?? 100) / 100, 0) * MUSIC_MAX;
   const chosen = () => localStorage.getItem("quizrush-music-track") || "auto";
   const inGame = () => (typeof state !== "undefined" && state && !state.ended);
@@ -3451,7 +3451,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
   const video = $("splash-video");
   const skip = $("splash-skip");
   const mute = $("splash-mute");
-  if (mute) mute.onclick = (e) => { e.stopPropagation(); video.muted = !video.muted; mute.textContent = video.muted ? "🔇" : "🔊"; };
+  if (mute) mute.onclick = (e) => { e.stopPropagation(); const on = Music.toggle(); mute.textContent = on ? "🔊" : "🔇"; };
   let phase = "gate"; // gate → show → done
   let showTimer = null;
   const INTRO_KEY = "rr-intro-seen-v2";
@@ -3476,12 +3476,13 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
   splash.addEventListener("click", () => {
     if (phase === "gate") {
       Sound.unlock(); // the gate tap is the browser's audio-unlock gesture
+      Music.start("anthem"); // one continuous bed, from here through the intro into the menus
       if (reduced) return finish(false); // reduced-motion users skip straight to the hub
       phase = "show";
       $("splash-gate").hidden = true;
       video.hidden = false;
       skip.hidden = false;
-      if (mute) mute.hidden = false;
+      if (mute) { mute.hidden = false; mute.textContent = Music.enabled ? "🔊" : "🔇"; }
       try { localStorage.setItem(INTRO_KEY, "1"); } catch { /* private mode */ }
       video.src = "media/riddle-rune-intro.mp4"; // load only when we actually play it
       video.onended = () => finish(true);  // film ended on black → slow, smooth reveal
@@ -3496,13 +3497,23 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
 
 // First visit (or missing profile): orientation + profile setup in one card.
 // Tapping your name on the home screen reopens it for edits.
-function openProfileSetup() {
+// First-run onboarding is a small wizard: name → avatar → what-things-are.
+// Editing an existing profile (tapping your name) reuses steps 1–2 only.
+let wizFirstRun = false;
+function showWizStep(n) {
+  document.querySelectorAll("#welcome-card .wiz-step").forEach((s) => { s.hidden = Number(s.dataset.step) !== n; });
+}
+function openProfileSetup(firstRun) {
+  wizFirstRun = !!firstRun;
   const p = player.profile;
   $("profile-name").value = p?.name || "";
   const current = p?.avatar || AVATARS[0];
   $("avatar-grid").innerHTML = AVATARS.map((a) =>
     `<button class="avatar-chip ${a === current ? "active" : ""}" data-avatar="${a}">${a}</button>`).join("");
+  $("wiz-next-2").textContent = firstRun ? "Next →" : "Save";
+  showWizStep(1);
   $("welcome-overlay").hidden = false;
+  setTimeout(() => { try { $("profile-name").focus(); } catch { /* ignore */ } }, 60);
 }
 
 $("avatar-grid").addEventListener("click", (e) => {
@@ -3513,17 +3524,30 @@ $("avatar-grid").addEventListener("click", (e) => {
   Sound.click();
 });
 
-$("btn-welcome").addEventListener("click", () => {
+function saveProfileAndClose() {
   player.profile = {
     name: $("profile-name").value.trim().slice(0, 16) || "Player",
     avatar: document.querySelector(".avatar-chip.active")?.dataset.avatar || AVATARS[0],
   };
-  localStorage.setItem("quizrush-welcomed", "1");
-  $("welcome-overlay").hidden = true;
+  try { localStorage.setItem("quizrush-welcomed", "1"); } catch { /* private mode */ }
+  const ov = $("welcome-overlay");
+  ov.classList.add("closing");
+  setTimeout(() => { ov.hidden = true; ov.classList.remove("closing"); }, 480);
   paintPlayerBar();
-  Sound.start();
+  Music.start("anthem"); // keep the same bed playing (no-op if already going)
+}
+
+$("wiz-next-1").addEventListener("click", () => {
+  if (!$("profile-name").value.trim()) { $("profile-name").focus(); return; } // a name is required first
+  Sound.click(); showWizStep(2);
 });
+$("profile-name").addEventListener("keydown", (e) => { if (e.key === "Enter") $("wiz-next-1").click(); });
+$("wiz-next-2").addEventListener("click", () => {
+  Sound.click();
+  if (wizFirstRun) showWizStep(3); else saveProfileAndClose(); // editing ends after the avatar
+});
+$("wiz-done").addEventListener("click", () => { Sound.click(); saveProfileAndClose(); });
 
-$("player-name").addEventListener("click", () => { Sound.click(); openProfileSetup(); });
+$("player-name").addEventListener("click", () => { Sound.click(); openProfileSetup(false); });
 
-if (!player.profile) openProfileSetup();
+if (!player.profile) openProfileSetup(true);

@@ -675,19 +675,31 @@
 
   <!-- First-run welcome -->
   <div class="welcome-overlay" id="welcome-overlay" hidden>
-    <div class="welcome-card">
-      <h2>🐉 Welcome to Riddle &amp; Rune!</h2>
-      <ul>
-        <li><span>📅</span><div><b>The Daily</b> — one question, one shot, every day. Streaks unlock new looks.</div></li>
-        <li><span><svg class="cur-ico" viewBox="0 0 30 20" aria-hidden="true"><path d="M6 4h18l4 13H2z" fill="#f4b52e" stroke="#9c6a15" stroke-width="1.4"/><path d="M6.4 4.3h17.2l1.3 4.6H4.7z" fill="#ffe491"/></svg></span><div><b>Gold</b> — earned from every game. Spend it on lifeline refills, revives and streak freezes.</div></li>
-        <li><span>💎</span><div><b>Gems</b> — rare &amp; precious, earned only at big moments. They unlock the exclusive stuff.</div></li>
-        <li><span>🧠</span><div><b>Brain Games</b> — riddles, emoji puzzles and Who Am I?, for when trivia isn't enough.</div></li>
-      </ul>
-      <label class="profile-label" for="profile-name">Your player name</label>
-      <input id="profile-name" type="text" maxlength="16" placeholder="What should we call you?" autocomplete="off" />
-      <label class="profile-label">Pick your avatar</label>
-      <div class="avatar-grid" id="avatar-grid"></div>
-      <button class="btn btn-primary btn-full" id="btn-welcome">Save &amp; play</button>
+    <div class="welcome-card" id="welcome-card">
+      <!-- Step 1 — just the name -->
+      <div class="wiz-step" data-step="1">
+        <div class="wiz-crest">ᛟ</div>
+        <label class="profile-label" for="profile-name">Your player name</label>
+        <input id="profile-name" type="text" maxlength="16" placeholder="What should we call you?" autocomplete="off" />
+        <button class="btn btn-primary btn-full" id="wiz-next-1">Next →</button>
+      </div>
+      <!-- Step 2 — pick the avatar -->
+      <div class="wiz-step" data-step="2" hidden>
+        <h2 class="wiz-title">Pick your avatar</h2>
+        <div class="avatar-grid" id="avatar-grid"></div>
+        <button class="btn btn-primary btn-full" id="wiz-next-2">Next →</button>
+      </div>
+      <!-- Step 3 — what things are (first run only) -->
+      <div class="wiz-step" data-step="3" hidden>
+        <h2 class="wiz-title">🐉 Welcome to Riddle &amp; Rune!</h2>
+        <ul>
+          <li><span>📅</span><div><b>The Daily</b> — one question, one shot, every day. Streaks unlock new looks.</div></li>
+          <li><span><svg class="cur-ico" viewBox="0 0 30 20" aria-hidden="true"><path d="M6 4h18l4 13H2z" fill="#f4b52e" stroke="#9c6a15" stroke-width="1.4"/><path d="M6.4 4.3h17.2l1.3 4.6H4.7z" fill="#ffe491"/></svg></span><div><b>Gold</b> — earned from every game. Spend it on lifeline refills, revives and streak freezes.</div></li>
+          <li><span>💎</span><div><b>Gems</b> — rare &amp; precious, earned only at big moments. They unlock the exclusive stuff.</div></li>
+          <li><span>🧠</span><div><b>Brain Games</b> — riddles, emoji puzzles and Who Am I?, for when trivia isn't enough.</div></li>
+        </ul>
+        <button class="btn btn-primary btn-full" id="wiz-done">Enter →</button>
+      </div>
     </div>
   </div>
 
