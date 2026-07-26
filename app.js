@@ -992,6 +992,11 @@ function setAmbient(name) {
   const dim = ["game", "results", "whoami", "dingbats"].includes(name);
   const bg = $("ambient-bg");
   if (bg) bg.style.opacity = dim ? "0" : "1";
+  // the top status bar rides the menus, not the game / results / setup screens
+  const hideBar = ["game", "results", "whoami", "dingbats", "partysetup", "shop"].includes(name);
+  const tb = $("topbar");
+  if (tb) tb.classList.toggle("hidden", hideBar);
+  document.body.classList.toggle("has-topbar", !hideBar); // pads menu screens below the bar
 }
 // instant screen swap (used under the section-sweep cover)
 function switchInstant(name) {
@@ -1911,8 +1916,8 @@ function bumpEl(id, cls) {
 }
 function paintCurrencies() {
   const g = player.gold, m = player.gems;
-  ["game-tokens", "player-tokens"].forEach((id) => { const el = $(id); if (el) el.innerHTML = goldLabel(g); });
-  ["game-gems", "player-gems"].forEach((id) => { const el = $(id); if (el) el.innerHTML = gemLabel(m); });
+  ["game-tokens", "player-tokens", "tb-gold"].forEach((id) => { const el = $(id); if (el) el.innerHTML = goldLabel(g); });
+  ["game-gems", "player-gems", "tb-gem"].forEach((id) => { const el = $(id); if (el) el.innerHTML = gemLabel(m); });
   const sg = $("shop-gold-bal"); if (sg) sg.innerHTML = goldLabel(g);
   const sm = $("shop-gem-bal"); if (sm) sm.innerHTML = gemLabel(m);
   if (goldSeen !== null && g > goldSeen) { ["game-tokens", "player-tokens"].forEach((id) => bumpEl(id, "token-bump")); try { Sound.coin(); } catch {} }
@@ -2804,6 +2809,14 @@ function paintPlayerBar() {
   $("player-name").textContent = p ? `${p.avatar} ${p.name}` : "";
   $("player-title").textContent = "🎖 " + titleForLevel(lvl);
   paintCurrencies();
+  paintTopbar();
+}
+
+// Persistent top status bar (level + progress; gold/gems come from paintCurrencies)
+function paintTopbar() {
+  const { lvl, into, needed } = levelProgress(player.xp);
+  const l = $("tb-lvl"); if (l) l.textContent = "Lv " + lvl;
+  const f = $("tb-xp-fill"); if (f) f.style.width = `${Math.min((into / needed) * 100, 100)}%`;
 }
 
 function paintCategoryChips() {
@@ -3131,6 +3144,8 @@ $("btn-edit-profile").addEventListener("click", () => { Sound.click(); openProfi
 // Shop entry points, back, and purchase delegation
 $("player-tokens").addEventListener("click", openShop);
 $("btn-open-shop").addEventListener("click", openShop);
+["tb-gold", "tb-gem", "tb-shop"].forEach((id) => $(id)?.addEventListener("click", openShop));
+$("tb-level")?.addEventListener("click", () => { Sound.click(); renderHome(); showScreen("progress"); });
 $("btn-shop-back").addEventListener("click", () => { Sound.click(); showScreen("customize"); });
 const shopBuyHandler = (e) => {
   const b = e.target.closest(".shop-item");

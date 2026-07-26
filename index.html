@@ -70,6 +70,19 @@
 
   <button id="btn-sound" class="btn-sound" title="Mute all">🔊</button>
 
+  <!-- Persistent top status bar (menus): level + gold + gems + shop -->
+  <div class="topbar" id="topbar">
+    <button class="tb-level" id="tb-level" title="Your progress">
+      <span class="tb-lvl" id="tb-lvl">Lv 1</span>
+      <span class="tb-xp"><span class="tb-xp-fill" id="tb-xp-fill"></span></span>
+    </button>
+    <div class="tb-right">
+      <button class="tb-cur" id="tb-gold" title="Open the Shop — Gold"></button>
+      <button class="tb-cur" id="tb-gem" title="Open the Shop — Gems"></button>
+      <button class="tb-shop" id="tb-shop" title="Open the Shop">🛒</button>
+    </div>
+  </div>
+
   <div class="bg-orbs" aria-hidden="true">
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
