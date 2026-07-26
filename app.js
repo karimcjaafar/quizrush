@@ -195,7 +195,8 @@ const Music = (() => {
   let audio = null, currentKey = null;
   let fadeTimer = null, swapTimer = null, duckTimer = null;
 
-  const userVol = () => Math.max(Number(localStorage.getItem("quizrush-vol-music") ?? 100) / 100, 0);
+  const MUSIC_MAX = 0.4; // global softening cap — the bed was too loud; keep it gentle
+  const userVol = () => Math.max(Number(localStorage.getItem("quizrush-vol-music") ?? 100) / 100, 0) * MUSIC_MAX;
   const chosen = () => localStorage.getItem("quizrush-music-track") || "auto";
   const inGame = () => (typeof state !== "undefined" && state && !state.ended);
 
@@ -214,6 +215,25 @@ const Music = (() => {
       audio.preload = "auto";
     }
     return audio;
+  }
+
+  // Route the music through a gentle EQ once: trim heavy bass + soften sharp
+  // highs, for a warm bed rather than a loud one. Falls back to direct playback
+  // if Web Audio routing isn't available.
+  let actx = null, graphed = false;
+  function ensureGraph() {
+    if (graphed) { if (actx && actx.state === "suspended") actx.resume().catch(() => {}); return; }
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC || !audio) return;
+      actx = new AC();
+      const src = actx.createMediaElementSource(audio);
+      const low = actx.createBiquadFilter(); low.type = "lowshelf"; low.frequency.value = 180; low.gain.value = -8;
+      const high = actx.createBiquadFilter(); high.type = "highshelf"; high.frequency.value = 3800; high.gain.value = -7;
+      src.connect(low); low.connect(high); high.connect(actx.destination);
+      graphed = true;
+      if (actx.state === "suspended") actx.resume().catch(() => {});
+    } catch { /* EQ unavailable — plays directly, just quieter */ }
   }
 
   // Smoothly ramp audio.volume toward target over ms.
@@ -237,6 +257,7 @@ const Music = (() => {
     if (currentKey === key && !audio.paused) { fadeTo(userVol(), 400); return; }
     const startNew = () => {
       currentKey = key;
+      ensureGraph();
       audio.src = FILES[key];
       try { audio.currentTime = 0; } catch { /* not yet seekable */ }
       audio.volume = 0;
@@ -256,6 +277,7 @@ const Music = (() => {
     get enabled() { return enabled; },
     get playing() { return !!(audio && !audio.paused); },
     get activeKey() { return currentKey; },
+    get ctxState() { return actx ? actx.state : "none"; },
     toggle() {
       enabled = !enabled;
       try { localStorage.setItem("quizrush-music", enabled ? "on" : "off"); } catch { /* play on */ }
@@ -298,7 +320,7 @@ const Music = (() => {
     },
     // Live volume from the mixer slider (0..1).
     setVolume(v) {
-      if (audio && !audio.paused) fadeTo(v, 150);
+      if (audio && !audio.paused) fadeTo(v * MUSIC_MAX, 150);
     },
     // The Customize track picker changed: switch live, respecting the new choice.
     applyTrackChange() {
