@@ -965,10 +965,47 @@ function shuffle(arr) {
   return a;
 }
 
+// dim the living background while playing (so it never distracts mid-question)
+function setAmbient(name) {
+  const dim = ["game", "results", "whoami", "dingbats"].includes(name);
+  const bg = $("ambient-bg");
+  if (bg) bg.style.opacity = dim ? "0" : "1";
+}
+// instant screen swap (used under the section-sweep cover)
+function switchInstant(name) {
+  Object.values(screens).forEach((s) => s.classList.remove("active", "screen-exit"));
+  screens[name].classList.add("active");
+  syncTabbar(name);
+  setAmbient(name);
+}
+// a moving graphic that wipes up over the screen, swaps the section beneath it,
+// then wipes off to reveal it — used when choosing a path from the hub
+function sectionSweep(target, icon, label, grad) {
+  let ov = $("section-sweep");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.id = "section-sweep";
+    ov.innerHTML = '<div class="sweep-inner"><span class="sweep-icon"></span><span class="sweep-label"></span></div>';
+    document.body.appendChild(ov);
+  }
+  ov.style.background = grad;
+  ov.querySelector(".sweep-icon").textContent = icon;
+  ov.querySelector(".sweep-label").textContent = label;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { switchInstant(target); return; }
+  ov.classList.remove("out");
+  void ov.offsetWidth; // reflow so the transition restarts
+  ov.classList.add("in");
+  Sound.swoosh(true);
+  setTimeout(() => switchInstant(target), 460);
+  setTimeout(() => { ov.classList.add("out"); }, 540);
+  setTimeout(() => { ov.classList.remove("in", "out"); }, 1200);
+}
+
 function showScreen(name) {
   const target = screens[name];
   const current = Object.values(screens).find((s) => s.classList.contains("active"));
   if (current === target) return;
+  setAmbient(name);
   // Two-phase transition: outgoing screen glides away, then the new one enters
   if (!current || matchMedia("(prefers-reduced-motion: reduce)").matches) {
     Object.values(screens).forEach((s) => s.classList.remove("active", "screen-exit"));
@@ -3019,9 +3056,9 @@ function renderHome() {
 // ---------- Wiring ----------
 // Hub (two paths): The Descent (saga) vs Quick Play (classic quiz)
 document.querySelectorAll('[data-action="descent"]').forEach((b) =>
-  b.addEventListener("click", () => { Sound.click(); showScreen("descent"); }));
+  b.addEventListener("click", () => { Sound.click(); sectionSweep("descent", "🐉", "The Reckoning", "linear-gradient(165deg, #2a1140 0%, #5a1e2e 100%)"); }));
 document.querySelectorAll('[data-action="quickplay"]').forEach((b) =>
-  b.addEventListener("click", () => { Sound.click(); renderHome(); showScreen("home"); }));
+  b.addEventListener("click", () => { Sound.click(); renderHome(); sectionSweep("home", "🎯", "Traditional Trivia", "linear-gradient(165deg, #101a34 0%, #1a2f4a 100%)"); }));
 document.querySelectorAll('[data-action="hub"]').forEach((b) =>
   b.addEventListener("click", () => { Sound.click(); showScreen("hub"); }));
 
@@ -3313,6 +3350,66 @@ renderHome();
 // Prime the audio engine on the first touch anywhere (iOS gesture requirement)
 document.addEventListener("pointerdown", () => Sound.unlock(), { once: true });
 
+// ---------- Living background: gentle drifting motes + slow glows ----------
+(() => {
+  const cv = $("ambient-bg");
+  if (!cv) return;
+  const ctx = cv.getContext("2d");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const COLORS = ["255,198,75", "200,166,255", "124,224,255", "255,122,60"]; // gold, rune, frost, ember
+  let W, H, DPR, motes = [], glows = [], t = 0;
+  function resize() {
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W * DPR; cv.height = H * DPR;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  function seed() {
+    const n = Math.min(80, Math.round((W * H) / 9000));
+    motes = [];
+    for (let i = 0; i < n; i++) motes.push({
+      x: Math.random() * W, y: Math.random() * H,
+      r: 0.8 + Math.random() * 2.4, vy: -(3 + Math.random() * 10) / 60,
+      sway: 0.3 + Math.random() * 0.9, phase: Math.random() * 6.28,
+      col: COLORS[(Math.random() * COLORS.length) | 0], a: 0.18 + Math.random() * 0.5,
+    });
+    glows = [
+      { x: 0.25, y: 0.3, r: 0.5, col: "124,92,255", a: 0.11, vx: 0.00003, vy: 0.00002 },
+      { x: 0.75, y: 0.62, r: 0.55, col: "255,122,60", a: 0.07, vx: -0.00002, vy: 0.00003 },
+      { x: 0.55, y: 0.12, r: 0.42, col: "124,224,255", a: 0.06, vx: 0.000025, vy: -0.00002 },
+    ];
+  }
+  function frame() {
+    t += 1;
+    ctx.clearRect(0, 0, W, H);
+    for (const g of glows) {
+      g.x += g.vx; g.y += g.vy;
+      if (g.x < 0.1 || g.x > 0.9) g.vx *= -1;
+      if (g.y < 0.05 || g.y > 0.85) g.vy *= -1;
+      const cx = g.x * W, cy = g.y * H, rad = g.r * Math.max(W, H);
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+      grad.addColorStop(0, `rgba(${g.col},${g.a})`);
+      grad.addColorStop(1, `rgba(${g.col},0)`);
+      ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+    }
+    for (const m of motes) {
+      m.y += m.vy; m.phase += 0.01;
+      m.x += Math.sin(m.phase) * m.sway * 0.3;
+      if (m.y < -6) { m.y = H + 6; m.x = Math.random() * W; }
+      const tw = 0.55 + 0.45 * Math.sin(t * 0.03 + m.phase);
+      ctx.globalAlpha = m.a * tw;
+      ctx.fillStyle = `rgb(${m.col})`;
+      ctx.shadowColor = `rgb(${m.col})`; ctx.shadowBlur = m.r * 4;
+      ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, 6.28); ctx.fill();
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    if (!reduce) requestAnimationFrame(frame);
+  }
+  resize(); seed();
+  addEventListener("resize", () => { resize(); seed(); });
+  requestAnimationFrame(frame);
+})();
+
 // Offline + instant loads
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => { /* optional */ });
 
@@ -3347,7 +3444,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
   splash.addEventListener("click", () => {
     if (phase === "gate") {
       Sound.unlock(); // the gate tap is the browser's audio-unlock gesture
-      if (reduced || seen) return finish(); // repeat visits (or reduced-motion) skip straight in
+      if (reduced) return finish(); // reduced-motion users skip straight to the hub
       phase = "show";
       $("splash-gate").hidden = true;
       video.hidden = false;

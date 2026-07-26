@@ -11,9 +11,13 @@
   <link rel="manifest" id="manifest-link" href="manifest.json" />
   <link rel="apple-touch-icon" id="touch-icon-link" href="icon-bolt.png" />
   <link rel="icon" id="favicon-link" href="icon-bolt.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Marcellus&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <canvas id="ambient-bg" aria-hidden="true"></canvas>
   <!-- Cinematic intro: tap gate (audio unlock) → the dragon film → home -->
   <div class="splash" id="splash">
     <div class="splash-gate" id="splash-gate">
@@ -83,7 +87,7 @@
       </header>
       <div class="hub-paths">
         <button class="hub-card hub-descent" data-action="descent">
-          <span class="hub-badge">The Saga</span>
+          <span class="hub-badge">The Saga · Coming soon</span>
           <span class="hub-card-icon">🐉</span>
           <h2>The Reckoning</h2>
           <p>Battle down through the dark — answer to strike, or be devoured — to face Malrune, the Unanswered.</p>
