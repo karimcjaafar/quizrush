@@ -2,7 +2,7 @@
    Modes:
    - classic: 10 questions, per-question 15s timer, speed + streak scoring
    - sudden:  endless until first wrong answer (or timeout)
-   - blitz:   60s global clock, answer as many as possible
+   - blitz:   3-minute global clock + 3 lives, answer as many as possible
    Questions: Open Trivia DB (https://opentdb.com)
 =============================================== */
 
@@ -290,6 +290,11 @@ const Music = (() => {
       if (!enabled) return;
       playKey(resolveKey(which));
     },
+    // Force a specific track regardless of the Customize pick (e.g. Blitz's fixed bed).
+    play(key) {
+      if (!enabled) return;
+      playKey(key);
+    },
     stop() {
       clearTimeout(swapTimer);
       if (!audio) return;
@@ -336,7 +341,9 @@ const TTA_API = "https://the-trivia-api.com/v2";
 const INCLUDE_NC_SOURCES = true;
 const QUESTION_TIME = 20;      // seconds per question (classic / custom / sudden)
 const DAILY_TIME = { easy: 10, medium: 15, hard: 20 }; // daily: thinking time scales with difficulty
-const BLITZ_TIME = 60;         // seconds total (blitz)
+const BLITZ_TIME = 180;        // seconds total (blitz — 3-minute round)
+const BLITZ_LIVES = 3;         // wrong answers allowed before the blitz round ends
+const BLITZ_TRACK = "trance";  // the driving overture — Blitz's signature bed (see Music.FILES)
 const RING_CIRC = 213.6;       // 2πr of the timer ring
 
 const MODES = {
@@ -1508,19 +1515,26 @@ async function startGame(mode, overrides = {}) {
     maxLevelCorrect: 0,
     awaitingContinue: false,
     questionTime: mode === "daily" ? DAILY_TIME[opts.difficulty] : QUESTION_TIME,
+    // The third lifeline is Freeze in Blitz (pause the clock), +time everywhere else.
+    thirdKind: mode === "blitz" ? "freeze" : "time",
     // The daily is a pure one-shot test — no helpers
     lifelines: mode === "daily"
       ? { fifty: false, skip: false, time: false }
+      : mode === "blitz"
+      ? { fifty: true, skip: true, freeze: true }
       : { fifty: true, skip: true, time: true },
     locked: false,
     qTimer: null,
     qTimeLeft: QUESTION_TIME,
     blitzTimer: null,
     blitzTimeLeft: BLITZ_TIME,
+    lives: BLITZ_LIVES, // blitz only: wrong answers cost a life; 0 ends the round
   };
 
   // Mode-specific chrome
   $("blitz-timer").hidden = mode !== "blitz";
+  $("blitz-lives").hidden = mode !== "blitz";
+  if (mode === "blitz") paintBlitzLives();
   $("timer-ring-wrap").style.display = mode === "blitz" ? "none" : "";
   $("game-progress").style.visibility = mode === "blitz" || mode === "daily" ? "hidden" : "visible";
   document.querySelector(".progress-track").style.display = mode === "classic" || mode === "custom" ? "" : "none";
@@ -1528,21 +1542,25 @@ async function startGame(mode, overrides = {}) {
   $("streak-badge").style.display = "";
   $("game-tokens").style.display = "";
   $("party-turn").hidden = true;
-  $("lf-time-label").textContent = mode === "blitz" ? "⏰ +5s" : "⏰ +7s";
+  $("lf-time-label").textContent = mode === "blitz" ? "❄️ Freeze" : "⏰ +7s";
+  $("lf-time").title = mode === "blitz" ? "Freeze the clock for 8 seconds" : "Extra time";
   paintLifelines();
 
   updateScoreUI();
   showScreen("game");
   Sound.start();
-  Music.start();
 
   if (mode === "blitz") {
+    // Blitz gets its own driving track, pinned regardless of the Customize pick,
+    // playing uninterrupted from the countdown through the whole round.
+    Music.play(BLITZ_TRACK);
     // 3… 2… 1… GO! before the clock starts running
     playCountdown(() => {
       startBlitzClock();
       renderQuestion();
     });
   } else {
+    Music.start();
     renderQuestion();
   }
 }
@@ -1554,9 +1572,14 @@ function renderQuestion() {
 
   state.locked = false;
 
+  // Every 5th Blitz question is a Golden Question — worth +15s if you nail it.
+  state.golden = state.mode === "blitz" && (state.index + 1) % 5 === 0;
+
   document.activeElement?.blur?.(); // no leftover focus highlight on a fresh question
   const card = $("question-card");
   card.classList.remove("dissolve-out", "shake", "assemble");
+  card.classList.toggle("golden", !!state.golden);
+  $("golden-tag").hidden = !state.golden;
   void card.offsetWidth;
   card.classList.add("assemble"); // pieces drift together, staggered
   setTimeout(() => card.classList.remove("assemble"), 1600);
@@ -1596,6 +1619,7 @@ function renderQuestion() {
   $("learn-panel").hidden = true;
   const answersEl = $("answers");
   answersEl.innerHTML = "";
+  answersEl.classList.add("hover-lock"); // don't hover-highlight a button the resting mouse already sits on
   q.answers.forEach((ans) => {
     const btn = document.createElement("button");
     btn.className = "answer-btn";
@@ -1642,9 +1666,15 @@ function paintRing() {
 }
 
 function startBlitzClock() {
-  clearInterval(state.blitzTimer);
   state.blitzTimeLeft = BLITZ_TIME;
-  let lastTickSec = Math.ceil(BLITZ_TIME);
+  runBlitzClock();
+}
+
+// Runs the countdown from the CURRENT blitzTimeLeft (so Freeze can pause and
+// resume without restarting the whole clock).
+function runBlitzClock() {
+  clearInterval(state.blitzTimer);
+  let lastTickSec = Math.ceil(state.blitzTimeLeft);
   paintBlitz();
   state.blitzTimer = setInterval(() => {
     state.blitzTimeLeft -= 0.1;
@@ -1665,16 +1695,44 @@ function startBlitzClock() {
 function paintBlitz() {
   const frac = state.blitzTimeLeft / BLITZ_TIME;
   $("blitz-timer-fill").style.transform = `scaleX(${frac})`;
-  $("blitz-timer-fill").classList.toggle("danger", frac <= 0.2);
+  $("blitz-timer-fill").classList.toggle("danger", state.blitzTimeLeft <= 15); // final 15s runs red
   $("blitz-timer").classList.toggle("urgent", state.blitzTimeLeft <= 5 && state.blitzTimeLeft > 0);
-  $("blitz-timer-label").textContent = String(Math.ceil(state.blitzTimeLeft));
+  $("blitz-timer-label").textContent = fmtClock(state.blitzTimeLeft);
+}
+
+// m:ss for the blitz clock (e.g. 180 → "3:00", 9 → "0:09")
+function fmtClock(secs) {
+  const s = Math.max(0, Math.ceil(secs));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+// Blitz lives: three hearts, dimmed as they're spent on wrong answers.
+function paintBlitzLives() {
+  const el = $("blitz-lives");
+  if (!el) return;
+  let html = "";
+  for (let i = 0; i < BLITZ_LIVES; i++) {
+    html += `<span class="life${i < state.lives ? "" : " lost"}">♥</span>`;
+  }
+  el.innerHTML = html;
+}
+
+// Spend a life on a wrong blitz answer; returns true if that was the last one.
+function loseBlitzLife() {
+  state.lives = Math.max(0, state.lives - 1);
+  paintBlitzLives();
+  const lost = $("blitz-lives")?.querySelector(".life.lost:last-of-type");
+  if (lost) { lost.classList.remove("pop"); void lost.offsetWidth; lost.classList.add("pop"); }
+  return state.lives <= 0;
 }
 
 // ---------- Lifelines (one use of each per game) ----------
 function paintLifelines() {
   if (!state?.lifelines) return;
-  for (const kind of ["fifty", "skip", "time"]) {
-    const btn = $("lf-" + kind);
+  // The third slot (button #lf-time) is Freeze in Blitz, +time elsewhere.
+  const slots = [["fifty", "lf-fifty"], ["skip", "lf-skip"], [state.thirdKind || "time", "lf-time"]];
+  for (const [kind, id] of slots) {
+    const btn = $(id);
     const avail = state.lifelines[kind];
     const refillable = !avail && state.mode !== "daily" && player.tokens >= 2;
     const lockedNow = state.locked && !(kind === "time" && state.mode === "blitz");
@@ -1725,18 +1783,31 @@ function useSkip() {
 }
 
 function useTime() {
-  if (!state || !state.lifelines.time) return;
-  if (state.mode !== "blitz" && state.locked) return;
+  if (!state || state.locked || !state.lifelines.time) return;
   state.lifelines.time = false;
-  if (state.mode === "blitz") {
-    state.blitzTimeLeft += 5;
-    paintBlitz();
-  } else {
-    state.qTimeLeft += 7;
-    paintRing();
-  }
+  state.qTimeLeft += 7;
+  paintRing();
   Sound.click();
   paintLifelines();
+}
+
+// Blitz's third lifeline: freeze the global clock for 8s to think on a hard one.
+function useFreeze() {
+  if (!state || state.mode !== "blitz" || state.locked || state.frozen || !state.lifelines.freeze) return;
+  state.lifelines.freeze = false;
+  state.frozen = true;
+  clearInterval(state.blitzTimer); // pause the countdown where it is
+  $("blitz-timer").classList.add("frozen");
+  Sound.click();
+  paintLifelines();
+  toast("❄️ Clock frozen — 8s to think");
+  clearTimeout(state.freezeTimer);
+  state.freezeTimer = setTimeout(() => {
+    if (!state || state.ended || state.mode !== "blitz") return;
+    state.frozen = false;
+    $("blitz-timer").classList.remove("frozen");
+    runBlitzClock(); // resume from where it paused
+  }, 8000);
 }
 
 // ---------- Answering ----------
@@ -1788,8 +1859,16 @@ function selectAnswer(btn, answer) {
     state.bestStreak = Math.max(state.bestStreak, state.streak);
     const points = scoreFor(q);
     state.score += points;
-    popPoints("+" + points.toLocaleString());
-    flash("green");
+    if (state.mode === "blitz" && state.golden) {
+      state.blitzTimeLeft += 15; // nailing a Golden Question buys 15 more seconds
+      paintBlitz();
+      popPoints("✨ +15s");
+    } else if (state.mode === "blitz") {
+      popPoints("+1"); // Blitz is scored in correct answers, not points
+    } else {
+      popPoints("+" + points.toLocaleString());
+    }
+    flash(state.golden ? "gold" : "green");
     if (q.nemesis) clearNemesis(q); // revenge complete
   } else {
     state.streak = 0;
@@ -1799,6 +1878,12 @@ function selectAnswer(btn, answer) {
     if (state.mode === "sudden") {
       updateScoreUI();
       setTimeout(() => (player.tokens >= 3 ? showReviveOffer() : endGame()), 1100);
+      return;
+    }
+    if (state.mode === "blitz" && loseBlitzLife()) {
+      updateScoreUI();
+      clearInterval(state.blitzTimer); // out of lives ends the round before the clock
+      setTimeout(endGame, 900);
       return;
     }
   }
@@ -1882,7 +1967,7 @@ function flash(kind) {
   el.className = "feedback-flash " + kind;
   void el.offsetWidth; // restart the animation
   el.classList.add("pulse");
-  try { navigator.vibrate?.(kind === "green" ? 35 : [60, 40, 60]); } catch { /* optional */ }
+  try { navigator.vibrate?.(kind === "red" ? [60, 40, 60] : 35); } catch { /* optional */ }
 }
 
 function popPoints(text) {
@@ -1937,7 +2022,10 @@ function updateScoreUI() {
     $("party-turn").textContent = "🎮 " + p.name;
     return;
   }
-  $("score-value").textContent = state.score.toLocaleString();
+  // Blitz is scored purely by correct answers, not points.
+  $("score-value").textContent = state.mode === "blitz"
+    ? String(state.correct)
+    : state.score.toLocaleString();
   paintCurrencies();
   const badge = $("streak-badge");
   badge.textContent = "🔥 " + state.streak;
@@ -2145,6 +2233,7 @@ async function startParty(names) {
   };
 
   $("blitz-timer").hidden = true;
+  $("blitz-lives").hidden = true;
   $("timer-ring-wrap").style.display = "";
   $("game-progress").style.visibility = "visible";
   document.querySelector(".progress-track").style.display = "none";
@@ -2414,6 +2503,8 @@ function endGame() {
   state.ended = true;
   clearInterval(state.qTimer);
   clearInterval(state.blitzTimer);
+  clearTimeout(state.freezeTimer); // no late clock-resume after the round is over
+  $("blitz-timer").classList.remove("frozen");
   Music.start("anthem"); // hand the stage back to the menu theme
   flushAnswerStats();
   if (state.mode === "party") return endParty();
@@ -2422,17 +2513,19 @@ function endGame() {
   // restore results-screen chrome the level interstitial or a party may have changed
   $("btn-again").textContent = "Play again";
   $("btn-home").textContent = "Home";
-  $("results-score-label").textContent = "points";
+  $("results-score-label").textContent = state.mode === "blitz" ? "correct" : "points";
   $("party-podium").hidden = true;
   if (state.mode !== "daily") $("daily-board").innerHTML = "";
   document.querySelector(".results-stats").style.display = "";
 
   const { mode, score, correct, answered, bestStreak } = state;
   const accuracy = answered ? Math.round((correct / answered) * 100) : 0;
+  // Blitz's headline number is correct answers, not points (XP still uses points below).
+  const headline = mode === "blitz" ? correct : score;
 
   // Daily is once per day, so a cross-day "best" doesn't apply
-  const isBest = mode !== "daily" && score > getBest(mode);
-  if (isBest) setBest(mode, score);
+  const isBest = mode !== "daily" && headline > getBest(mode);
+  if (isBest) setBest(mode, headline);
 
   // Daily outcome: streak, bonus XP, and theme unlocks
   let dailyWon = false;
@@ -2531,7 +2624,7 @@ function endGame() {
     custom: "Round complete!",
     daily: dailyWon ? "Daily solved!" : "Not today…",
     sudden: `Survived ${correct} question${correct === 1 ? "" : "s"}!`,
-    blitz: "Time's up!",
+    blitz: state.lives <= 0 ? "Out of lives!" : "Time's up!",
     whoami: `Identified ${correct} of ${answered}!`,
     dingbats: `Decoded ${correct} of ${answered}!`,
   }[mode];
@@ -2551,7 +2644,7 @@ function endGame() {
 
   const reveal = (quiet) => {
     showScreen("results");
-    stageResultsReveal(score, somber);
+    stageResultsReveal(headline, somber);
     showBadgeToast(newBadges);
     if (quiet) return;
     if (somber) Sound.somber();
@@ -2797,6 +2890,8 @@ function quitGame() {
   flushAnswerStats();
   clearInterval(state?.qTimer);
   clearInterval(state?.blitzTimer);
+  clearTimeout(state?.freezeTimer);
+  $("blitz-timer").classList.remove("frozen");
   Music.start("anthem"); // back to the menu theme
   state = null;
   showScreen("home");
@@ -3259,6 +3354,13 @@ $("btn-dingbat-hint").addEventListener("click", hintDingbat);
 $("btn-dingbat-giveup").addEventListener("click", giveUpDingbat);
 $("btn-next-dingbat").addEventListener("click", nextDingbat);
 
+// A fresh question renders with .hover-lock so a button the mouse already rests on
+// isn't shown pre-highlighted; the first real pointer move unlocks normal hover.
+document.addEventListener("pointermove", () => {
+  const a = $("answers");
+  if (a.classList.contains("hover-lock")) a.classList.remove("hover-lock");
+}, { passive: true });
+
 // Desktop QoL: answer with keys 1–4
 document.addEventListener("keydown", (e) => {
   if (!screens.game.classList.contains("active") || !state || state.locked) return;
@@ -3291,7 +3393,10 @@ $("btn-next-char").addEventListener("click", nextWhoamiCharacter);
 $("daily-card").addEventListener("click", () => startGame("daily"));
 $("lf-fifty").addEventListener("click", () => lifelineClick("fifty", useFifty));
 $("lf-skip").addEventListener("click", () => lifelineClick("skip", useSkip));
-$("lf-time").addEventListener("click", () => lifelineClick("time", useTime));
+$("lf-time").addEventListener("click", () =>
+  state?.mode === "blitz"
+    ? lifelineClick("freeze", useFreeze)
+    : lifelineClick("time", useTime));
 
 // Category chips re-render (for mastery medals), so use delegation for clicks
 ["chips-category", "chips-difficulty"].forEach((id) => {
