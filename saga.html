@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Riddle &amp; Rune — The Saga</title>
+  <meta name="theme-color" content="#070a14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="icon-bolt.png" />
+  <link rel="icon" href="icon-bolt.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Marcellus&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#070a14; --frost:#bfe6ff; --frost-2:#7fb6e6; --ice:#dff2ff;
+      --gold:#ffcf6b; --rune:#a98bff; --blood:#ff4d5e; --good:#66f0b6;
+      --panel:rgba(10,16,30,.72); --line:rgba(150,190,240,.22);
+      --shadow:0 12px 40px rgba(0,0,0,.55);
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{margin:0;height:100%;background:var(--bg);color:#eaf3ff;
+      font-family:"Marcellus",Georgia,serif;overflow:hidden;overscroll-behavior:none}
+    body{position:fixed;inset:0}
+    h1,h2,h3,.cin{font-family:"Cinzel",serif}
+    button{font-family:inherit;color:inherit;cursor:pointer}
+    .stage{position:absolute;inset:0;display:flex;flex-direction:column}
+
+    /* ---------- Cinematic backdrop ---------- */
+    #scene{position:absolute;inset:0;overflow:hidden;background:
+      radial-gradient(120% 80% at 50% -10%, #16243f 0%, #0a1020 45%, #05070f 100%)}
+    #scene video,#scene img.enemy-still{position:absolute;inset:0;width:100%;height:100%;
+      object-fit:cover;opacity:0;transition:opacity .6s ease;filter:saturate(1.05) contrast(1.05)}
+    #scene .show{opacity:1}
+    .vignette{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 200px 60px rgba(2,4,10,.9);
+      background:radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(3,6,14,.7) 100%)}
+    .frost-edge{position:absolute;inset:0;pointer-events:none;opacity:.5;mix-blend-mode:screen;
+      background:radial-gradient(60% 40% at 50% 108%, rgba(140,200,255,.28), transparent 70%)}
+    #fx{position:absolute;inset:0;pointer-events:none}
+    .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+    .hurt{position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 50%,transparent 40%,rgba(255,40,60,.55) 100%);opacity:0;pointer-events:none}
+    @keyframes shake{10%,90%{transform:translate(-2px,1px)}20%,80%{transform:translate(4px,-2px)}
+      30%,50%,70%{transform:translate(-7px,2px)}40%,60%{transform:translate(7px,-1px)}}
+    .shake{animation:shake .5s cubic-bezier(.36,.07,.19,.97) both}
+    .shake-hard{animation:shake .6s cubic-bezier(.36,.07,.19,.97) both;animation-iteration-count:1}
+
+    /* ---------- Top: enemy bar ---------- */
+    .topbar{position:relative;z-index:5;padding:calc(env(safe-area-inset-top) + 14px) 16px 10px;
+      display:flex;flex-direction:column;gap:8px}
+    .foe-row{display:flex;align-items:center;gap:12px}
+    .foe-quit{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);
+      background:rgba(8,12,24,.6);font-size:18px;flex:0 0 auto}
+    .foe-meta{flex:1 1 auto;min-width:0}
+    .foe-name{font-family:"Cinzel";font-weight:700;font-size:clamp(16px,4.4vw,24px);
+      letter-spacing:.04em;text-shadow:0 2px 14px rgba(0,0,0,.8);line-height:1.05}
+    .foe-sub{font-size:12px;opacity:.75;margin-top:2px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .weak-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;
+      background:rgba(169,139,255,.16);border:1px solid rgba(169,139,255,.5);color:#d9ccff;font-size:11px;letter-spacing:.05em}
+    .stage-pips{display:flex;gap:5px}
+    .stage-pips i{width:9px;height:9px;border-radius:50%;background:rgba(200,225,255,.22);border:1px solid var(--line)}
+    .stage-pips i.done{background:var(--frost);box-shadow:0 0 8px var(--frost)}
+    .stage-pips i.cur{background:var(--gold);box-shadow:0 0 10px var(--gold)}
+    .hpbar{height:16px;border-radius:9px;background:rgba(10,16,30,.7);border:1px solid var(--line);
+      overflow:hidden;position:relative;box-shadow:var(--shadow)}
+    .hpbar>i{position:absolute;inset:0;transform-origin:left;transition:transform .5s cubic-bezier(.2,.8,.2,1);
+      background:linear-gradient(90deg,#ff5566,#ff8a4d);box-shadow:0 0 14px rgba(255,80,90,.6) inset}
+    .hpbar>.ghost{background:rgba(255,255,255,.35);transition:transform .9s ease .15s;z-index:-0}
+    .hpbar>b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      font-family:"Cinzel";font-size:11px;letter-spacing:.12em;text-shadow:0 1px 3px #000;z-index:2}
+
+    /* floating damage / labels */
+    .float{position:absolute;z-index:8;font-family:"Cinzel";font-weight:900;pointer-events:none;
+      text-shadow:0 3px 12px rgba(0,0,0,.8);will-change:transform,opacity}
+    @keyframes floatUp{0%{opacity:0;transform:translate(-50%,10px) scale(.7)}
+      15%{opacity:1;transform:translate(-50%,-6px) scale(1.15)}
+      100%{opacity:0;transform:translate(-50%,-70px) scale(1)}}
+
+    /* ---------- Bottom: hero + question ---------- */
+    .dock{position:relative;z-index:6;margin-top:auto;padding:12px 14px calc(env(safe-area-inset-bottom) + 14px);
+      background:linear-gradient(0deg,rgba(4,7,15,.94) 20%,rgba(4,7,15,.6) 70%,transparent);}
+    .hero-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .hearts{display:flex;gap:4px;font-size:20px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))}
+    .hearts .lost{opacity:.22;filter:grayscale(1)}
+    .combo{margin-left:auto;font-family:"Cinzel";font-size:13px;letter-spacing:.08em;opacity:0;transition:opacity .3s}
+    .combo.on{opacity:1;color:var(--gold);text-shadow:0 0 12px rgba(255,207,107,.6)}
+    .qcard{background:var(--panel);backdrop-filter:blur(8px);border:1px solid var(--line);
+      border-radius:16px;padding:14px 16px;box-shadow:var(--shadow)}
+    .qtier{font-size:11px;letter-spacing:.22em;text-transform:uppercase;opacity:.7;margin-bottom:6px;
+      display:flex;align-items:center;gap:8px}
+    .qtier .tag{padding:2px 8px;border-radius:6px;border:1px solid var(--line);background:rgba(255,255,255,.05)}
+    .qtext{font-size:clamp(16px,4.6vw,21px);line-height:1.32;margin:0 0 12px;font-family:"Marcellus"}
+    .opts{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    @media(max-width:430px){.opts{grid-template-columns:1fr}}
+    .opt{position:relative;text-align:left;padding:13px 14px;border-radius:12px;border:1px solid var(--line);
+      background:rgba(14,22,40,.72);font-size:15px;line-height:1.25;transition:transform .08s,border-color .2s,background .2s;
+      min-height:50px;display:flex;align-items:center}
+    .opt:active{transform:scale(.98)}
+    .opt .k{display:inline-flex;width:22px;height:22px;border-radius:6px;margin-right:10px;flex:0 0 auto;
+      align-items:center;justify-content:center;font-family:"Cinzel";font-size:12px;
+      background:rgba(169,139,255,.18);border:1px solid rgba(169,139,255,.4);color:#d9ccff}
+    .opt.correct{background:rgba(60,200,140,.24);border-color:var(--good);color:#daffe9}
+    .opt.wrong{background:rgba(255,70,90,.22);border-color:var(--blood)}
+    .opt.dim{opacity:.4}
+    .opt.correct .k{background:rgba(60,200,140,.35);border-color:var(--good);color:#eafff5}
+
+    .timer{height:4px;border-radius:4px;background:rgba(255,255,255,.08);margin:0 0 12px;overflow:hidden}
+    .timer>i{display:block;height:100%;width:100%;transform-origin:left;
+      background:linear-gradient(90deg,var(--good),var(--gold),var(--blood))}
+
+    /* ---------- Overlays (map / intro / result) ---------- */
+    .overlay{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;text-align:center;padding:30px;gap:14px;
+      background:radial-gradient(120% 90% at 50% 30%,rgba(10,18,36,.7),rgba(3,6,14,.96));
+      -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+    .overlay.hidden{display:none}
+    .ov-rune{font-size:46px;filter:drop-shadow(0 0 20px var(--rune));animation:pulse 3s ease-in-out infinite}
+    @keyframes pulse{50%{opacity:.6;transform:scale(1.08)}}
+    .ov-title{font-family:"Cinzel";font-weight:900;font-size:clamp(26px,8vw,50px);letter-spacing:.04em;
+      text-shadow:0 4px 30px rgba(120,80,255,.4)}
+    .ov-sub{max-width:34ch;opacity:.85;line-height:1.5;font-size:16px}
+    .ov-kicker{font-family:"Cinzel";letter-spacing:.34em;font-size:12px;opacity:.7;text-transform:uppercase}
+    .cta{margin-top:8px;padding:15px 34px;border-radius:14px;border:1px solid rgba(255,207,107,.6);
+      background:linear-gradient(180deg,rgba(255,207,107,.2),rgba(255,207,107,.06));
+      font-family:"Cinzel";font-weight:700;letter-spacing:.12em;font-size:16px;color:#ffe6ad;
+      box-shadow:0 0 30px rgba(255,207,107,.25)}
+    .cta.ghost{border-color:var(--line);background:rgba(255,255,255,.04);color:#cfe0f5;box-shadow:none}
+    .cta:active{transform:scale(.97)}
+    .btnrow{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+
+    /* map path */
+    .map{display:flex;flex-direction:column;gap:0;margin:6px 0 4px;width:100%;max-width:340px}
+    .node{display:flex;align-items:center;gap:14px;padding:8px 4px;position:relative}
+    .node .dot{width:44px;height:44px;border-radius:13px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+      font-size:24px;background:rgba(14,22,40,.8);border:1px solid var(--line);transition:.3s}
+    .node.done .dot{border-color:var(--good);box-shadow:0 0 14px rgba(102,240,182,.4);opacity:.7}
+    .node.cur .dot{border-color:var(--gold);box-shadow:0 0 20px rgba(255,207,107,.5);transform:scale(1.08)}
+    .node.locked .dot{opacity:.4}
+    .node .lbl{text-align:left}
+    .node .lbl b{font-family:"Cinzel";display:block;font-size:15px}
+    .node .lbl span{font-size:12px;opacity:.65}
+    .node:not(:last-child)::before{content:"";position:absolute;left:25px;top:52px;height:20px;width:2px;
+      background:linear-gradient(var(--line),transparent)}
+
+    .loot{display:flex;gap:18px;justify-content:center;margin:4px 0}
+    .loot b{font-family:"Cinzel";font-size:22px;display:block}
+    .loot span{font-size:11px;opacity:.7;letter-spacing:.1em}
+
+    .mute{position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:16px;z-index:30;
+      width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:rgba(8,12,24,.6);font-size:16px}
+    .toast{position:absolute;left:50%;top:22%;transform:translateX(-50%);z-index:25;
+      font-family:"Cinzel";font-size:clamp(20px,7vw,42px);font-weight:900;letter-spacing:.06em;
+      opacity:0;pointer-events:none;text-shadow:0 4px 24px rgba(0,0,0,.8)}
+    @keyframes burst{0%{opacity:0;transform:translateX(-50%) scale(.5)}
+      20%{opacity:1;transform:translateX(-50%) scale(1.15)}
+      75%{opacity:1;transform:translateX(-50%) scale(1)}
+      100%{opacity:0;transform:translateX(-50%) scale(1.05)}}
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div id="scene">
+      <div class="frost-edge"></div>
+      <div class="vignette"></div>
+      <div id="fx"><div class="flash" id="flash"></div><div class="hurt" id="hurt"></div></div>
+    </div>
+
+    <button class="mute" id="mute" aria-label="Sound">🔇</button>
+    <div class="toast" id="toast"></div>
+
+    <!-- Battle HUD -->
+    <div class="topbar" id="hud" hidden>
+      <div class="foe-row">
+        <button class="foe-quit" id="quit" title="Leave the saga">←</button>
+        <div class="foe-meta">
+          <div class="foe-name" id="foeName">—</div>
+          <div class="foe-sub">
+            <span class="weak-chip" id="weakChip">✦ Weak to —</span>
+            <span class="stage-pips" id="pips"></span>
+          </div>
+        </div>
+      </div>
+      <div class="hpbar"><i class="ghost" id="foeHpGhost"></i><i id="foeHp"></i><b id="foeHpTxt">HP</b></div>
+    </div>
+
+    <div class="dock" id="dock" hidden>
+      <div class="hero-row">
+        <div class="hearts" id="hearts"></div>
+        <div class="combo" id="combo">COMBO ×2</div>
+      </div>
+      <div class="qcard">
+        <div class="qtier" id="qtier"><span class="tag">TIER</span><span id="qcat"></span></div>
+        <div class="timer" id="timerWrap" hidden><i id="timerBar"></i></div>
+        <p class="qtext" id="qtext">…</p>
+        <div class="opts" id="opts"></div>
+      </div>
+    </div>
+
+    <!-- Overlays -->
+    <div class="overlay" id="ovTitle">
+      <div class="ov-rune">ᛟ</div>
+      <div class="ov-kicker">The Saga · Playable Demo</div>
+      <div class="ov-title">Riddle &amp; Rune</div>
+      <p class="ov-sub">The Frostwyrm’s reach has frozen the vale and woken its guardians. You carry no blade — only what you <b>know</b>. Answer to strike. Falter, and be devoured.</p>
+      <div class="map" id="mapTitle"></div>
+      <button class="cta" id="startBtn">Enter the Vale ▸</button>
+      <p style="font-size:12px;opacity:.5">Tap enables sound · headphones recommended</p>
+    </div>
+
+    <div class="overlay hidden" id="ovMap">
+      <div class="ov-kicker" id="mapKicker">The path deepens</div>
+      <div class="map" id="map"></div>
+      <div class="loot" id="mapLoot"></div>
+      <button class="cta" id="mapBtn">Descend ▸</button>
+    </div>
+
+    <div class="overlay hidden" id="ovResult">
+      <div class="ov-rune" id="resRune">☠</div>
+      <div class="ov-title" id="resTitle">—</div>
+      <p class="ov-sub" id="resSub"></p>
+      <div class="loot" id="resLoot"></div>
+      <div class="btnrow">
+        <button class="cta" id="resAgain">Try Again</button>
+        <button class="cta ghost" id="resHome">Leave the Saga</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="saga-questions.js"></script>
+  <script>
+  (function(){
+    "use strict";
+    const V="media/saga/App Videos/", P="media/saga/App Pics/";
+    const enc = s => encodeURI(s);   // handles spaces & the … char in filenames
+
+    // ---- Enemy roster (mapped to the real frozen-realm assets) ----
+    const FOES = [
+      { key:"armor", name:"The Hollow Sentinel", role:"Frozen Armour Guard",
+        weak:"history", tiers:["VE","E"], hp:5,
+        still:P+"forgotten-frozen-armor-guard.png",
+        idle:V+"Animated_empty_armor_loop_1080p_202607280016.mp4",
+        attack:V+"Armor_attacks_with_mist_1080p_202607280017.mp4" },
+      { key:"statue", name:"The Forgotten Hero", role:"Living Stone Statue",
+        weak:"arts", tiers:["E","M"], hp:5,
+        still:P+"forgotten-hero-stone-statue.png",
+        idle:V+"Animate_statue_seamless_loop_1080p_202607280018.mp4",
+        defeat:V+"Statue_breaking,_light_rememberi…_1080p_202607280019.mp4" },
+      { key:"mimic", name:"The Glacier Mimic", role:"Treasure That Bites",
+        weak:"geography", tiers:["M"], hp:5,
+        still:P+"glacier-treasure-chest-mimic.png",
+        attack:V+"Treasure_chest_ambush_attack_ani…_202607280032.mp4",
+        defeat:V+"Treasure_chest_defeated_spilling…_1080p_202607280036.mp4" },
+      { key:"sphinx", name:"The Frozen Sphinx", role:"Keeper of Riddles",
+        weak:"science", tiers:["M","H"], hp:6,
+        still:P+"ancient-frozen-riddle-sphinx.png",
+        defeat:V+"Sphinx_concession_and_treasure_g…_202607280041.mp4" },
+      { key:"dragon", name:"Vyrmouth, the Frostwyrm", role:"— FINAL —", boss:true,
+        weak:"history", tiers:["H","VH"], hp:9,
+        still:P+"Dragon1.png", defeatStill:P+"dragon-cut.png",
+        intro:V+"Dragon_spreading_wings_cinematic…_1080p_202607261644.mp4",
+        idle:V+"Dragon_breathing_fog_embers_1080p_202607261637.mp4",
+        attack:V+"Dragon_breathing_fire_in_darkness_202607261528.mp4" },
+    ];
+    const CAT_LABEL={geography:"Geography",science:"Science",history:"History",sport:"Sport",
+      music:"Music",arts:"Arts & Lit",politics:"Politics",chess:"Chess",food:"Food",general:"General"};
+    const TIER_LABEL={VE:"Very Easy",E:"Easy",M:"Medium",H:"Hard",VH:"Very Hard"};
+
+    // ---- Question pools ----
+    const QALL = (window.SAGA_QUESTIONS||[]).slice();
+    const numberish = a => /^(a\s)?(\d[\d,]*(\s?(minutes|years|metres))?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen)$/i.test(a.trim());
+    const byTier={}, byCat={}, numbers=[], texts=[];
+    QALL.forEach(q=>{(byTier[q.t]=byTier[q.t]||[]).push(q);(byCat[q.c]=byCat[q.c]||[]).push(q);
+      (numberish(q.a)?numbers:texts).push(q.a);});
+    const uniq=a=>[...new Set(a)];
+
+    function optionsFor(q){
+      const pool = numberish(q.a) ? uniq(numbers) :
+        uniq((byCat[q.c]||[]).map(x=>x.a));
+      let decoys = pool.filter(a=>a!==q.a);
+      shuffle(decoys);
+      decoys = decoys.slice(0,3);
+      // top up from other text answers if the category was thin
+      if(decoys.length<3){
+        const extra = uniq(texts).filter(a=>a!==q.a && !decoys.includes(a));
+        shuffle(extra); decoys = decoys.concat(extra).slice(0,3);
+      }
+      return shuffle([q.a,...decoys]);
+    }
+    function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+    // per-run: don't repeat a question
+    const used=new Set();
+    function drawQuestion(foe){
+      let cand = QALL.filter(q=>foe.tiers.includes(q.t) && !used.has(q.q));
+      // bias ~55% toward the enemy's weak category so crits are reachable
+      const weakCand = cand.filter(q=>q.c===foe.weak);
+      let pick;
+      if(weakCand.length && Math.random()<0.5) pick = weakCand[Math.floor(Math.random()*weakCand.length)];
+      else if(cand.length) pick = cand[Math.floor(Math.random()*cand.length)];
+      else { used.clear(); cand=QALL.filter(q=>foe.tiers.includes(q.t)); pick=cand[Math.floor(Math.random()*cand.length)]; }
+      used.add(pick.q);
+      return pick;
+    }
+
+    // ---------- Audio (WebAudio SFX + ambience) ----------
+    let AC=null, muted=true, ambience=null;
+    function audioOn(){ if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+      if(AC&&AC.state==="suspended")AC.resume(); }
+    function beep(freq,dur,type,gain,slideTo){ if(!AC||muted)return;
+      const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime;
+      o.type=type||"sine";o.frequency.setValueAtTime(freq,t);
+      if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,t+dur);
+      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(gain||.2,t+.01);
+      g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+      o.connect(g).connect(AC.destination);o.start(t);o.stop(t+dur+.02);}
+    function noise(dur,gain){ if(!AC||muted)return;
+      const n=AC.sampleRate*dur,b=AC.createBuffer(1,n,AC.sampleRate),d=b.getChannelData(0);
+      for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);
+      const s=AC.createBufferSource();s.buffer=b;const g=AC.createGain();
+      g.gain.value=gain||.25;s.connect(g).connect(AC.destination);s.start();}
+    const SFX={
+      hit(){beep(320,.12,"triangle",.22,180);beep(160,.14,"sine",.16);},
+      crit(){beep(660,.09,"square",.18,990);beep(440,.16,"sawtooth",.2,120);noise(.16,.18);},
+      miss(){beep(150,.22,"sawtooth",.22,70);},
+      roar(){beep(90,.5,"sawtooth",.28,50);noise(.5,.22);},
+      win(){[523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.3,"triangle",.2),i*110));},
+      lose(){[400,300,220,150].forEach((f,i)=>setTimeout(()=>beep(f,.35,"sine",.2,f*.7),i*140));},
+      shatter(){noise(.4,.3);beep(1200,.2,"triangle",.12,300);},
+      click(){beep(520,.05,"sine",.1);}
+    };
+    function startAmbience(){
+      if(muted)return;
+      if(!ambience){ambience=new Audio("music/ambient-synth-overture.mp3");ambience.loop=true;ambience.volume=0;}
+      ambience.play().then(()=>{let v=0;const id=setInterval(()=>{v=Math.min(.35,v+.02);ambience.volume=v;if(v>=.35)clearInterval(id);},120);}).catch(()=>{});
+    }
+    const muteBtn=document.getElementById("mute");
+    muteBtn.onclick=()=>{muted=!muted;muteBtn.textContent=muted?"🔇":"🔊";
+      if(muted){if(ambience)ambience.pause();}else{audioOn();startAmbience();}};
+
+    // ---------- Scene / video management ----------
+    const scene=document.getElementById("scene");
+    let curVid=null;
+    function setStill(src){
+      clearVid();
+      let img=scene.querySelector("img.enemy-still");
+      if(!img){img=document.createElement("img");img.className="enemy-still";scene.insertBefore(img,scene.firstChild);}
+      img.src=enc(src); requestAnimationFrame(()=>img.classList.add("show"));
+    }
+    function clearVid(){ if(curVid){curVid.classList.remove("show");const v=curVid;setTimeout(()=>v.remove(),650);curVid=null;} }
+    function playVid(src,{loop=true,onEnd=null,fallback=null}={}){
+      const still=scene.querySelector("img.enemy-still"); if(still)still.classList.remove("show");
+      const v=document.createElement("video");
+      v.playsInline=true;v.muted=true;v.setAttribute("muted","");v.loop=loop;v.preload="auto";
+      v.src=enc(src);
+      v.addEventListener("error",()=>{ if(fallback)setStill(fallback); });
+      if(onEnd&&!loop)v.addEventListener("ended",onEnd,{once:true});
+      scene.insertBefore(v,scene.firstChild);
+      const prev=curVid;curVid=v;
+      v.play().then(()=>{requestAnimationFrame(()=>v.classList.add("show"));
+        if(prev){prev.classList.remove("show");setTimeout(()=>prev.remove(),650);}
+      }).catch(()=>{ if(fallback)setStill(fallback); });
+      return v;
+    }
+    // preload the next foe's idle/still quietly
+    function warm(foe){ const s=foe.idle||foe.still; if(!s)return;
+      if(/\.mp4$/i.test(s)){const v=document.createElement("video");v.preload="auto";v.muted=true;v.src=enc(s);}
+      else{const i=new Image();i.src=enc(s);} }
+
+    // ---------- FX ----------
+    const flash=document.getElementById("flash"),hurt=document.getElementById("hurt"),
+          fxToast=document.getElementById("toast"),stage=document.querySelector(".stage");
+    function boom(el,cls){el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);}
+    function whiteFlash(a=.9){flash.style.transition="none";flash.style.opacity=a;requestAnimationFrame(()=>{flash.style.transition="opacity .5s ease";flash.style.opacity=0;});}
+    function redFlash(){hurt.style.transition="none";hurt.style.opacity=1;requestAnimationFrame(()=>{hurt.style.transition="opacity .6s ease";hurt.style.opacity=0;});}
+    function shakeScreen(hard){boom(stage,hard?"shake-hard":"shake");}
+    function bigToast(txt,color){fxToast.textContent=txt;fxToast.style.color=color||"#fff";
+      fxToast.style.animation="none";void fxToast.offsetWidth;fxToast.style.animation="burst 1.1s ease forwards";}
+    function floatText(txt,color,x,y){const f=document.createElement("div");f.className="float";
+      f.textContent=txt;f.style.color=color;f.style.left=(x||50)+"%";f.style.top=(y||42)+"%";
+      f.style.fontSize="clamp(22px,7vw,44px)";f.style.animation="floatUp 1s ease forwards";
+      stage.appendChild(f);setTimeout(()=>f.remove(),1000);}
+
+    // ---------- State ----------
+    let foeIdx=0, foe=null, foeHP=0, foeMax=0, hearts=4, combo=0, gold=0, runes=0, locked=false, timerId=null, _correct="";
+    const el=id=>document.getElementById(id);
+
+    function renderMap(target){
+      target.innerHTML="";
+      FOES.forEach((f,i)=>{
+        const st=i<foeIdx?"done":i===foeIdx?"cur":"locked";
+        const icons={armor:"🛡️",statue:"🗿",mimic:"🎁",sphinx:"🦁",dragon:"🐉"};
+        const n=document.createElement("div");n.className="node "+st;
+        n.innerHTML=`<div class="dot">${icons[f.key]}</div><div class="lbl"><b>${st==="locked"&&!f.boss?"???":f.name}</b>
+          <span>${f.boss?"The Frostwyrm — final stand":"Weak to "+CAT_LABEL[f.weak]}</span></div>`;
+        target.appendChild(n);
+      });
+    }
+    function renderHearts(){el("hearts").innerHTML=Array.from({length:4},(_,i)=>
+      `<span class="${i<hearts?"":"lost"}">${i<hearts?"❤️":"🖤"}</span>`).join("");}
+    function setFoeHP(v,ghost){foeHP=Math.max(0,v);
+      el("foeHp").style.transform=`scaleX(${foeHP/foeMax})`;
+      if(ghost)el("foeHpGhost").style.transform=`scaleX(${(v+ghost)/foeMax})`;
+      else el("foeHpGhost").style.transform=`scaleX(${foeHP/foeMax})`;
+      el("foeHpTxt").textContent=`${foeHP} / ${foeMax}`;}
+    function renderPips(){el("pips").innerHTML=FOES.map((f,i)=>
+      `<i class="${i<foeIdx?"done":i===foeIdx?"cur":""}"></i>`).join("");}
+    function setCombo(){const c=el("combo");if(combo>=2){c.classList.add("on");c.textContent=`COMBO ×${combo}`;}else c.classList.remove("on");}
+
+    // ---------- Flow ----------
+    function beginFoe(){
+      foe=FOES[foeIdx];foeMax=foe.hp;
+      el("foeName").textContent=foe.name;
+      el("weakChip").innerHTML=foe.boss?`★ Final Boss · weak to ${CAT_LABEL[foe.weak]}`:`✦ Weak to ${CAT_LABEL[foe.weak]}`;
+      renderPips();renderHearts();setCombo();
+      el("hud").hidden=false;el("dock").hidden=false;
+      // establish the scene
+      if(foe.boss && foe.intro){
+        el("dock").hidden=true;
+        SFX.roar();
+        playVid(foe.intro,{loop:false,fallback:foe.still,onEnd:()=>{
+          if(foe.idle)playVid(foe.idle,{loop:true,fallback:foe.still}); else setStill(foe.still);
+          el("dock").hidden=false;setFoeHP(foeMax);nextQuestion();
+        }});
+        // safety: if intro never fires ended, continue after 9s
+        setTimeout(()=>{if(el("dock").hidden){if(foe.idle)playVid(foe.idle,{loop:true,fallback:foe.still});else setStill(foe.still);el("dock").hidden=false;setFoeHP(foeMax);nextQuestion();}},9000);
+        setFoeHP(foeMax);
+        return;
+      }
+      if(foe.idle)playVid(foe.idle,{loop:true,fallback:foe.still}); else setStill(foe.still);
+      setFoeHP(foeMax);
+      nextQuestion();
+    }
+
+    function nextQuestion(){
+      if(foeIdx+1<FOES.length)warm(FOES[foeIdx+1]);
+      locked=false;
+      const q=drawQuestion(foe);
+      _correct=q.a;
+      el("qtier").querySelector(".tag").textContent=TIER_LABEL[q.t]||q.t;
+      const isWeak=q.c===foe.weak;
+      el("qcat").innerHTML = isWeak
+        ? `<span style="color:var(--rune)">✦ ${CAT_LABEL[q.c]} — weak point!</span>`
+        : CAT_LABEL[q.c]||q.c;
+      el("qtext").textContent=q.q;
+      const opts=optionsFor(q);
+      const box=el("opts");box.innerHTML="";
+      opts.forEach((opt,i)=>{
+        const b=document.createElement("button");b.className="opt";
+        b.innerHTML=`<span class="k">${"ABCD"[i]}</span><span>${opt}</span>`;
+        b.onclick=()=>answer(b,opt===q.a,isWeak,box);
+        box.appendChild(b);
+      });
+      startTimer(q);
+    }
+
+    function startTimer(q){
+      clearTimeout(timerId);
+      const secs = foe.boss?18:(q.t==="VH"||q.t==="H"?20:15);
+      const bar=el("timerBar");bar.style.transition="none";bar.style.transform="scaleX(1)";
+      el("timerWrap").hidden=false;
+      requestAnimationFrame(()=>{bar.style.transition=`transform ${secs}s linear`;bar.style.transform="scaleX(0)";});
+      timerId=setTimeout(()=>{ if(!locked) timeOut(); }, secs*1000);
+    }
+
+    function answer(btn,correct,isWeak,box){
+      if(locked)return;locked=true;clearTimeout(timerId);
+      audioOn();
+      [...box.children].forEach(b=>b.classList.add("dim"));
+      btn.classList.remove("dim");
+      if(correct){
+        btn.classList.add("correct");
+        combo++;setCombo();
+        const crit=isWeak;
+        let dmg = 1 + (combo>=3?1:0) + (crit?1:0);
+        SFX[crit?"crit":"hit"]();
+        whiteFlash(crit?.85:.5);shakeScreen(crit);
+        floatText((crit?"CRIT ":"")+"−"+dmg, crit?"#d9ccff":"#eafff5", 50, 34);
+        if(crit)bigToast("CRITICAL!","#c9b6ff");
+        else if(combo>=3)bigToast("COMBO ×"+combo,"#ffcf6b");
+        // enemy flinch: replay idle or brief attack-as-recoil
+        const prev=foeHP;setFoeHP(foeHP-dmg,0);
+        el("foeHpGhost").style.transform=`scaleX(${prev/foeMax})`;
+        if(foeHP<=0){ setTimeout(()=>defeatFoe(),620); return; }
+        gold+=crit?3:2; runes+=crit?1:0;
+        setTimeout(nextQuestion,760);
+      } else {
+        btn.classList.add("wrong");
+        // reveal the true answer among the options
+        [...box.children].forEach(b=>{ if(b.querySelector("span:last-child").textContent===_correct)b.classList.remove("dim"),b.classList.add("correct"); });
+        combo=0;setCombo();
+        enemyStrike();
+      }
+    }
+    function timeOut(){locked=true;const box=el("opts");[...box.children].forEach(b=>b.classList.add("dim"));
+      combo=0;setCombo();bigToast("TOO SLOW","#ff7d8c");enemyStrike();}
+
+    function enemyStrike(){
+      SFX.miss();
+      hearts--;renderHearts();redFlash();shakeScreen(true);
+      floatText("✖","#ff4d5e",50,40);
+      // play the foe's attack clip if it has one, then return to idle
+      if(foe.attack){
+        const v=playVid(foe.attack,{loop:false,fallback:foe.still,onEnd:()=>{
+          if(foe.idle)playVid(foe.idle,{loop:true,fallback:foe.still});else setStill(foe.still);
+        }});
+        SFX.roar();
+      }
+      if(hearts<=0){ setTimeout(()=>endRun(false),700); return; }
+      setTimeout(nextQuestion,foe.attack?1400:900);
+    }
+
+    function defeatFoe(){
+      el("dock").hidden=true;
+      bigToast(foe.boss?"THE WYRM FALLS":"VANQUISHED","#ffe6ad");
+      whiteFlash(1);shakeScreen(true);
+      SFX.shatter();setTimeout(()=>SFX.win(),160);
+      gold+=foe.boss?40:10; runes+=foe.boss?5:2;
+      const finish=()=>{ foeIdx++; if(foeIdx>=FOES.length) endRun(true); else showMap(); };
+      if(foe.defeat){
+        playVid(foe.defeat,{loop:false,fallback:foe.defeatStill||foe.still,onEnd:()=>setTimeout(finish,700)});
+        setTimeout(()=>{ if(el("ovMap").classList.contains("hidden")&&el("ovResult").classList.contains("hidden")&&el("dock").hidden){/*guard*/} },10);
+        // safety timeout in case 'ended' doesn't fire
+        setTimeout(()=>{ if(el("dock").hidden && el("ovMap").classList.contains("hidden") && el("ovResult").classList.contains("hidden")) finish(); }, 9000);
+      } else if(foe.defeatStill){ setStill(foe.defeatStill); setTimeout(finish,1400); }
+      else { setTimeout(finish,1200); }
+    }
+
+    function showMap(){
+      renderMap(el("map"));
+      el("mapKicker").textContent = foeIdx===FOES.length-1 ? "The air turns to frost — the Wyrm awaits" : "The path deepens";
+      el("mapLoot").innerHTML=`<div><b style="color:var(--gold)">${gold}</b><span>GOLD</span></div>
+        <div><b style="color:var(--rune)">${runes}</b><span>RUNES</span></div>
+        <div><b style="color:var(--blood)">${"❤".repeat(hearts)||"—"}</b><span>LIFE</span></div>`;
+      el("mapBtn").textContent = FOES[foeIdx].boss ? "Face the Frostwyrm ▸" : "Descend ▸";
+      show("ovMap");
+    }
+
+    function endRun(victory){
+      clearTimeout(timerId);
+      el("hud").hidden=true;el("dock").hidden=true;
+      el("resRune").textContent=victory?"👑":"☠";
+      el("resTitle").textContent=victory?"The Vale is Free":"You Were Devoured";
+      el("resSub").textContent=victory
+        ? "The Frostwyrm lies broken and the thaw begins. You bested every guardian with knowledge alone."
+        : `You fell at ${foe.name}. The frost claims another scholar… but the vale remembers the brave.`;
+      el("resLoot").innerHTML=`<div><b style="color:var(--gold)">${gold}</b><span>GOLD</span></div>
+        <div><b style="color:var(--rune)">${runes}</b><span>RUNES</span></div>
+        <div><b>${foeIdx}/${FOES.length}</b><span>FELLED</span></div>`;
+      if(victory){SFX.win();bigToast("VICTORY","#ffe6ad");if(FOES[FOES.length-1].defeatStill)setStill(FOES[FOES.length-1].defeatStill);}
+      else SFX.lose();
+      show("ovResult");
+    }
+
+    // ---------- overlay switching ----------
+    function show(id){["ovTitle","ovMap","ovResult"].forEach(o=>el(o).classList.toggle("hidden",o!==id));}
+    function hideAll(){["ovTitle","ovMap","ovResult"].forEach(o=>el(o).classList.add("hidden"));}
+
+    function resetRun(){foeIdx=0;hearts=4;combo=0;gold=0;runes=0;used.clear();}
+
+    // ---------- wire buttons ----------
+    renderMap(el("mapTitle"));
+    el("startBtn").onclick=()=>{ muted=false;muteBtn.textContent="🔊";audioOn();startAmbience();
+      SFX.click();hideAll();beginFoe(); };
+    el("mapBtn").onclick=()=>{ SFX.click();hideAll();beginFoe(); };
+    el("resAgain").onclick=()=>{ SFX.click();resetRun();hideAll();beginFoe(); };
+    el("resHome").onclick=()=>{ location.href="./"; };
+    el("quit").onclick=()=>{ if(confirm("Leave the saga and return to the menu?"))location.href="./"; };
+
+    // pause videos when tab hidden (saves battery)
+    document.addEventListener("visibilitychange",()=>{ if(document.hidden&&ambience)ambience.pause();
+      else if(!muted&&ambience)ambience.play().catch(()=>{}); });
+  })();
+  </script>
+</body>
+</html>
