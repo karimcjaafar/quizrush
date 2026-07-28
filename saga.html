@@ -180,8 +180,11 @@
        instead (flex-start + auto — no flex-end clip traps) */
     #ovMap{justify-content:flex-start;overflow-y:auto;
       padding-top:calc(env(safe-area-inset-top) + 14px);gap:11px}
-    .worldmap-wrap{flex:0 0 auto;width:min(92vw,370px);border-radius:16px;overflow:hidden;
-      border:1px solid var(--line);box-shadow:var(--shadow);background:#0b1226}
+    /* a window onto a two-screen-tall world: the camera glides as you climb,
+       and you can drag ahead to scout the road */
+    .worldmap-wrap{flex:0 0 auto;width:min(92vw,370px);height:min(54vh,430px);
+      overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
+      border-radius:16px;border:1px solid var(--line);box-shadow:var(--shadow);background:#05091a}
     #worldmap{display:block;width:100%;height:auto}
     .road{fill:none;stroke:rgba(215,232,255,.6);stroke-width:2.4;stroke-dasharray:.5 6.5;stroke-linecap:round}
     .road.dim{stroke:rgba(215,232,255,.13)}
@@ -452,66 +455,118 @@
       <div class="ov-title" style="font-size:clamp(22px,6vw,34px)">The Frost-Trail</div>
       <p class="ov-sub" style="opacity:.7;font-size:12.5px;margin-top:-4px">Vyrmouth, First Flame of Malrune, devours the vale's names from beneath. Answer well, and take them back.</p>
       <div class="worldmap-wrap">
-      <svg id="worldmap" viewBox="0 0 360 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Map of the Frozen Vale">
+      <svg id="worldmap" viewBox="0 0 360 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Map of the Frozen Vale">
         <defs>
           <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#070d1d"/><stop offset=".45" stop-color="#0d1830"/><stop offset="1" stop-color="#16294a"/>
+            <stop offset="0" stop-color="#05091a"/><stop offset=".35" stop-color="#0b1530"/>
+            <stop offset=".7" stop-color="#122448"/><stop offset="1" stop-color="#1a2f55"/>
           </linearGradient>
-          <radialGradient id="palaceG" cx=".5" cy=".45" r=".6">
-            <stop offset="0" stop-color="#b04a68" stop-opacity=".55"/><stop offset=".6" stop-color="#6a3fa0" stop-opacity=".22"/><stop offset="1" stop-color="#6a3fa0" stop-opacity="0"/>
+          <radialGradient id="moonG" cx=".5" cy=".5" r=".5">
+            <stop offset="0" stop-color="#eaf3ff" stop-opacity=".9"/><stop offset=".25" stop-color="#cfe0f5" stop-opacity=".28"/><stop offset="1" stop-color="#cfe0f5" stop-opacity="0"/>
           </radialGradient>
-          <linearGradient id="iceG" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#cfe8ff" stop-opacity=".28"/><stop offset="1" stop-color="#5f89b8" stop-opacity=".1"/>
+          <radialGradient id="palaceG" cx=".5" cy=".45" r=".6">
+            <stop offset="0" stop-color="#c05575" stop-opacity=".6"/><stop offset=".55" stop-color="#6a3fa0" stop-opacity=".25"/><stop offset="1" stop-color="#6a3fa0" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="ridgeFar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#2c4370"/><stop offset="1" stop-color="#16264a"/>
           </linearGradient>
+          <linearGradient id="ridgeMid" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#20335c"/><stop offset="1" stop-color="#101d3c"/>
+          </linearGradient>
+          <linearGradient id="ridgeNear" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#15234a"/><stop offset="1" stop-color="#0a1428"/>
+          </linearGradient>
+          <linearGradient id="lakeG" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#bfe0f5" stop-opacity=".32"/><stop offset="1" stop-color="#5f89b8" stop-opacity=".08"/>
+          </linearGradient>
+          <linearGradient id="gateWarm" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ffcf6b" stop-opacity=".9"/><stop offset="1" stop-color="#b0632a" stop-opacity=".7"/>
+          </linearGradient>
+          <filter id="soft8"><feGaussianBlur stdDeviation="8"/></filter>
+          <filter id="soft4"><feGaussianBlur stdDeviation="4"/></filter>
+          <g id="pine">
+            <rect x="-1.1" y="-3.4" width="2.2" height="4.4" fill="#08101f"/>
+            <path d="M0,-24 C1.6,-19.5 3.4,-17 5.6,-15 L2.2,-15 C4.4,-11.6 6.6,-9.4 8.8,-7.4 L3.2,-7.4 C5.4,-4.2 7.6,-2.4 9.8,-.8 L-9.8,-.8 C-7.6,-2.4 -5.4,-4.2 -3.2,-7.4 L-8.8,-7.4 C-6.6,-9.4 -4.4,-11.6 -2.2,-15 L-5.6,-15 C-3.4,-17 -1.6,-19.5 0,-24 Z"/>
+          </g>
         </defs>
-        <rect width="360" height="540" fill="url(#skyG)"/>
-        <path d="M0,120 C60,90 120,140 200,105 C270,75 320,110 360,88 L360,150 C280,175 200,140 120,168 C70,185 30,160 0,172 Z" fill="#3fd6c0" opacity=".07"/>
-        <path d="M0,95 C80,70 170,110 250,80 C300,62 340,80 360,70 L360,105 C300,120 230,95 150,122 C90,142 40,118 0,128 Z" fill="#8a6ff0" opacity=".07"/>
-        <polygon points="0,260 45,170 90,250 130,150 180,255 230,165 280,250 320,180 360,245 360,300 0,300" fill="#131f3a"/>
-        <polygon points="45,170 60,200 30,200" fill="#dfeaf8" opacity=".55"/>
-        <polygon points="130,150 148,185 112,185" fill="#dfeaf8" opacity=".55"/>
-        <polygon points="230,165 246,196 214,196" fill="#dfeaf8" opacity=".5"/>
-        <polygon points="320,180 334,208 306,208" fill="#dfeaf8" opacity=".5"/>
-        <polygon points="0,330 70,240 140,335 200,250 270,340 330,255 360,320 360,400 0,400" fill="#0f1a30"/>
-        <ellipse cx="86" cy="268" rx="52" ry="17" fill="url(#iceG)"/>
-        <path d="M52,266 L86,270 L112,262 M70,276 L96,268" stroke="#dfeaf8" stroke-width=".7" opacity=".4" fill="none"/>
-        <g fill="#10233c">
-          <polygon points="300,340 308,322 316,340"/><polygon points="312,346 320,326 328,346"/>
-          <polygon points="38,362 46,342 54,362"/><polygon points="52,368 60,346 68,368"/>
-          <polygon points="238,208 244,194 250,208"/><polygon points="248,212 254,196 260,212"/>
-          <polygon points="120,300 127,283 134,300"/><polygon points="133,305 140,286 147,305"/>
+        <rect width="360" height="720" fill="url(#skyG)"/>
+        <circle cx="290" cy="86" r="58" fill="url(#moonG)"/>
+        <circle cx="290" cy="86" r="17" fill="#e8f1fd" opacity=".95"/>
+        <circle cx="284" cy="80" r="4" fill="#cfd9ea" opacity=".5"/><circle cx="296" cy="92" r="3" fill="#cfd9ea" opacity=".4"/>
+        <path d="M0,150 C70,110 150,170 230,128 C290,98 330,130 360,112 L360,180 C280,205 200,160 120,196 C70,218 30,190 0,204 Z" fill="#3fd6c0" opacity=".1" filter="url(#soft8)"/>
+        <path d="M0,110 C90,80 190,130 270,92 C310,74 340,88 360,78 L360,130 C290,150 210,110 130,142 C80,162 35,140 0,150 Z" fill="#8a6ff0" opacity=".1" filter="url(#soft8)"/>
+        <g fill="#eaf3ff"><circle cx="34" cy="58" r="1.1"/><circle cx="96" cy="34" r="1.3"/><circle cx="150" cy="72" r="1"/>
+          <circle cx="216" cy="40" r="1.2"/><circle cx="330" cy="150" r="1"/><circle cx="24" cy="180" r="1.1"/>
+          <circle cx="120" cy="128" r="1"/><circle cx="340" cy="40" r="1.2"/><circle cx="60" cy="240" r="1"/><circle cx="320" cy="250" r="1"/></g>
+        <path d="M0,332 C34,290 62,272 92,300 C112,252 152,246 178,288 C204,242 240,238 268,282 C292,252 326,246 360,290 L360,392 L0,392 Z" fill="url(#ridgeFar)"/>
+        <path d="M84,304 C90,290 100,288 108,300 C100,297 92,298 84,304 Z" fill="#dfeaf8" opacity=".7"/>
+        <path d="M170,292 C177,276 187,275 195,290 C186,285 178,286 170,292 Z" fill="#dfeaf8" opacity=".7"/>
+        <path d="M260,286 C267,270 277,270 284,286 C276,280 268,280 260,286 Z" fill="#dfeaf8" opacity=".65"/>
+        <ellipse cx="180" cy="382" rx="220" ry="26" fill="#cfe0f5" opacity=".1" filter="url(#soft8)"/>
+        <path d="M0,470 C40,400 80,384 118,428 C150,376 196,370 226,420 C254,380 300,376 332,420 C344,404 356,398 360,402 L360,540 L0,540 Z" fill="url(#ridgeMid)"/>
+        <path d="M108,432 C116,414 128,412 138,428 C127,421 117,423 108,432 Z" fill="#cfe0f5" opacity=".5"/>
+        <path d="M218,424 C226,404 240,402 250,420 C239,411 228,413 218,424 Z" fill="#cfe0f5" opacity=".5"/>
+        <ellipse cx="150" cy="472" rx="88" ry="26" fill="url(#lakeG)"/>
+        <path d="M92,470 L136,476 L176,466 M112,482 L158,472" stroke="#e6f2ff" stroke-width=".8" opacity=".5" fill="none"/>
+        <ellipse cx="180" cy="540" rx="230" ry="30" fill="#cfe0f5" opacity=".08" filter="url(#soft8)"/>
+        <path d="M0,660 C50,596 96,584 140,630 C176,584 226,580 262,626 C296,590 336,588 360,620 L360,720 L0,720 Z" fill="url(#ridgeNear)"/>
+        <g fill="#0d1a33">
+          <use href="#pine" transform="translate(30,700) scale(1.15)"/><use href="#pine" transform="translate(52,706) scale(.9)"/>
+          <use href="#pine" transform="translate(74,700) scale(1.3)"/><use href="#pine" transform="translate(96,708) scale(1)"/>
+          <use href="#pine" transform="translate(292,702) scale(1.2)"/><use href="#pine" transform="translate(316,708) scale(.95)"/>
+          <use href="#pine" transform="translate(338,700) scale(1.1)"/><use href="#pine" transform="translate(258,708) scale(.85)"/>
+          <use href="#pine" transform="translate(140,712) scale(.9)"/><use href="#pine" transform="translate(226,712) scale(.95)"/>
         </g>
-        <g opacity=".8" fill="#eaf3ff">
-          <circle cx="40" cy="80" r="1"/><circle cx="120" cy="55" r="1.2"/><circle cx="210" cy="42" r="1"/>
-          <circle cx="300" cy="66" r="1.1"/><circle cx="340" cy="140" r="1"/><circle cx="20" cy="200" r="1"/>
+        <g fill="#122649">
+          <use href="#pine" transform="translate(36,560) scale(.85)"/><use href="#pine" transform="translate(56,566) scale(.7)"/>
+          <use href="#pine" transform="translate(320,556) scale(.8)"/><use href="#pine" transform="translate(336,564) scale(.65)"/>
+          <use href="#pine" transform="translate(120,520) scale(.7)"/><use href="#pine" transform="translate(250,516) scale(.72)"/>
+          <use href="#pine" transform="translate(300,472) scale(.62)"/><use href="#pine" transform="translate(60,430) scale(.6)"/>
+          <use href="#pine" transform="translate(206,462) scale(.66)"/>
         </g>
-        <ellipse cx="180" cy="76" rx="86" ry="62" fill="url(#palaceG)"/>
-        <g stroke="#0a1220" stroke-width="1">
-          <polygon points="180,10 196,64 164,64" fill="#26365c"/>
-          <polygon points="152,28 164,66 140,66" fill="#1e2c4e"/>
-          <polygon points="208,28 220,66 196,66" fill="#1e2c4e"/>
-          <polygon points="128,42 138,68 118,68" fill="#182543"/>
-          <polygon points="232,42 242,68 222,68" fill="#182543"/>
-          <rect x="122" y="64" width="116" height="16" fill="#1b2949"/>
-          <path d="M170,80 L170,68 Q180,58 190,68 L190,80 Z" fill="#070d1d"/>
+        <g fill="#1a3055">
+          <use href="#pine" transform="translate(140,352) scale(.55)"/><use href="#pine" transform="translate(230,344) scale(.5)"/>
+          <use href="#pine" transform="translate(58,346) scale(.5)"/><use href="#pine" transform="translate(310,338) scale(.48)"/>
         </g>
-        <g fill="#ff5566" opacity=".9">
-          <rect x="176" y="26" width="3" height="5"/><rect x="182" y="26" width="3" height="5"/>
+        <ellipse cx="180" cy="118" rx="118" ry="86" fill="url(#palaceG)"/>
+        <g transform="translate(180,132)" stroke="#070d1d" stroke-width="1">
+          <path d="M-64,0 L-64,-16 L-58,-16 L-58,-11 L-52,-11 L-52,-16 L-46,-16 L-46,-11 L-40,-11 L-40,-16 L-34,-16 L-34,0 Z" fill="#1c2c52"/>
+          <path d="M64,0 L64,-16 L58,-16 L58,-11 L52,-11 L52,-16 L46,-16 L46,-11 L40,-11 L40,-16 L34,-16 L34,0 Z" fill="#1c2c52"/>
+          <rect x="-36" y="-14" width="72" height="14" fill="#20315a"/>
+          <path d="M-52,-16 L-48,-46 C-47,-52 -45,-52 -44,-46 L-40,-16 Z" fill="#243763"/>
+          <path d="M-46,-46 L-46,-64 C-46,-70 -44,-72 -46,-78 L-49,-64 Z" fill="#2a4070" transform="translate(0,2)"/>
+          <path d="M52,-16 L48,-46 C47,-52 45,-52 44,-46 L40,-16 Z" fill="#243763"/>
+          <path d="M-14,-14 L-11,-58 C-10.5,-64 10.5,-64 11,-58 L14,-14 Z" fill="#2a4070"/>
+          <path d="M-11,-58 C-6,-76 6,-76 11,-58 C6,-64 -6,-64 -11,-58 Z" fill="#31497e"/>
+          <path d="M0,-104 C2.5,-90 4,-80 5,-72 L-5,-72 C-4,-80 -2.5,-90 0,-104 Z" fill="#38538c"/>
+          <path d="M-30,-14 L-27,-40 C-26,-46 -22,-46 -21,-40 L-18,-14 Z" fill="#22355f"/>
+          <path d="M30,-14 L27,-40 C26,-46 22,-46 21,-40 L18,-14 Z" fill="#22355f"/>
+          <path d="M-24,-40 C-22,-52 -20,-52 -18,-40 Z" fill="#2a4070"/><path d="M24,-40 C22,-52 20,-52 18,-40 Z" fill="#2a4070"/>
         </g>
-        <g fill="#ffcf6b" opacity=".75">
-          <rect x="156" y="44" width="2.6" height="4"/><rect x="202" y="44" width="2.6" height="4"/>
-          <rect x="132" y="56" width="2.4" height="3.6"/><rect x="226" y="56" width="2.4" height="3.6"/>
+        <g transform="translate(180,132)">
+          <path d="M-5,0 L-5,-9 C-5,-13 5,-13 5,-9 L5,0 Z" fill="url(#gateWarm)"/>
+          <rect x="-2" y="-78" width="1.6" height="3.4" fill="#ff5566"/><rect x="1" y="-78" width="1.6" height="3.4" fill="#ff5566"/>
+          <rect x="-25" y="-34" width="1.6" height="3" fill="#ffcf6b" opacity=".85"/><rect x="23" y="-34" width="1.6" height="3" fill="#ffcf6b" opacity=".85"/>
+          <rect x="-48" y="-38" width="1.6" height="3" fill="#ffcf6b" opacity=".7"/><rect x="46" y="-38" width="1.6" height="3" fill="#ffcf6b" opacity=".7"/>
+          <rect x="-8" y="-50" width="1.8" height="3.4" fill="#ffcf6b" opacity=".9"/><rect x="6" y="-50" width="1.8" height="3.4" fill="#ffcf6b" opacity=".9"/>
+          <g fill="#cfe4ff" opacity=".8">
+            <path d="M-60,0 L-58,9 L-56,0 Z"/><path d="M-42,0 L-40,11 L-38,0 Z"/><path d="M-20,0 L-18,8 L-16,0 Z"/>
+            <path d="M16,0 L18,9 L20,0 Z"/><path d="M38,0 L40,11 L42,0 Z"/><path d="M56,0 L58,8 L60,0 Z"/>
+          </g>
         </g>
-        <g fill="#cfe4ff" opacity=".7">
-          <polygon points="126,80 129,90 132,80"/><polygon points="146,80 149,92 152,80"/>
-          <polygon points="208,80 211,92 214,80"/><polygon points="228,80 231,90 234,80"/>
+        <text x="180" y="160" text-anchor="middle" font-size="9" letter-spacing="3.5" fill="#e8b6c8" opacity=".9" font-family="Cinzel,serif">THE SEALBREACH</text>
+        <ellipse cx="180" cy="700" rx="150" ry="20" fill="#cfe0f5" opacity=".07" filter="url(#soft4)"/>
+        <g stroke="#070f20" stroke-width="5.5" stroke-linecap="round" fill="none" opacity=".55">
+          <path d="M180,700 C140,676 100,660 95,640 C120,622 175,614 205,608 C245,600 278,580 285,560 C282,536 252,520 225,505 C200,490 170,476 150,462"/>
+          <path d="M150,462 C112,448 82,436 75,412 C66,384 80,358 98,340 C112,320 148,300 178,292"/>
+          <path d="M150,462 C192,448 240,436 258,415 C270,392 272,362 272,338 C272,318 225,300 178,292"/>
+          <path d="M178,292 C150,282 112,258 100,238 C116,220 172,210 205,205 C238,200 260,175 272,158 C258,128 205,95 180,84"/>
         </g>
-        <text x="180" y="99" text-anchor="middle" font-size="8.5" letter-spacing="3" fill="#e8b6c8" opacity=".85" font-family="Cinzel,serif">THE SEALBREACH</text>
-        <path id="roadC1" class="road" d="M180,512 C150,496 102,486 92,470 C110,455 170,452 196,448 C240,442 276,430 284,412 C280,392 252,378 232,368 C205,355 175,348 156,338"/>
-        <path id="roadW" class="road" d="M156,338 C115,325 86,318 78,300 C70,278 82,258 96,240 C110,222 145,212 176,205"/>
-        <path id="roadE" class="road" d="M156,338 C195,325 236,315 252,300 C264,282 266,258 268,240 C268,222 220,212 176,205"/>
-        <path id="roadC2" class="road" d="M176,205 C150,196 116,180 104,164 C118,148 170,142 204,138 C235,133 258,122 268,108 C255,88 205,72 180,64"/>
-        <text x="180" y="524" text-anchor="middle" font-size="8" letter-spacing="2.5" fill="#9fb4d8" opacity=".7" font-family="Cinzel,serif">THE VALE'S MOUTH</text>
+        <path id="roadC1" class="road" d="M180,700 C140,676 100,660 95,640 C120,622 175,614 205,608 C245,600 278,580 285,560 C282,536 252,520 225,505 C200,490 170,476 150,462"/>
+        <path id="roadW" class="road" d="M150,462 C112,448 82,436 75,412 C66,384 80,358 98,340 C112,320 148,300 178,292"/>
+        <path id="roadE" class="road" d="M150,462 C192,448 240,436 258,415 C270,392 272,362 272,338 C272,318 225,300 178,292"/>
+        <path id="roadC2" class="road" d="M178,292 C150,282 112,258 100,238 C116,220 172,210 205,205 C238,200 260,175 272,158 C258,128 205,95 180,84"/>
+        <text x="180" y="712" text-anchor="middle" font-size="8.5" letter-spacing="2.5" fill="#9fb4d8" opacity=".75" font-family="Cinzel,serif">THE VALE'S MOUTH</text>
         <g id="mapNodes"></g>
       </svg>
       </div>
@@ -1043,10 +1098,10 @@
       if(relics.length && n && n.t==="battle") return "You carry sleeping relics. <b>In battle, tap them above the question</b> — they wake exactly once.";
       return WHISPERS[(whisperIdx++)%WHISPERS.length];
     }
-    // node positions on the painted world (same order as PATH)
-    const MAP_POS=[[92,470],[196,448],[284,412],[232,368],[156,338],
-                   [78,300],[96,240],[252,300],[268,240],
-                   [176,205],[104,164],[204,138],[268,108],[180,64]];
+    // node positions on the painted world (same order as PATH, 360×720 canvas)
+    const MAP_POS=[[95,640],[205,608],[285,560],[225,505],[150,462],
+                   [75,412],[98,340],[258,415],[272,338],
+                   [178,292],[100,238],[205,205],[272,158],[180,84]];
     function showMap(){
       const g=el("mapNodes"); g.innerHTML="";
       PATH.forEach((n,i)=>{ const [x,y]=MAP_POS[i];
@@ -1066,6 +1121,13 @@
       el("mapHint").innerHTML=`“${valeWhisper()}”`;
       el("mapGo").textContent=pathIdx===0?"Set forth ▸":(n.boss?"Enter the Ice Palace ▸":"Continue ▸");
       running=false; show("ovMap");
+      // The camera: the world is two screens tall — glide the view so your
+      // position sits low in frame, the road ahead rising above you.
+      const wrap=document.querySelector(".worldmap-wrap");
+      requestAnimationFrame(()=>{ const h=el("worldmap").getBoundingClientRect().height;
+        const yPx=MAP_POS[pathIdx][1]/720*h;
+        wrap.scrollTo({top:Math.max(0,Math.min(yPx-wrap.clientHeight*0.62, wrap.scrollHeight-wrap.clientHeight)),
+                       behavior:"smooth"}); });
     }
     async function runNode(){
       const n=PATH[pathIdx];
