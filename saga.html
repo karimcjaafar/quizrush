@@ -195,6 +195,12 @@
     .tline{position:absolute;left:25px;top:8px;bottom:8px;border-left:2px dashed rgba(159,192,238,.25);z-index:0}
     .trail-wrap{position:relative;width:min(92vw,420px)}
     .map-you{font-size:12.5px;opacity:.75;letter-spacing:.04em}
+    .map-whisper{font-style:italic;font-size:13px;line-height:1.5;opacity:.72;max-width:min(88vw,400px);
+      margin:2px 0 0;color:#cfd9ef}
+    .map-whisper b{color:var(--gold);font-weight:600}
+    .ch-hint{font-style:italic;font-size:13px;line-height:1.5;opacity:.8;color:#c9b6ff;margin-top:10px;
+      max-width:min(86vw,420px)}
+    .ch-hint b{color:var(--gold);font-weight:600}
     /* Pack (inventory) + shop rows, shared by the spoils camp and the rest prompt */
     .inv-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
     .inv-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;
@@ -393,6 +399,7 @@
       <div class="ch-role" id="chRole"></div>
       <div class="ch-couplet" id="chCouplet"></div>
       <div class="ch-weak"><span class="weak-chip" id="chWeak">✦ Weak to —</span></div>
+      <div class="ch-hint" id="chHint"></div>
     </div>
 
     <!-- Overlays -->
@@ -442,6 +449,7 @@
       <p class="ov-sub" style="opacity:.7;font-size:12.5px;margin-top:-4px">Vyrmouth, First Flame of Malrune, devours the vale's names from beneath. Answer well, and take them back.</p>
       <div class="trail-wrap"><div class="tline"></div><div class="trail" id="trail"></div></div>
       <div class="map-you" id="mapYou"></div>
+      <p class="map-whisper" id="mapHint"></p>
       <button class="cta" id="mapGo">Set forth ▸</button>
     </div>
 
@@ -574,7 +582,8 @@
         attack:V+"Armor_attacks_with_mist_1080p_202607280017.mp4",
         couplet:"It swore an oath it can no longer recall — <br>now only the cold keeps its watch.",
         whisper:"The armour is empty. The duty is not.",
-        epitaph:"The oath is kept at last. The armour settles into stillness." },
+        epitaph:"The oath is kept at last. The armour settles into stillness.",
+        hint:"It once kept every date and deed of the vale. Strike it with <b>History</b> — a weak point cuts half again as deep." },
       { key:"statue", name:"The Forgotten Hero", role:"Living Stone Statue", numeral:"II",
         weak:"arts", tiers:["E","M"], hp:100, dmg:9, drop:{icon:"🍯",name:"Stone-hive honey",heal:12},
         still:P+"forgotten-hero-stone-statue.png",
@@ -582,7 +591,8 @@
         defeat:V+"Statue_breaking,_light_rememberi…_1080p_202607280019.mp4",
         couplet:"A champion so praised they carved it in stone — <br>then let the story go untold.",
         whisper:"It reaches for a name it cannot find.",
-        epitaph:"You speak its tale aloud. The stone remembers, and is finally allowed to rest." },
+        epitaph:"You speak its tale aloud. The stone remembers, and is finally allowed to rest.",
+        hint:"Stone is slow; you need not be. Answer a testing question <b>swiftly</b> and your strike turns <b>CRITICAL</b>." },
       { key:"mimic", name:"The Glacier Mimic", role:"Treasure That Bites", numeral:"III",
         weak:"geography", tiers:["M"], hp:250, dmg:12, drop:{icon:"🧀",name:"Hoard cheese",heal:15},
         still:P+"glacier-treasure-chest-mimic.png",
@@ -590,14 +600,16 @@
         defeat:V+"Treasure_chest_defeated_spilling…_1080p_202607280036.mp4",
         couplet:"Not all treasure wishes to be found. <br>Some of it is hungry.",
         whisper:"The hoard gleams. The hoard grins.",
-        epitaph:"Greed unclenches its jaw. The ice gives back everything it stole." },
+        epitaph:"Greed unclenches its jaw. The ice gives back everything it stole.",
+        hint:"It hoards what seekers drop. Fell it, then <b>eat well</b> — the wraiths ahead sell what the trail will not give." },
       { key:"sphinx", name:"The Frozen Sphinx", role:"Keeper of Riddles", numeral:"IV",
         weak:"science", tiers:["M","H"], hp:500, dmg:16, drop:{icon:"🫐",name:"Sphinx's figs",heal:18},
         still:P+"ancient-frozen-riddle-sphinx.png",
         defeat:V+"Sphinx_concession_and_treasure_g…_202607280041.mp4",
         couplet:"The old riddle-keeper of the vale, <br>set now as Malrune's frozen lock.",
         whisper:"Answer well. It has devoured the unsure.",
-        epitaph:"The riddle yields. The keeper inclines its head, and thaws into memory." },
+        epitaph:"The riddle yields. The keeper inclines its head, and thaws into memory.",
+        hint:"The keeper honours preparation. <b>Relics wake in battle</b> — tap them above the question when the riddles bite." },
       { key:"dragon", name:"Vyrmouth, Herald of Malrune", role:"The First Flame · Final Guardian", numeral:"V", boss:true,
         weak:"history", tiers:["H","VH"], hp:1000, dmg:22,
         still:P+"Dragon1.png", defeatStill:P+"dragon-cut.png",
@@ -606,7 +618,8 @@
         attack:V+"Dragon_breathing_fire_in_darkness_202607261528.mp4",
         couplet:"Malrune's fire given wings, first to slip the seal — <br>the last door before the deep.",
         whisper:"Vyrmouth wakes. For the first time in an age, the vale feels heat.",
-        epitaph:"The herald's fire gutters out against the ice. Far below, something vast turns over." },
+        epitaph:"The herald's fire gutters out against the ice. Far below, something vast turns over.",
+        hint:"A thousand truths thick, and each of its blows takes 22. <b>Weak to History</b>, weaker to haste — swift hard answers, a lit ember, a full belly." },
     ];
     // descent interludes shown between guardians (index = foe just felled)
     const DESCENT=[
@@ -889,6 +902,36 @@
 
     // ============ The frost-trail map ============
     const KIND_LABEL={battle:"Guardian",waystone:"Waystone · checkpoint",shop:"Trading stop",event:"A wayside encounter"};
+
+    // ============ Vale-whispers: story that teaches ============
+    // Every map visit murmurs one line — lore in the vale's voice that also
+    // carries a real hint. Context first (wounded, letter, boss ahead…),
+    // otherwise the pool rotates in order so nothing repeats until all told.
+    const WHISPERS=[
+      "Malrune eats what goes unanswered. Every truth you speak aloud is a wound to him.",
+      "The wardens keep their old loves. Strike the Sentinel with <b>History</b> — a weak point cuts half again as deep.",
+      "Haste honours a riddle: answer a testing question in its <b>first breaths</b> and the strike turns <b>CRITICAL</b>.",
+      "A run of true answers builds a rhythm. Keep a <b>combo</b> alive and the vale lends weight to your blade.",
+      "What the wraiths sell, the trail rarely gives. <b>Buy food before the deep</b> — hunger has ended more seekers than dragons.",
+      "Relics wake only in battle — <b>tap them above the question</b>. The Quill answers, the Hourglass stills time, the Ward turns a blow, the Ember lights a certain CRITICAL.",
+      "The Quill of the First Scholar never errs — but a borrowed answer is never a <em>critical</em> one.",
+      "Grow by striking hard: the tougher the question you fell, the faster you level — and <b>only a new level restores you whole</b>.",
+      "Should the vale take you, the <b>waystone keeps your shape</b> — level, gold and pack as they were when you passed it.",
+      "The Warden's draught thickens the blood <b>for good</b>. Dear — and dearest before the Sealbreach.",
+      "The old scholars trade understanding for <b>gold or blood</b>. Their shrine hums past the market.",
+      "Not everything sealed in ice wishes to stay lost. Some finds change a meeting further down the trail.",
+      "Maelis duels every seeker she meets. Take two answers of three and she <b>pays in fire</b>.",
+      "The vale counts your gold: two a strike, more for weak points and criticals. Bold answers buy supper.",
+    ];
+    let whisperIdx=0;
+    function valeWhisper(){
+      const n=PATH[pathIdx];
+      if(n&&n.boss) return "Vyrmouth is a long argument — a thousand truths thick. <b>Eat first. Arm everything.</b> The Flame yields to nothing less.";
+      if(php<=pmax*LOW_HP) return "Your strength wanes, seeker. <b>Eat from your pack</b> at a camp — or let the wraiths feed you, for a price. The vale does not heal the stubborn.";
+      if(hasLetter) return "The letter in your pack grows heavier. <b>Someone on this trail remembers writing it</b> — deliver it, and be repaid.";
+      if(relics.length && n && n.t==="battle") return "You carry sleeping relics. <b>In battle, tap them above the question</b> — they wake exactly once.";
+      return WHISPERS[(whisperIdx++)%WHISPERS.length];
+    }
     function showMap(){
       const box=el("trail"); box.innerHTML="";
       PATH.forEach((n,i)=>{ const d=document.createElement("div");
@@ -897,6 +940,7 @@
         box.appendChild(d); });
       const rel=relics.map(id=>RELICS[id].icon).join("");
       el("mapYou").textContent=`${hero.icon} Lv ${plevel} · ${php}/${pmax} strength · ${gold} gold${rel?` · ${rel}`:""}${hasLetter?" · ✉":""}`;
+      el("mapHint").innerHTML=`“${valeWhisper()}”`;
       el("mapGo").textContent=pathIdx===0?"Set forth ▸":(PATH[pathIdx].boss?"Face the First Flame ▸":"Continue ▸");
       running=false; show("ovMap");
     }
@@ -906,6 +950,7 @@
       if(n.t==="waystone"){
         await storyLine("A lone waystone rises from the ice. Its rune warms as you pass — your tale is held here.", T.descent);
         pathIdx++; takeSnapshot();
+        await storyLine("Should the cold take you, you will wake at this stone — with the level, gold and pack you carry now.", T.descent);
         bigToast("❄ Waystone reached — your tale is held here","#9fc0ee");
         showMap(); return; }
       if(n.t==="shop"){ renderMarket(); show("ovMarket"); return; }
@@ -1068,6 +1113,7 @@
     async function chapterCard(f){
       el("chNum").textContent=f.numeral; el("chName").textContent=f.name; el("chRole").textContent=f.role;
       el("chCouplet").innerHTML=f.couplet; el("chWeak").innerHTML=f.boss?`★ Final Guardian · weak to ${CAT_LABEL[f.weak]}`:`✦ Weak to ${CAT_LABEL[f.weak]}`;
+      el("chHint").innerHTML=f.hint?`“${f.hint}”`:"";
       const c=el("chapter"); c.classList.remove("hidden"); await sleep(40); c.classList.add("show");
       await sleep(T.chapter); c.classList.remove("show"); await sleep(1100); c.classList.add("hidden");
     }
