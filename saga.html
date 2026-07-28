@@ -437,7 +437,12 @@
     //  · weak-point   — the question is in the guardian's weakness category (+50%)
     //  · CRITICAL     — a Medium-or-harder question answered swiftly, with at
     //    least CRIT_WINDOW of the clock still remaining (×2 damage)
-    const TIER_DMG={ VE:10, E:15, M:25, H:40, VH:60 };
+    // Damage now GROWS FROM YOUR LEVEL (Karim's design): an average strike at
+    // level 1 lands ~5-8; each level multiplies it, so by Lv 10 strikes land in
+    // the hundreds — against worlds whose guardians have thousands of HP.
+    // Question tier scales the strike around that level power.
+    const TIER_FACTOR={ VE:0.6, E:0.8, M:1, H:1.4, VH:1.8 };
+    const levelPower=()=>8*Math.pow(1.38,plevel-1);
     const WEAK_BONUS=1.5;
     const CRIT_MULT=2;
     const CRIT_TIERS={ M:1, H:1, VH:1 };  // no crits on the two easiest tiers
@@ -453,12 +458,18 @@
       {key:"runeblade",icon:"🗡", name:"The Runeblade",    perk:"Keen — +2 damage every strike", hp:0, dmg:2, xp:1},
       {key:"loremaster",icon:"🦉",name:"The Loremaster",   perk:"Wise — +15% experience",        hp:0, dmg:0, xp:1.15},
     ];
-    const BASE_HP=25, HP_PER_LEVEL=10, DMG_PER_LEVEL=2;
-    const XP_BASE=70, XP_GROWTH=1.6;                        // exponential curve
-    const xpNeed=L=>Math.round(XP_BASE*Math.pow(XP_GROWTH,L-1));
-    const KILL_XP=25, BOSS_XP=60;                           // on top of per-strike XP (= half the damage dealt)
-    // Tuned so levels come fast early then spread out: full-heal level-ups stop
-    // covering every fight, and food from the pack becomes the real lifeline.
+    const BASE_HP=25, HP_PER_LEVEL=10;
+    const XP_BASE=35, XP_GROWTH=2.2;                        // steep curve: Lv2 after
+    const xpNeed=L=>Math.round(XP_BASE*Math.pow(XP_GROWTH,L-1)); // fight 1, then levels
+    const KILL_XP=25, BOSS_XP=60;                           // stretch out fight by fight
+    // Checkpoints (Karim's design): death does NOT reset the seeker — you rise
+    // again at the start of the current land, or at its halfway WAYSTONE once
+    // passed. (The vale is world one of seven; more lands come later.)
+    const CHECKPOINT_IDX=2;               // waystone stands after the second guardian
+    let snapshot=null;                    // seeker state held by the land / waystone
+    const takeSnapshot=()=>{ snapshot={plevel,pxp,gold,runes,foeIdx,inv:inv.map(x=>({...x}))}; };
+    function restoreSnapshot(){ ({plevel,pxp,gold,runes,foeIdx}=snapshot);
+      inv=snapshot.inv.map(x=>({...x})); pmax=pmaxFor(); php=pmax; combo=0; paintPlayer(); }
     const LOW_HP=0.5;                                       // below half → offer to eat before the next fight
     const FOOD_SHOP=[
       {icon:"🍞", name:"Traveller's loaf", heal:15, cost:12},
@@ -476,7 +487,7 @@
         whisper:"The armour is empty. The duty is not.",
         epitaph:"The oath is kept at last. The armour settles into stillness." },
       { key:"statue", name:"The Forgotten Hero", role:"Living Stone Statue", numeral:"II",
-        weak:"arts", tiers:["E","M"], hp:80, dmg:9, drop:{icon:"🍯",name:"Stone-hive honey",heal:12},
+        weak:"arts", tiers:["E","M"], hp:100, dmg:9, drop:{icon:"🍯",name:"Stone-hive honey",heal:12},
         still:P+"forgotten-hero-stone-statue.png",
         idle:V+"Animate_statue_seamless_loop_1080p_202607280018.mp4",
         defeat:V+"Statue_breaking,_light_rememberi…_1080p_202607280019.mp4",
@@ -484,7 +495,7 @@
         whisper:"It reaches for a name it cannot find.",
         epitaph:"You speak its tale aloud. The stone remembers, and is finally allowed to rest." },
       { key:"mimic", name:"The Glacier Mimic", role:"Treasure That Bites", numeral:"III",
-        weak:"geography", tiers:["M"], hp:100, dmg:12, drop:{icon:"🧀",name:"Hoard cheese",heal:15},
+        weak:"geography", tiers:["M"], hp:250, dmg:12, drop:{icon:"🧀",name:"Hoard cheese",heal:15},
         still:P+"glacier-treasure-chest-mimic.png",
         attack:V+"Treasure_chest_ambush_attack_ani…_202607280032.mp4",
         defeat:V+"Treasure_chest_defeated_spilling…_1080p_202607280036.mp4",
@@ -492,14 +503,14 @@
         whisper:"The hoard gleams. The hoard grins.",
         epitaph:"Greed unclenches its jaw. The ice gives back everything it stole." },
       { key:"sphinx", name:"The Frozen Sphinx", role:"Keeper of Riddles", numeral:"IV",
-        weak:"science", tiers:["M","H"], hp:130, dmg:16, drop:{icon:"🫐",name:"Sphinx's figs",heal:18},
+        weak:"science", tiers:["M","H"], hp:500, dmg:16, drop:{icon:"🫐",name:"Sphinx's figs",heal:18},
         still:P+"ancient-frozen-riddle-sphinx.png",
         defeat:V+"Sphinx_concession_and_treasure_g…_202607280041.mp4",
         couplet:"The old riddle-keeper of the vale, <br>set now as Malrune's frozen lock.",
         whisper:"Answer well. It has devoured the unsure.",
         epitaph:"The riddle yields. The keeper inclines its head, and thaws into memory." },
       { key:"dragon", name:"Vyrmouth, Herald of Malrune", role:"The First Flame · Final Guardian", numeral:"V", boss:true,
-        weak:"history", tiers:["H","VH"], hp:250, dmg:22,
+        weak:"history", tiers:["H","VH"], hp:1000, dmg:22,
         still:P+"Dragon1.png", defeatStill:P+"dragon-cut.png",
         intro:V+"Dragon_spreading_wings_cinematic…_1080p_202607261644.mp4",
         idle:V+"Dragon_breathing_fog_embers_1080p_202607261637.mp4",
@@ -693,7 +704,7 @@
     async function storyLine(html,hold=T.epitaph){ cineLine.innerHTML=html; cineLine.classList.add("show"); await sleep(hold); cineLine.classList.remove("show"); await sleep(T.fade); }
 
     // ============ State ============
-    let foeIdx=0, foe=null, foeHP=0, foeMax=0, combo=0, gold=0, runes=0, locked=false, timerId=null, _correct="";
+    let foeIdx=0, foe=null, foeHP=0, foeMax=0, combo=0, gold=0, runes=0, locked=false, timerId=null, _correct="", lastVictory=false;
     // The seeker: level, XP, strength (HP persists between battles), pack of food
     let hero=HEROES[0], plevel=1, pxp=0, pmax=BASE_HP, php=BASE_HP, inv=[];
     const pmaxFor=()=>BASE_HP+HP_PER_LEVEL*(plevel-1)+hero.hp;
@@ -831,7 +842,7 @@
         const isWeak=q.cat===foe.weak;
         const remain=1-(performance.now()-qStart)/1000/qSecs;
         const crit=!!CRIT_TIERS[q.tier] && remain>=CRIT_WINDOW;
-        let dmg=(TIER_DMG[q.tier]||TIER_DMG.M)+DMG_PER_LEVEL*(plevel-1)+hero.dmg;
+        let dmg=Math.max(1,Math.round((TIER_FACTOR[q.tier]||1)*levelPower()))+hero.dmg;
         if(isWeak) dmg=Math.round(dmg*WEAK_BONUS);
         if(crit)   dmg*=CRIT_MULT;
         if(combo>=4) dmg+=COMBO_DMG;
@@ -880,6 +891,10 @@
       foeIdx++;
       if(foeIdx>=FOES.length){ endRun(true); return; }
       await storyLine(DESCENT[foeIdx-1]||"You descend.", T.descent);   // descent interlude
+      if(foeIdx===CHECKPOINT_IDX){                                     // the halfway waystone
+        await storyLine("A lone waystone rises from the ice. Its rune warms as you pass — your tale is held here.", T.descent);
+        takeSnapshot();
+      }
       showSpoils();
     }
 
@@ -908,10 +923,12 @@
         letterbox(false);
       }
       el("resRune").textContent=victory?"👑":"☠";
+      lastVictory=victory;
       el("resTitle").textContent=victory?"The Seal Holds":"You Were Devoured";
       el("resSub").innerHTML=victory
         ? "You bested every guardian with knowledge alone. The seal of Fenrime holds — but the Unanswered still burns below, in the saga to come."
-        : `The cold reaches your held breath and stills it. You fell at ${foe.name}, another guardian for the vale… yet the ice keeps what the brave attempt.`;
+        : `The cold reaches your held breath and stills it. You fell at ${foe.name}… yet ${snapshot&&snapshot.foeIdx>0?"the waystone holds your shape":"the vale's edge remembers you"} — your level and pack endure. Rise, and walk that stretch again.`;
+      el("resAgain").textContent=victory?"Descend Again":(snapshot&&snapshot.foeIdx>0?"Rise at the Waystone ▸":"Rise at the Vale's Edge ▸");
       el("resLoot").innerHTML=`<div><b style="color:var(--gold)">${gold}</b><span>GOLD</span></div>
         <div><b style="color:var(--rune)">${runes}</b><span>RUNES</span></div>
         <div><b style="color:#9fe8b8">Lv ${plevel}</b><span>SEEKER</span></div>
@@ -921,7 +938,8 @@
     }
 
     function resetRun(){ foeIdx=0; combo=0; gold=0; runes=0;
-      plevel=1; pxp=0; pmax=pmaxFor(); php=pmax; inv=[]; used.clear(); paintPlayer(); }
+      plevel=1; pxp=0; pmax=pmaxFor(); php=pmax; inv=[]; used.clear();
+      lastVictory=false; paintPlayer(); takeSnapshot(); }
 
     // ============ Guarded navigation (anti button-spam) ============
     // A single lock: while a transition runs, extra taps are ignored.
@@ -932,7 +950,11 @@
       if(php<=pmax*LOW_HP){ openRest(); return; }  // wounded — offer to eat first
       await beginFoe(); });
     el("restGo").onclick  =guard(async()=>{ await fadeOutOverlay("ovRest"); await beginFoe(); });
-    el("resAgain").onclick =guard(async()=>{ resetRun(); await fadeOutOverlay("ovResult"); await beginFoe(); });
+    // After defeat: rise at the last waystone (or the land's edge) with level,
+    // XP, gold and pack restored — full strength, rested. Victory: a fresh run.
+    el("resAgain").onclick =guard(async()=>{
+      if(!lastVictory && snapshot){ restoreSnapshot(); await fadeOutOverlay("ovResult"); await beginFoe(); return; }
+      resetRun(); await fadeOutOverlay("ovResult"); await beginFoe(); });
     el("resHome").onclick  =()=>{ if(navLock)return; navLock=true; location.href="./"; };
     el("quit").onclick     =()=>{ if(confirm("Leave the saga and return to the menu?")) location.href="./"; };
 
@@ -952,7 +974,7 @@
     function chooseHero(){ return new Promise(res=>{ const box=el("heroCards"); box.innerHTML="";
       HEROES.forEach(h=>{ const b=document.createElement("button"); b.className="hero-card";
         b.innerHTML=`<span class="hicon">${h.icon}</span><span><div class="hname">${h.name}</div><div class="hperk">${h.perk}</div></span>`;
-        b.onclick=()=>{ hero=h; plevel=1; pxp=0; pmax=pmaxFor(); php=pmax; inv=[]; paintPlayer(); res(); };
+        b.onclick=()=>{ hero=h; plevel=1; pxp=0; pmax=pmaxFor(); php=pmax; inv=[]; snapshot=null; paintPlayer(); res(); };
         box.appendChild(b); });
       show("ovHero"); }); }
 
@@ -967,7 +989,9 @@
         await fadeOutOverlay("ovHero");
         await runOpening();                          // → shows ovTitle again as the launch gate
         const b=el("startBtn"); b.textContent="Enter the Vale ▸";
-        b.onclick=guard(async()=>{ await fadeOutOverlay("ovTitle"); await beginFoe(); });
+        b.onclick=guard(async()=>{ await fadeOutOverlay("ovTitle");
+          takeSnapshot();                       // the land's edge holds your shape
+          await beginFoe(); });
       });
     }
     boot();
