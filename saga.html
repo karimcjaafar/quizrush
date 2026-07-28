@@ -172,6 +172,29 @@
     .hero-card .hicon{font-size:30px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
     .hero-card .hname{font-family:"Cinzel";font-weight:700;font-size:16px}
     .hero-card .hperk{font-size:12.5px;opacity:.75;margin-top:2px}
+    /* World map: a winding frost-trail of nodes. Done nodes dim, the current
+       one glows, the road ahead sits behind frost. */
+    #ovMap .ov-kicker{padding:0 56px}  /* clear the corner mute button */
+    .trail{width:min(92vw,420px);display:flex;flex-direction:column;gap:2px;
+      max-height:52vh;overflow-y:auto;padding:4px 2px}
+    .tnode{display:flex;align-items:center;gap:12px;text-align:left;padding:7px 6px;position:relative}
+    .tnode .tico{width:40px;height:40px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+      font-size:17px;border:1px solid var(--line);background:rgba(10,16,30,.8);position:relative;z-index:1}
+    .tnode .tmeta{min-width:0}
+    .tnode .tloc{font-family:"Cinzel";font-size:14.5px;letter-spacing:.03em;line-height:1.15}
+    .tnode .tkind{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;opacity:.55;margin-top:2px}
+    .tnode.done{opacity:.42}
+    .tnode.done .tico{border-color:rgba(159,232,184,.5);color:#9fe8b8}
+    .tnode.cur .tico{border-color:var(--gold);box-shadow:0 0 16px rgba(255,207,107,.55);background:rgba(34,26,10,.85)}
+    .tnode.cur .tloc{color:var(--gold);text-shadow:0 0 14px rgba(255,207,107,.35)}
+    .tnode.ahead{opacity:.6}
+    .tnode.ahead .tmeta{filter:blur(1px)}
+    .tnode.boss .tico{border-color:rgba(255,110,90,.55)}
+    /* the frost-road: a dashed spine behind the icons */
+    .trail::before{content:"";position:absolute}
+    .tline{position:absolute;left:25px;top:8px;bottom:8px;border-left:2px dashed rgba(159,192,238,.25);z-index:0}
+    .trail-wrap{position:relative;width:min(92vw,420px)}
+    .map-you{font-size:12.5px;opacity:.75;letter-spacing:.04em}
     /* Pack (inventory) + shop rows, shared by the spoils camp and the rest prompt */
     .inv-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
     .inv-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;
@@ -367,7 +390,7 @@
       <div class="ov-rune">ᛟ</div>
       <div class="ov-kicker">The Reckoning · Playable Demo</div>
       <div class="ov-title">Riddle &amp; Rune</div>
-      <p class="ov-sub">The vale of Fenrime froze itself long ago — a seal of ice over a burning hunger: <em>Malrune</em>, the Unanswered. Its guardians kept the long watch until the watch turned them cruel. You go down alone, bearing no blade — only <b>what you know</b>.</p>
+      <p class="ov-sub">The vale of Fenrime froze itself long ago — a seal of ice over a burning hunger: <em>Malrune</em>, the Unanswered. Now his First Flame, <em>Vyrmouth</em>, devours the vale's names and tales from beneath, and its hollowed wardens have turned cruel. Fenrime needs a hero who still remembers how to answer. You go down alone, bearing no blade — only <b>what you know</b>.</p>
       <button class="cta" id="startBtn">Begin the Tale ▸</button>
       <p style="font-size:12px;opacity:.5">silent by default · tap 🔊 above for sound</p>
     </div>
@@ -401,6 +424,43 @@
       <p class="ov-sub" id="restSub">The next guardian waits. Eat from your pack first, or press on as you are?</p>
       <div class="inv-row" id="restInv"></div>
       <button class="cta" id="restGo">Fight on ▸</button>
+    </div>
+
+    <div class="overlay hidden" id="ovMap">
+      <div class="ov-kicker">World One · The Frozen Vale of Fenrime</div>
+      <div class="ov-title" style="font-size:clamp(22px,6vw,34px)">The Frost-Trail</div>
+      <p class="ov-sub" style="opacity:.7;font-size:12.5px;margin-top:-4px">Vyrmouth, First Flame of Malrune, devours the vale's names from beneath. Answer well, and take them back.</p>
+      <div class="trail-wrap"><div class="tline"></div><div class="trail" id="trail"></div></div>
+      <div class="map-you" id="mapYou"></div>
+      <button class="cta" id="mapGo">Set forth ▸</button>
+    </div>
+
+    <div class="overlay hidden" id="ovMarket">
+      <div class="ov-rune">🕯</div>
+      <div class="ov-kicker">A circle of cold candlelight</div>
+      <div class="ov-title" style="font-size:clamp(24px,7vw,40px)">The Wraith-Market</div>
+      <p class="ov-sub" style="opacity:.8">The vale-wraiths trade what the frost preserved. They take only gold, and never haggle.</p>
+      <div class="camp" style="border-color:rgba(255,207,107,.25)">
+        <span class="camp-label">Your strength</span>
+        <div class="php" id="mktHpWrap"><i id="mktHpBar"></i><b id="mktHpTxt"></b></div>
+        <span class="camp-label">Wares</span>
+        <div class="inv-row" id="mktShop"></div>
+        <span class="camp-label">Pack · eat to recover</span>
+        <div class="inv-row" id="mktInv"></div>
+      </div>
+      <button class="cta" id="mktGo">Back to the trail ▸</button>
+    </div>
+
+    <div class="overlay hidden" id="ovEvent">
+      <div class="ov-rune">✦</div>
+      <div class="ov-kicker">A shape in the snow</div>
+      <div class="ov-title" style="font-size:clamp(24px,7vw,40px)">The Frozen Traveller</div>
+      <p class="ov-sub" id="evText"></p>
+      <div class="qcard" style="width:min(92vw,420px);text-align:left">
+        <p class="qtext" id="evQ">…</p>
+        <div class="opts" id="evOpts"></div>
+      </div>
+      <button class="cta hidden" id="evGo">Onward ▸</button>
     </div>
 
     <div class="overlay hidden" id="ovResult">
@@ -462,13 +522,25 @@
     const XP_BASE=35, XP_GROWTH=2.2;                        // steep curve: Lv2 after
     const xpNeed=L=>Math.round(XP_BASE*Math.pow(XP_GROWTH,L-1)); // fight 1, then levels
     const KILL_XP=25, BOSS_XP=60;                           // stretch out fight by fight
-    // Checkpoints (Karim's design): death does NOT reset the seeker — you rise
-    // again at the start of the current land, or at its halfway WAYSTONE once
-    // passed. (The vale is world one of seven; more lands come later.)
-    const CHECKPOINT_IDX=2;               // waystone stands after the second guardian
+    // ============ World One — the trail through the Frozen Vale ============
+    // The map is the world's spine: battles at named places, the halfway
+    // WAYSTONE (checkpoint), a shop stop, and a wayside encounter. Death does
+    // NOT reset the seeker — you rise at the land's edge or the waystone.
+    // (The vale is world one of seven; each later land gets its own path.)
+    const PATH=[
+      {t:"battle",foe:0,loc:"The Oathgate",icon:"⚔"},
+      {t:"battle",foe:1,loc:"The Gallery of the Forgotten",icon:"⚔"},
+      {t:"waystone",loc:"The Waystone Hollow",icon:"❄"},
+      {t:"battle",foe:2,loc:"The Glimmer Hoard",icon:"⚔"},
+      {t:"shop",loc:"The Wraith-Market",icon:"🕯"},
+      {t:"battle",foe:3,loc:"The Riddle Gate",icon:"⚔"},
+      {t:"event",loc:"The Frozen Traveller",icon:"✦"},
+      {t:"battle",foe:4,loc:"The Sealbreach",icon:"🔥",boss:true},
+    ];
+    let pathIdx=0;
     let snapshot=null;                    // seeker state held by the land / waystone
-    const takeSnapshot=()=>{ snapshot={plevel,pxp,gold,runes,foeIdx,inv:inv.map(x=>({...x}))}; };
-    function restoreSnapshot(){ ({plevel,pxp,gold,runes,foeIdx}=snapshot);
+    const takeSnapshot=()=>{ snapshot={plevel,pxp,gold,runes,pathIdx,foeIdx,bonusHp,inv:inv.map(x=>({...x}))}; };
+    function restoreSnapshot(){ ({plevel,pxp,gold,runes,pathIdx,foeIdx,bonusHp}=snapshot);
       inv=snapshot.inv.map(x=>({...x})); pmax=pmaxFor(); php=pmax; combo=0; paintPlayer(); }
     const LOW_HP=0.5;                                       // below half → offer to eat before the next fight
     const FOOD_SHOP=[
@@ -531,7 +603,8 @@
       "Its scholars asked, and the whole world answered back.",
       "Then, in the deep, a hunger woke that nothing could answer — <em>Malrune</em>, the Unanswered.",
       "The vale froze itself around him: a seal of ice over his burning dark.",
-      "Its guardians stayed to hold the door — and the long cold turned them cruel.",
+      "Now his First Flame — <em>Vyrmouth</em> — gnaws the seal from beneath, devouring the vale's names, oaths and tales to feed his master.",
+      "The wardens, their memories eaten, have turned hollow and cruel. Fenrime waits for a hero who still remembers how to answer.",
       "You go down alone, bearing no blade — only <b>what you know</b>.",
     ];
     const VICTORY=[
@@ -706,8 +779,8 @@
     // ============ State ============
     let foeIdx=0, foe=null, foeHP=0, foeMax=0, combo=0, gold=0, runes=0, locked=false, timerId=null, _correct="", lastVictory=false;
     // The seeker: level, XP, strength (HP persists between battles), pack of food
-    let hero=HEROES[0], plevel=1, pxp=0, pmax=BASE_HP, php=BASE_HP, inv=[];
-    const pmaxFor=()=>BASE_HP+HP_PER_LEVEL*(plevel-1)+hero.hp;
+    let hero=HEROES[0], plevel=1, pxp=0, pmax=BASE_HP, php=BASE_HP, inv=[], bonusHp=0;
+    const pmaxFor=()=>BASE_HP+HP_PER_LEVEL*(plevel-1)+hero.hp+bonusHp;
     let navLock=false;   // guards overlay buttons against double/rapid taps
     let running=false;   // a fight/transition is in progress
 
@@ -751,6 +824,81 @@
     // Low-strength gate before the next fight: eat first, or press on
     function openRest(){ const paint=()=>{ el("restHp").textContent=`${php} / ${pmax}`;
         renderPack("restInv",paint); }; paint(); show("ovRest"); }
+
+    // ============ The frost-trail map ============
+    const KIND_LABEL={battle:"Guardian",waystone:"Waystone · checkpoint",shop:"Trading stop",event:"A wayside encounter"};
+    function showMap(){
+      const box=el("trail"); box.innerHTML="";
+      PATH.forEach((n,i)=>{ const d=document.createElement("div");
+        d.className="tnode "+(i<pathIdx?"done":i===pathIdx?"cur":"ahead")+(n.boss?" boss":"");
+        d.innerHTML=`<span class="tico">${n.icon}</span><span class="tmeta"><div class="tloc">${n.loc}</div><div class="tkind">${n.boss?"Final guardian":KIND_LABEL[n.t]}</div></span>`;
+        box.appendChild(d); });
+      el("mapYou").textContent=`${hero.icon} Lv ${plevel} · ${php}/${pmax} strength · ${gold} gold`;
+      el("mapGo").textContent=pathIdx===0?"Set forth ▸":(PATH[pathIdx].boss?"Face the First Flame ▸":"Continue ▸");
+      running=false; show("ovMap");
+    }
+    async function runNode(){
+      const n=PATH[pathIdx];
+      if(n.t==="battle"){ foeIdx=n.foe; await beginFoe(); return; }
+      if(n.t==="waystone"){
+        await storyLine("A lone waystone rises from the ice. Its rune warms as you pass — your tale is held here.", T.descent);
+        pathIdx++; takeSnapshot();
+        bigToast("❄ Waystone reached — your tale is held here","#9fc0ee");
+        showMap(); return; }
+      if(n.t==="shop"){ renderMarket(); show("ovMarket"); return; }
+      if(n.t==="event"){ runTraveller(); return; }
+    }
+
+    // The Wraith-Market: richer stock than the spoils camp. The draught is a
+    // permanent +max — expensive on purpose; gold is the limiter, not a flag.
+    const MARKET=[
+      {icon:"🍞",name:"Traveller's loaf",heal:15,cost:12},
+      {icon:"🍲",name:"Hearth stew",heal:30,cost:25},
+      {icon:"🍷",name:"Emberwine",heal:45,cost:38},
+      {icon:"🧪",name:"Warden's draught",maxhp:5,cost:50},
+    ];
+    function renderMarket(){
+      el("mktHpBar").style.transform=`scaleX(${Math.max(0,php/pmax)})`;
+      el("mktHpWrap").classList.toggle("low",php<=pmax*LOW_HP);
+      el("mktHpTxt").textContent=`${php} / ${pmax}`;
+      const box=el("mktShop"); box.innerHTML="";
+      MARKET.forEach(it=>{ const b=document.createElement("button"); b.className="inv-chip shop";
+        b.innerHTML=`${it.icon} ${it.name} <b>${it.maxhp?`+${it.maxhp} max`:`+${it.heal}`}</b> · ${it.cost} gold`;
+        if(gold<it.cost)b.setAttribute("disabled","");
+        b.onclick=()=>{ if(gold<it.cost)return; gold-=it.cost;
+          if(it.maxhp){ bonusHp+=it.maxhp; pmax=pmaxFor(); php=Math.min(pmax,php+it.maxhp);
+            bigToast(`🧪 The draught thickens your blood — +${it.maxhp} max strength`,"#9fe8b8"); paintPlayer(); }
+          else { inv.push({icon:it.icon,name:it.name,heal:it.heal}); bigToast(`${it.icon} ${it.name} joins your pack`,"#ffe6ad"); }
+          renderMarket(); };
+        box.appendChild(b); });
+      renderPack("mktInv",renderMarket);
+    }
+
+    // The Frozen Traveller: one untimed question. Warm him with the answer
+    // and his hoard is yours; fail, and the cold keeps him.
+    const EV_INTRO=`A scholar of old Fenrime, frost-bound mid-stride — one of the many whose tales Vyrmouth has half-devoured. A voice like cracking ice: <em>“One answer, seeker. Warm me with it, and what I carry is yours.”</em>`;
+    function runTraveller(){
+      el("evText").innerHTML=EV_INTRO;
+      const pool=(byTier.M||[]).filter(q=>!used.has(q.text));
+      const q=pool.length?pick(pool):pick(byTier.M&&byTier.M.length?byTier.M:POOL);
+      used.add(q.text);
+      el("evQ").textContent=q.text;
+      const box=el("evOpts"); box.innerHTML=""; el("evGo").classList.add("hidden");
+      optionsFor(q).forEach((opt,i)=>{ const b=document.createElement("button"); b.className="opt";
+        b.innerHTML=`<span class="k">${"ABCD"[i]}</span><span>${opt}</span>`;
+        b.onclick=()=>{ [...box.children].forEach(x=>{x.style.pointerEvents="none";x.classList.add("dim");});
+          if(opt===q.correct){ b.classList.remove("dim"); b.classList.add("correct");
+            gold+=25; runes+=1; inv.push({icon:"🫐",name:"Sphinx's figs",heal:18});
+            el("evText").innerHTML="The frost sighs and loosens. He presses a pouch into your hand — <b>25 gold</b>, <b>a rune</b> and <b>🫐 figs</b> — and walks on into the white, warmer than before.";
+          } else {
+            [...box.children].forEach(x=>{ if(x.querySelector("span:last-child").textContent===q.correct){x.classList.remove("dim");x.classList.add("correct");} });
+            b.classList.remove("dim"); b.classList.add("wrong");
+            el("evText").innerHTML="The light behind the ice dims. The traveller keeps his hoard — and the cold keeps the traveller.";
+          }
+          el("evGo").classList.remove("hidden"); };
+        box.appendChild(b); });
+      show("ovEvent");
+    }
     function renderPips(){ el("pips").innerHTML=FOES.map((f,i)=>`<i class="${i<foeIdx?"done":i===foeIdx?"cur":""}"></i>`).join(""); }
     function setCombo(){ const c=el("combo"); if(combo>=2){c.classList.add("on");c.textContent=`COMBO ×${combo}`;} else c.classList.remove("on"); }
     function setFoeHP(v,ghostFrom){ foeHP=Math.max(0,v);
@@ -758,7 +906,7 @@
       el("foeHpGhost").style.transform=`scaleX(${(ghostFrom!=null?ghostFrom:foeHP)/foeMax})`;
       el("foeHpTxt").textContent=`${foeHP} / ${foeMax}`; }
 
-    const OVS=["ovTitle","ovHero","ovSpoils","ovRest","ovResult"];
+    const OVS=["ovTitle","ovHero","ovSpoils","ovRest","ovResult","ovMap","ovMarket","ovEvent"];
     function show(id){ OVS.forEach(o=>{ const e=el(o); e.classList.toggle("hidden",o!==id); e.classList.remove("fade"); }); }
     function hideOverlays(){ OVS.forEach(o=>el(o).classList.add("hidden")); }
     async function fadeOutOverlay(id){ const e=el(id); e.classList.add("fade"); await sleep(800); e.classList.add("hidden"); e.classList.remove("fade"); }
@@ -889,18 +1037,14 @@
       await sleep(T.defeatHold);
       letterbox(false);
       foeIdx++;
-      if(foeIdx>=FOES.length){ endRun(true); return; }
+      if(PATH[pathIdx].boss){ endRun(true); return; }
       await storyLine(DESCENT[foeIdx-1]||"You descend.", T.descent);   // descent interlude
-      if(foeIdx===CHECKPOINT_IDX){                                     // the halfway waystone
-        await storyLine("A lone waystone rises from the ice. Its rune warms as you pass — your tale is held here.", T.descent);
-        takeSnapshot();
-      }
       showSpoils();
     }
 
     function showSpoils(){
-      const next=FOES[foeIdx];
-      el("spoilsKicker").textContent = next.boss ? "The air grows strangely warm" : "The way deepens";
+      const next=PATH[pathIdx+1]||PATH[PATH.length-1];
+      el("spoilsKicker").textContent="The way deepens";
       el("spoilsTitle").textContent = "Vanquished";
       el("spoilsLoot").innerHTML=`<div><b style="color:var(--gold)">${gold}</b><span>GOLD</span></div>
         <div><b style="color:var(--rune)">${runes}</b><span>RUNES</span></div>
@@ -909,8 +1053,8 @@
       renderCamp();
       el("spoilsNext").innerHTML = next.boss
         ? "Beyond the ice waits <em>Vyrmouth</em> — Malrune's fire given wings, and the last door before the deep."
-        : `Ahead: <b>${next.name}</b>. Weak to ${CAT_LABEL[next.weak]}.`;
-      el("spoilsBtn").textContent = next.boss ? "Face the First Flame ▸" : "Descend ▸";
+        : `The frost-trail leads on to <b>${next.loc}</b>.`;
+      el("spoilsBtn").textContent="To the trail ▸";
       running=false; show("ovSpoils");
     }
 
@@ -927,8 +1071,8 @@
       el("resTitle").textContent=victory?"The Seal Holds":"You Were Devoured";
       el("resSub").innerHTML=victory
         ? "You bested every guardian with knowledge alone. The seal of Fenrime holds — but the Unanswered still burns below, in the saga to come."
-        : `The cold reaches your held breath and stills it. You fell at ${foe.name}… yet ${snapshot&&snapshot.foeIdx>0?"the waystone holds your shape":"the vale's edge remembers you"} — your level and pack endure. Rise, and walk that stretch again.`;
-      el("resAgain").textContent=victory?"Descend Again":(snapshot&&snapshot.foeIdx>0?"Rise at the Waystone ▸":"Rise at the Vale's Edge ▸");
+        : `The cold reaches your held breath and stills it. You fell at ${foe.name}… yet ${snapshot&&snapshot.pathIdx>0?"the waystone holds your shape":"the vale's edge remembers you"} — your level and pack endure. Rise, and walk that stretch again.`;
+      el("resAgain").textContent=victory?"Descend Again":(snapshot&&snapshot.pathIdx>0?"Rise at the Waystone ▸":"Rise at the Vale's Edge ▸");
       el("resLoot").innerHTML=`<div><b style="color:var(--gold)">${gold}</b><span>GOLD</span></div>
         <div><b style="color:var(--rune)">${runes}</b><span>RUNES</span></div>
         <div><b style="color:#9fe8b8">Lv ${plevel}</b><span>SEEKER</span></div>
@@ -937,8 +1081,8 @@
       show("ovResult");
     }
 
-    function resetRun(){ foeIdx=0; combo=0; gold=0; runes=0;
-      plevel=1; pxp=0; pmax=pmaxFor(); php=pmax; inv=[]; used.clear();
+    function resetRun(){ foeIdx=0; pathIdx=0; combo=0; gold=0; runes=0;
+      plevel=1; pxp=0; bonusHp=0; pmax=pmaxFor(); php=pmax; inv=[]; used.clear();
       lastVictory=false; paintPlayer(); takeSnapshot(); }
 
     // ============ Guarded navigation (anti button-spam) ============
@@ -946,15 +1090,21 @@
     function guard(fn){ return async()=>{ if(navLock||running)return; navLock=true;
       try{ await fn(); } finally{ navLock=false; } }; }
 
-    el("spoilsBtn").onclick=guard(async()=>{ await fadeOutOverlay("ovSpoils");
-      if(php<=pmax*LOW_HP){ openRest(); return; }  // wounded — offer to eat first
-      await beginFoe(); });
-    el("restGo").onclick  =guard(async()=>{ await fadeOutOverlay("ovRest"); await beginFoe(); });
+    el("spoilsBtn").onclick=guard(async()=>{ await fadeOutOverlay("ovSpoils"); pathIdx++; showMap(); });
+    // Leaving the map into a battle while wounded → the eat-or-fight gate.
+    el("mapGo").onclick=guard(async()=>{
+      const n=PATH[pathIdx];
+      await fadeOutOverlay("ovMap");
+      if(n.t==="battle" && php<=pmax*LOW_HP){ openRest(); return; }
+      await runNode(); });
+    el("restGo").onclick  =guard(async()=>{ await fadeOutOverlay("ovRest"); await runNode(); });
+    el("mktGo").onclick   =guard(async()=>{ await fadeOutOverlay("ovMarket"); pathIdx++; showMap(); });
+    el("evGo").onclick    =guard(async()=>{ await fadeOutOverlay("ovEvent"); pathIdx++; showMap(); });
     // After defeat: rise at the last waystone (or the land's edge) with level,
     // XP, gold and pack restored — full strength, rested. Victory: a fresh run.
     el("resAgain").onclick =guard(async()=>{
-      if(!lastVictory && snapshot){ restoreSnapshot(); await fadeOutOverlay("ovResult"); await beginFoe(); return; }
-      resetRun(); await fadeOutOverlay("ovResult"); await beginFoe(); });
+      if(!lastVictory && snapshot){ restoreSnapshot(); await fadeOutOverlay("ovResult"); showMap(); return; }
+      resetRun(); await fadeOutOverlay("ovResult"); showMap(); });
     el("resHome").onclick  =()=>{ if(navLock)return; navLock=true; location.href="./"; };
     el("quit").onclick     =()=>{ if(confirm("Leave the saga and return to the menu?")) location.href="./"; };
 
@@ -974,7 +1124,7 @@
     function chooseHero(){ return new Promise(res=>{ const box=el("heroCards"); box.innerHTML="";
       HEROES.forEach(h=>{ const b=document.createElement("button"); b.className="hero-card";
         b.innerHTML=`<span class="hicon">${h.icon}</span><span><div class="hname">${h.name}</div><div class="hperk">${h.perk}</div></span>`;
-        b.onclick=()=>{ hero=h; plevel=1; pxp=0; pmax=pmaxFor(); php=pmax; inv=[]; snapshot=null; paintPlayer(); res(); };
+        b.onclick=()=>{ hero=h; plevel=1; pxp=0; bonusHp=0; pathIdx=0; foeIdx=0; pmax=pmaxFor(); php=pmax; inv=[]; snapshot=null; paintPlayer(); res(); };
         box.appendChild(b); });
       show("ovHero"); }); }
 
@@ -991,7 +1141,7 @@
         const b=el("startBtn"); b.textContent="Enter the Vale ▸";
         b.onclick=guard(async()=>{ await fadeOutOverlay("ovTitle");
           takeSnapshot();                       // the land's edge holds your shape
-          await beginFoe(); });
+          showMap(); });
       });
     }
     boot();
