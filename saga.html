@@ -20,8 +20,11 @@
       --shadow:0 14px 46px rgba(0,0,0,.6);
     }
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    /* overflow:clip (not just hidden) — hidden still lets focus/programmatic
+       scrolls shift the body, pushing the HUD off-screen; clip forbids all
+       scrolling. Older engines ignore clip and keep the hidden fallback. */
     html,body{margin:0;height:100%;background:var(--bg);color:#eaf3ff;
-      font-family:"Marcellus",Georgia,serif;overflow:hidden;overscroll-behavior:none}
+      font-family:"Marcellus",Georgia,serif;overflow:hidden;overflow:clip;overscroll-behavior:none}
     body{position:fixed;inset:0}
     h1,h2,h3,.cin{font-family:"Cinzel",serif}
     button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none}
@@ -31,13 +34,17 @@
     /* ---------- Cinematic backdrop ---------- */
     #scene{position:absolute;inset:0;overflow:hidden;background:
       radial-gradient(120% 80% at 50% -8%, #16273f 0%, #0a1120 46%, #04060d 100%)}
-    /* The creature plays inside a FIXED framed "portal" in the upper area. Its
-       size and position never change — only the video swapped into it does
-       (object-fit:contain, so any clip fits fully inside the border). The frame
-       glow + rune corners are tinted to the enemy's weakness colour (--glow /
-       --glow-soft, set per enemy). During cinematic beats the frame drops away. */
-    #arena{position:relative;z-index:5;flex:0 0 auto;align-self:center;
-      height:clamp(220px,40vh,392px);aspect-ratio:4 / 5;max-width:90vw;margin:10px auto 0;
+    /* The creature plays inside a framed "portal" in the upper area. The portal
+       is the flexible element: the question dock below keeps its natural size
+       and the portal absorbs whatever height is left (question + answers must
+       never be clipped — on short viewports the creature shrinks instead).
+       Only the video swapped into it changes (object-fit:contain, so any clip
+       fits fully inside the border). The frame glow + rune corners are tinted
+       to the enemy's weakness colour (--glow / --glow-soft, set per enemy).
+       During cinematic beats the frame drops away. */
+    #arena{position:relative;z-index:5;flex:1 1 0;align-self:center;
+      min-height:96px;max-height:392px;max-height:min(43dvh,392px);
+      aspect-ratio:4 / 5;max-width:90vw;margin:10px auto 0;
       border-radius:16px;overflow:hidden;
       background:radial-gradient(120% 100% at 50% 34%, #0b1524 0%, #060a14 60%, #04060d 100%);
       box-shadow:
@@ -61,7 +68,7 @@
     .rune-corner.bl{bottom:9px;left:12px}.rune-corner.br{bottom:9px;right:12px}
     /* cinematic mode (opening / boss intro / defeats): full-screen, frame off, soft melt */
     .letterbox #arena{position:absolute;inset:0;z-index:5;width:100%;max-width:none;height:100%;
-      aspect-ratio:auto;margin:0;border-radius:0;background:transparent;box-shadow:none}
+      min-height:0;max-height:none;aspect-ratio:auto;margin:0;border-radius:0;background:transparent;box-shadow:none}
     .letterbox #arena::after,.letterbox .rune-corner{display:none}
     .letterbox #arena video,.letterbox #arena img.enemy-still{
       -webkit-mask-image:radial-gradient(ellipse 90% 82% at 50% 46%, #000 56%, rgba(0,0,0,0) 100%);
@@ -114,7 +121,11 @@
       100%{opacity:0;transform:translate(-50%,-80px) scale(1)}}
 
     /* ---------- Bottom: hero + question ---------- */
-    .dock{position:relative;z-index:7;flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;
+    /* flex:0 = the dock is content-sized (the arena flexes, not the answers);
+       margin-top:auto pins it to the bottom once the arena hits its cap. No
+       justify-content:flex-end — with overflow, that clips the TOP of the
+       content unreachably (the iOS bug: question text hidden behind the portal). */
+    .dock{position:relative;z-index:7;flex:0 1 auto;margin-top:auto;min-height:0;display:flex;flex-direction:column;
       overflow-y:auto;padding:12px 14px calc(env(safe-area-inset-bottom) + 14px);
       background:linear-gradient(0deg,rgba(3,6,13,.96) 34%,rgba(3,6,13,.7) 80%,transparent);transition:opacity .6s}
     .dock.enter{animation:dockIn .6s ease both}
@@ -150,6 +161,21 @@
     .timer{height:4px;border-radius:4px;background:rgba(255,255,255,.08);margin:0 0 12px;overflow:hidden}
     .timer>i{display:block;height:100%;width:100%;transform-origin:left;
       background:linear-gradient(90deg,var(--good),var(--gold),var(--blood))}
+
+    /* Phones: trim the HUD/dock so the creature portal keeps decent height
+       inside the real visible viewport (Safari toolbars eat ~150px of it). */
+    @media(max-width:520px){
+      .topbar{padding:calc(env(safe-area-inset-top) + 8px) 14px 8px;gap:7px}
+      .hpbar{height:14px}
+      .dock{padding:10px 12px calc(env(safe-area-inset-bottom) + 10px)}
+      .hero-row{margin-bottom:8px}
+      .hearts{font-size:19px}
+      .qcard{padding:12px 13px}
+      .qtext{margin-bottom:10px}
+      .timer{margin-bottom:10px}
+      .opts{gap:8px}
+      .opt{min-height:46px;padding:11px 12px;font-size:14.5px}
+    }
 
     /* ---------- Overlays ---------- */
     .overlay{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;
@@ -530,6 +556,9 @@
 
     // ============ FX (visual only) ============
     const flash=el("flash"),hurt=el("hurt"),fxToast=el("toast"),stage=el("stage");
+    // Fallback for engines without overflow:clip — a focus scroll on the body
+    // shifts the whole stage up and hides the HUD; pin it back immediately.
+    document.body.addEventListener("scroll",()=>{document.body.scrollTop=0;document.body.scrollLeft=0;},{passive:true});
     function whiteFlash(a=.9){flash.style.transition="none";flash.style.opacity=a;requestAnimationFrame(()=>{flash.style.transition="opacity .6s ease";flash.style.opacity=0;});}
     function redFlash(){hurt.style.transition="none";hurt.style.opacity=1;requestAnimationFrame(()=>{hurt.style.transition="opacity .7s ease";hurt.style.opacity=0;});}
     function shakeScreen(hard){const c=hard?"shake-hard":"shake";stage.classList.remove(c);void stage.offsetWidth;stage.classList.add(c);}
