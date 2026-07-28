@@ -63,6 +63,8 @@
   .gate button{font-family:inherit;font-weight:800;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:#fff;border:1px solid rgba(200,166,255,.4);
     background:rgba(124,92,255,.16);padding:14px 30px;border-radius:999px;cursor:pointer;backdrop-filter:blur(4px)}
   .gate small{color:#8a86b8;font-size:11px;letter-spacing:.1em}
+  .snd{position:absolute;right:14px;top:calc(7vh + 12px);z-index:22;width:40px;height:40px;border-radius:12px;
+    border:1px solid rgba(190,210,255,.28);background:rgba(8,12,24,.6);color:#eaf3ff;font-size:17px;cursor:pointer}
   .skip{position:absolute;right:16px;bottom:calc(7vh + 12px);z-index:22;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
     color:#9a97c0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:7px 14px;border-radius:999px;cursor:pointer;opacity:0;transition:opacity .5s}
   .skip.show{opacity:.7;pointer-events:auto}
@@ -84,12 +86,13 @@
     <div class="tagline" id="tagline">Answer &nbsp;·&nbsp; Strike &nbsp;·&nbsp; Descend</div>
   </div>
   <div class="tap" id="tap">Tap to begin</div>
+  <button class="snd" id="snd" aria-label="Sound on/off">🔇</button>
   <div class="skip" id="skip">Skip ▸</div>
   <div class="gate" id="gate">
     <div class="rr">ᛟ</div>
     <h1>Riddle <span class="amp">&amp;</span> Rune</h1>
     <button id="begin">▶&nbsp; Enter</button>
-    <small>headphones recommended · sound on</small>
+    <small>silent by default · tap 🔊 for sound</small>
   </div>
 </div>
 <!-- swap for soft-neon.mp3 / trance-overture.mp3 -->
@@ -137,6 +140,10 @@ function drawDragon(cx,cy,size,glowP,alpha,rot,bright){
 
 /* ---------- audio ---------- */
 let AC=null;
+// Global audio switch (same key as the app) — the cinematic stays silent unless
+// the player turned sound on. Toggling mid-film joins the score at the beat.
+let sndOn=false; try{ sndOn=localStorage.getItem('quizrush-audio')==='on'; }catch(e){}
+addEventListener('pagehide',()=>{ const s=$('song'); try{s.pause();s.currentTime=0;}catch(e){} if(AC){try{AC.close();}catch(e){} AC=null;} });
 function boom(w,f=50,d=1.4,v=.5){const t=AC.currentTime+w;const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.setValueAtTime(f*1.6,t);o.frequency.exponentialRampToValueAtTime(f,t+.5);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g).connect(AC.destination);o.start(t);o.stop(t+d+.1);}
 function roar(w){const t=AC.currentTime+w;const o=AC.createOscillator(),g=AC.createGain(),lp=AC.createBiquadFilter();o.type='sawtooth';o.frequency.setValueAtTime(120,t);o.frequency.exponentialRampToValueAtTime(58,t+1.1);o.frequency.linearRampToValueAtTime(70,t+1.4);lp.type='lowpass';lp.frequency.value=900;g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(.42,t+.18);g.gain.setValueAtTime(.42,t+1.0);g.gain.exponentialRampToValueAtTime(.0001,t+1.6);o.connect(lp).connect(g).connect(AC.destination);o.start(t);o.stop(t+1.7);
   const nl=AC.sampleRate*1.4,nb=AC.createBuffer(1,nl,AC.sampleRate),nd=nb.getChannelData(0);for(let i=0;i<nl;i++)nd[i]=(Math.random()*2-1)*Math.min(1,(1-i/nl)*1.4);const ns=AC.createBufferSource();ns.buffer=nb;const nf=AC.createBiquadFilter();nf.type='lowpass';nf.frequency.value=500;const ng=AC.createGain();ng.gain.setValueAtTime(.0001,t);ng.gain.linearRampToValueAtTime(.3,t+.2);ng.gain.exponentialRampToValueAtTime(.0001,t+1.5);ns.connect(nf).connect(ng).connect(AC.destination);ns.start(t);}
@@ -165,9 +172,11 @@ function start(){
   if(started)return; started=true; resize(); seed();
   const g=$('gate'); g.classList.add('hide'); setTimeout(()=>g.style.display='none',600);
   $('cine').classList.add('framed'); $('skip').classList.add('show');
-  const s=$('song'); s.volume=0; s.play().then(()=>{let v=0;const fi=setInterval(()=>{v=Math.min(.85,v+.04);s.volume=v;if(v>=.85)clearInterval(fi);},60);}).catch(()=>{});
+  if(sndOn){
+    const s=$('song'); s.volume=0; s.play().then(()=>{let v=0;const fi=setInterval(()=>{v=Math.min(.85,v+.04);s.volume=v;if(v>=.85)clearInterval(fi);},60);}).catch(()=>{});
+    sfx();
+  }
   try{ dragonVid.play().catch(()=>{}); }catch(e){}
-  sfx();
   dragon={rise:0,glow:0,alpha:0,bright:0,slain:false,rot:0,spin:0,sink:0};
   t0=performance.now(); requestAnimationFrame(loop);
 }
@@ -283,6 +292,14 @@ function render(t,dt){
 }
 
 function enter(){location.href='./';}     // into the app
+$('snd').addEventListener('click',e=>{e.stopPropagation();
+  sndOn=!sndOn; try{ localStorage.setItem('quizrush-audio',sndOn?'on':'off'); }catch(err){}
+  $('snd').textContent=sndOn?'🔊':'🔇';
+  const s=$('song');
+  if(!sndOn){ try{s.pause();}catch(err){} if(AC){try{AC.close();}catch(err){} AC=null;} return; }
+  if(started){ try{ s.currentTime=Math.max(0,(performance.now()-t0)/1000); }catch(err){} s.volume=.85; s.play().catch(()=>{}); }
+});
+$('snd').textContent=sndOn?'🔊':'🔇';
 $('begin').addEventListener('click',e=>{e.stopPropagation();start();});
 $('skip').addEventListener('click',e=>{e.stopPropagation();enter();});
 $('tap').addEventListener('click',e=>{e.stopPropagation();enter();});

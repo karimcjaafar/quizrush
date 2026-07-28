@@ -317,7 +317,7 @@
       <div class="ov-title">Riddle &amp; Rune</div>
       <p class="ov-sub">The vale of Fenrime is frozen, and its guardians turned cruel. You go down alone, bearing no blade — only <b>what you know</b> — to reach the silence that woke beneath it: <em>Malrune</em>, the Unanswered.</p>
       <button class="cta" id="startBtn">Begin the Tale ▸</button>
-      <p style="font-size:12px;opacity:.5">Tap enables sound · headphones recommended</p>
+      <p style="font-size:12px;opacity:.5">silent by default · tap 🔊 above for sound</p>
     </div>
 
     <div class="overlay hidden" id="ovSpoils">
@@ -503,13 +503,19 @@
       used.add(q.text); return q; }
 
     // ============ Audio — ambient music only. Animations are always silent. ============
-    let muted=true, ambience=null;
+    // Shared global audio switch (same key as the main app) — silent by default;
+    // sound plays only if the player explicitly enabled it somewhere.
+    let muted=true; try{ muted = localStorage.getItem("quizrush-audio")!=="on"; }catch(e){}
+    let ambience=null;
     function ensureAmb(){ if(!ambience){ambience=new Audio("music/ambient-synth-overture.mp3");ambience.loop=true;ambience.volume=0;} }
     function startAmbience(){ if(muted)return; ensureAmb();
       ambience.play().then(()=>{let v=ambience.volume;const id=setInterval(()=>{v=Math.min(.4,v+.02);ambience.volume=v;if(v>=.4)clearInterval(id);},110);}).catch(()=>{}); }
     const muteBtn=el("mute");
     function applyMute(){ muteBtn.textContent=muted?"🔇":"🔊"; if(muted){ if(ambience)ambience.pause(); } else startAmbience(); }
-    muteBtn.onclick=()=>{ muted=!muted; applyMute(); };
+    muteBtn.onclick=()=>{ muted=!muted; try{ localStorage.setItem("quizrush-audio", muted?"off":"on"); }catch(e){} applyMute(); };
+    muteBtn.textContent=muted?"🔇":"🔊"; // reflect the saved state on load, without starting anything
+    // Navigating away (menu / re-entry): stop and rewind so nothing overlaps.
+    window.addEventListener("pagehide",()=>{ if(ambience){ try{ ambience.pause(); ambience.currentTime=0; }catch(e){} } });
 
     // ============ Frost particles ============
     const fc=el("frost"), fctx=fc.getContext("2d"); let flakes=[],embers=[],dpr=1;
@@ -766,7 +772,7 @@
       show("ovTitle");
       const startBtn=el("startBtn"); startBtn.textContent="Begin the Tale ▸";
       startBtn.onclick=guard(async()=>{
-        muted=false; applyMute();
+        applyMute(); // the tap is the audio-unlock gesture — starts the bed ONLY if sound is on
         await fadeOutOverlay("ovTitle");
         await runOpening();                          // → shows ovTitle again as the launch gate
         const b=el("startBtn"); b.textContent="Enter the Vale ▸";

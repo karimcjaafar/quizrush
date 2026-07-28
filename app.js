@@ -9,7 +9,10 @@
 // ---------- Sound (Web Audio, no asset files) ----------
 const Sound = (() => {
   let ctx = null;
-  let enabled = localStorage.getItem("quizrush-sound") !== "off";
+  // ONE global audio switch shared by every page (index / saga / intro),
+  // and the default is SILENT: nothing plays until the player flips it on.
+  // (Old per-page keys are deliberately ignored — silence wins by default.)
+  let enabled = localStorage.getItem("quizrush-audio") === "on";
 
   function ac() {
     if (!ctx) {
@@ -93,12 +96,14 @@ const Sound = (() => {
     get enabled() { return enabled; },
     toggle() {
       enabled = !enabled;
-      try { localStorage.setItem("quizrush-sound", enabled ? "on" : "off"); } catch { /* play on */ }
+      try { localStorage.setItem("quizrush-audio", enabled ? "on" : "off"); } catch { /* play on */ }
       return enabled;
     },
     // iOS unlocks audio only inside a user gesture — prime the context on the
     // very first touch so every later cue can play
     unlock() { try { if (enabled) ac(); } catch { /* audio optional */ } },
+    // Leaving the page: park the context so no scheduled cue outlives us.
+    suspend() { try { if (ctx && ctx.state === "running") ctx.suspend(); } catch { /* gone */ } },
     // All cues favor sine waves, low volumes, soft attacks and longer tails —
     // musical rather than arcade-y.
     // Hierarchy: clicks are the quietest, navigation/coin moderate,
@@ -191,7 +196,7 @@ const Music = (() => {
   const MENU_TRACK = "ambient"; // calm, for menus / traversing screens
   const GAME_TRACK = "trance";  // more drive, for an active round
 
-  let enabled = localStorage.getItem("quizrush-music") !== "off";
+  let enabled = localStorage.getItem("quizrush-audio") === "on"; // shared global switch — silent by default
   let audio = null, currentKey = null;
   let fadeTimer = null, swapTimer = null, duckTimer = null;
 
@@ -280,7 +285,7 @@ const Music = (() => {
     get ctxState() { return actx ? actx.state : "none"; },
     toggle() {
       enabled = !enabled;
-      try { localStorage.setItem("quizrush-music", enabled ? "on" : "off"); } catch { /* play on */ }
+      try { localStorage.setItem("quizrush-audio", enabled ? "on" : "off"); } catch { /* play on */ }
       if (!enabled) this.stop(); else this.start();
       return enabled;
     },
@@ -300,6 +305,13 @@ const Music = (() => {
       if (!audio) return;
       fadeTo(0, 600);
       swapTimer = setTimeout(() => { try { audio.pause(); currentKey = null; } catch { /* gone */ } }, 640);
+    },
+    // Hard stop for page navigation: no fades, no pending timers, element
+    // paused and rewound, EQ context parked — nothing can keep sounding.
+    halt() {
+      clearTimeout(swapTimer); clearTimeout(duckTimer); clearInterval(fadeTimer);
+      if (audio) { try { audio.pause(); audio.currentTime = 0; } catch { /* gone */ } currentKey = null; }
+      try { if (actx && actx.state === "running") actx.suspend(); } catch { /* gone */ }
     },
     // On the splash: begin the menu bed (the gate tap is the audio unlock).
     intro() {
@@ -334,6 +346,12 @@ const Music = (() => {
     },
   };
 })();
+
+// Never carry audio across a page navigation (index ↔ saga ↔ intro): stop and
+// rewind the shared element and park both audio contexts. After a back/forward-
+// cache return, menus stay silent until the player acts again — silence-biased.
+window.addEventListener("pagehide", () => { Music.halt(); Sound.suspend(); });
+
 const OTDB_API = "https://opentdb.com";
 const TTA_API = "https://the-trivia-api.com/v2";
 // The Trivia API is CC BY-NC (non-commercial). Flip this to false for a
@@ -3585,7 +3603,21 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
   const video = $("splash-video");
   const skip = $("splash-skip");
   const mute = $("splash-mute");
-  if (mute) mute.onclick = (e) => { e.stopPropagation(); const on = Music.toggle(); mute.textContent = on ? "🔊" : "🔇"; };
+  if (mute) {
+    // Visible from the very first frame: audio defaults to silent, and this is
+    // the one switch (it drives the same global state as the in-app button).
+    mute.hidden = false;
+    mute.textContent = (Sound.enabled || Music.enabled) ? "🔊" : "🔇";
+    mute.onclick = (e) => {
+      e.stopPropagation();
+      const on = !(Sound.enabled || Music.enabled);
+      if (Sound.enabled !== on) Sound.toggle();
+      if (Music.enabled !== on) Music.toggle();
+      mute.textContent = on ? "🔊" : "🔇";
+      paintSoundButton();
+      if (on && phase !== "gate") Music.start("anthem"); // unmuted mid-film → bed in
+    };
+  }
   let phase = "gate"; // gate → show → done
   let showTimer = null;
   const INTRO_KEY = "rr-intro-seen-v2";
@@ -3616,7 +3648,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
       $("splash-gate").hidden = true;
       video.hidden = false;
       skip.hidden = false;
-      if (mute) { mute.hidden = false; mute.textContent = Music.enabled ? "🔊" : "🔇"; }
+      if (mute) mute.textContent = (Sound.enabled || Music.enabled) ? "🔊" : "🔇";
       try { localStorage.setItem(INTRO_KEY, "1"); } catch { /* private mode */ }
       video.src = "media/riddle-rune-intro.mp4"; // load only when we actually play it
       video.onended = () => finish(true);  // film ended on black → slow, smooth reveal
