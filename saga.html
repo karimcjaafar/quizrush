@@ -147,13 +147,43 @@
     .dock.enter{animation:dockIn .6s ease both}
     @keyframes dockIn{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
     .hero-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-    .hearts{display:flex;gap:5px;font-size:21px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.65))}
-    .hearts span{transition:transform .3s}
-    .hearts .lost{opacity:.24;filter:grayscale(1)}
-    @keyframes heartbreak{0%{transform:scale(1.5)}60%{transform:scale(.8) rotate(-8deg)}100%{transform:scale(1)}}
-    .hearts .breaking{animation:heartbreak .5s ease}
+    /* Player status: hero + level chip, HP bar (persists between battles), thin XP line */
+    .pstat{display:flex;align-items:center;gap:8px;flex:1 1 auto;min-width:0}
+    .plvl{font-family:"Cinzel";font-size:12px;letter-spacing:.06em;white-space:nowrap;
+      padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:rgba(10,15,28,.6);color:#eaf3ff}
+    .pbars{flex:1 1 auto;min-width:0;max-width:190px}
+    .php{height:12px;border-radius:7px;background:rgba(9,14,26,.72);border:1px solid var(--line);
+      overflow:hidden;position:relative}
+    .php>i{position:absolute;inset:0;transform-origin:left;transition:transform .5s cubic-bezier(.2,.8,.2,1);
+      background:linear-gradient(90deg,#3ec98c,#8fe3b4)}
+    .php.low>i{background:linear-gradient(90deg,#ff5566,#ff8a4d)}
+    .php>b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+      font-family:"Cinzel";font-size:9px;letter-spacing:.1em;text-shadow:0 1px 3px #000;z-index:2}
+    .pxp{height:3px;border-radius:3px;background:rgba(255,255,255,.09);margin-top:3px;overflow:hidden}
+    .pxp>i{display:block;height:100%;transform-origin:left;transition:transform .5s ease;
+      background:linear-gradient(90deg,#8f7ae8,#c9b6ff);width:100%}
     .combo{margin-left:auto;font-family:"Cinzel";font-size:13px;letter-spacing:.08em;opacity:0;transition:opacity .3s}
     .combo.on{opacity:1;color:var(--gold);text-shadow:0 0 12px rgba(255,207,107,.65)}
+    /* Hero select cards */
+    .hero-cards{display:flex;flex-direction:column;gap:10px;width:min(92vw,420px)}
+    .hero-card{display:flex;align-items:center;gap:13px;text-align:left;padding:13px 15px;border-radius:14px;
+      border:1px solid var(--line);background:rgba(13,21,38,.78);transition:border-color .2s,box-shadow .2s}
+    .hero-card:active{transform:scale(.98)}
+    .hero-card .hicon{font-size:30px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
+    .hero-card .hname{font-family:"Cinzel";font-weight:700;font-size:16px}
+    .hero-card .hperk{font-size:12.5px;opacity:.75;margin-top:2px}
+    /* Pack (inventory) + shop rows, shared by the spoils camp and the rest prompt */
+    .inv-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+    .inv-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;
+      border:1px solid rgba(159,232,184,.4);background:rgba(13,26,20,.7);font-size:13px;color:#dfffeF}
+    .inv-chip:active{transform:scale(.96)}
+    .inv-chip.shop{border-color:rgba(255,207,107,.42);background:rgba(26,21,10,.7);color:#ffedc4}
+    .inv-chip[disabled]{opacity:.4;pointer-events:none}
+    .inv-empty{font-size:12.5px;opacity:.55}
+    .camp{display:flex;flex-direction:column;gap:9px;align-items:center;width:min(92vw,420px);
+      padding:11px 12px;border-radius:14px;border:1px solid var(--line);background:rgba(9,14,26,.5)}
+    .camp .camp-label{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;opacity:.6}
+    .camp .php{width:min(60vw,230px);height:14px}
     .qcard{background:var(--panel);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);border:1px solid var(--line);
       border-radius:16px;padding:14px 16px;box-shadow:var(--shadow)}
     .qtier{font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.72;margin-bottom:6px;
@@ -185,7 +215,6 @@
       .hpbar{height:14px}
       .dock{padding:10px 12px calc(env(safe-area-inset-bottom) + 10px)}
       .hero-row{margin-bottom:8px}
-      .hearts{font-size:19px}
       .qcard{padding:12px 13px}
       .qtext{margin-bottom:10px}
       .timer{margin-bottom:10px}
@@ -304,7 +333,13 @@
 
     <div class="dock hidden" id="dock">
       <div class="hero-row">
-        <div class="hearts" id="hearts"></div>
+        <div class="pstat">
+          <span class="plvl" id="plvl">🛡 Lv 1</span>
+          <div class="pbars">
+            <div class="php" id="phpWrap"><i id="pHpBar"></i><b id="pHpTxt">25 / 25</b></div>
+            <div class="pxp"><i id="pXpBar"></i></div>
+          </div>
+        </div>
         <div class="combo" id="combo">COMBO ×2</div>
       </div>
       <div class="qcard">
@@ -337,12 +372,35 @@
       <p style="font-size:12px;opacity:.5">silent by default · tap 🔊 above for sound</p>
     </div>
 
+    <div class="overlay hidden" id="ovHero">
+      <div class="ov-kicker">Before the descent</div>
+      <div class="ov-title" style="font-size:clamp(24px,7vw,40px)">Choose your seeker</div>
+      <div class="hero-cards" id="heroCards"></div>
+      <p class="ov-sub" style="opacity:.6;font-size:12.5px">Level 1 · 25 strength. The vale will test what you know.</p>
+    </div>
+
     <div class="overlay hidden" id="ovSpoils">
       <div class="ov-kicker" id="spoilsKicker">The guardian falls</div>
       <div class="ov-title" id="spoilsTitle" style="font-size:clamp(24px,7vw,40px)">Vanquished</div>
       <div class="loot" id="spoilsLoot"></div>
+      <div class="camp" id="campBox">
+        <span class="camp-label">Your strength</span>
+        <div class="php" id="campHpWrap"><i id="campHpBar"></i><b id="campHpTxt"></b></div>
+        <span class="camp-label">Pack · eat to recover</span>
+        <div class="inv-row" id="campInv"></div>
+        <span class="camp-label">Trade with the vale-wraiths</span>
+        <div class="inv-row" id="campShop"></div>
+      </div>
       <p class="ov-sub" id="spoilsNext" style="opacity:.8"></p>
       <button class="cta" id="spoilsBtn">Descend ▸</button>
+    </div>
+
+    <div class="overlay hidden" id="ovRest">
+      <div class="ov-kicker">Your strength wanes</div>
+      <div class="ov-title" id="restHp" style="font-size:clamp(24px,7vw,40px)">12 / 25</div>
+      <p class="ov-sub" id="restSub">The next guardian waits. Eat from your pack first, or press on as you are?</p>
+      <div class="inv-row" id="restInv"></div>
+      <button class="cta" id="restGo">Fight on ▸</button>
     </div>
 
     <div class="overlay hidden" id="ovResult">
@@ -386,10 +444,31 @@
     const CRIT_WINDOW=0.6;                // answer inside the first 40% of the clock
     const COMBO_DMG=5;                    // small flat bonus once a combo is rolling
 
+    // ============ Hero & progression (Karim's design) ============
+    // Pick a seeker at the start. Level 1 = 25 HP. HP does NOT refill between
+    // battles — only on level-up, by eating from the pack, or buying food.
+    // XP to level rises exponentially; each level adds max HP and strike damage.
+    const HEROES=[
+      {key:"warden",   icon:"🛡", name:"The Warden-Sworn", perk:"Stout — +5 max strength",      hp:5, dmg:0, xp:1},
+      {key:"runeblade",icon:"🗡", name:"The Runeblade",    perk:"Keen — +2 damage every strike", hp:0, dmg:2, xp:1},
+      {key:"loremaster",icon:"🦉",name:"The Loremaster",   perk:"Wise — +15% experience",        hp:0, dmg:0, xp:1.15},
+    ];
+    const BASE_HP=25, HP_PER_LEVEL=10, DMG_PER_LEVEL=2;
+    const XP_BASE=70, XP_GROWTH=1.6;                        // exponential curve
+    const xpNeed=L=>Math.round(XP_BASE*Math.pow(XP_GROWTH,L-1));
+    const KILL_XP=25, BOSS_XP=60;                           // on top of per-strike XP (= half the damage dealt)
+    // Tuned so levels come fast early then spread out: full-heal level-ups stop
+    // covering every fight, and food from the pack becomes the real lifeline.
+    const LOW_HP=0.5;                                       // below half → offer to eat before the next fight
+    const FOOD_SHOP=[
+      {icon:"🍞", name:"Traveller's loaf", heal:15, cost:12},
+      {icon:"🍲", name:"Hearth stew",      heal:30, cost:25},
+    ];
+
     // ============ Enemy roster + lore (only guardians with uploaded video) ============
     const FOES = [
       { key:"armor", name:"The Hollow Sentinel", role:"Frozen Armour Guard", numeral:"I",
-        weak:"history", tiers:["VE","E"], hp:50,
+        weak:"history", tiers:["VE","E"], hp:50, dmg:6, drop:{icon:"🥖",name:"Warden's ration",heal:10},
         still:P+"forgotten-frozen-armor-guard.png",
         idle:V+"Animated_empty_armor_loop_1080p_202607280016.mp4",
         attack:V+"Armor_attacks_with_mist_1080p_202607280017.mp4",
@@ -397,7 +476,7 @@
         whisper:"The armour is empty. The duty is not.",
         epitaph:"The oath is kept at last. The armour settles into stillness." },
       { key:"statue", name:"The Forgotten Hero", role:"Living Stone Statue", numeral:"II",
-        weak:"arts", tiers:["E","M"], hp:80,
+        weak:"arts", tiers:["E","M"], hp:80, dmg:9, drop:{icon:"🍯",name:"Stone-hive honey",heal:12},
         still:P+"forgotten-hero-stone-statue.png",
         idle:V+"Animate_statue_seamless_loop_1080p_202607280018.mp4",
         defeat:V+"Statue_breaking,_light_rememberi…_1080p_202607280019.mp4",
@@ -405,7 +484,7 @@
         whisper:"It reaches for a name it cannot find.",
         epitaph:"You speak its tale aloud. The stone remembers, and is finally allowed to rest." },
       { key:"mimic", name:"The Glacier Mimic", role:"Treasure That Bites", numeral:"III",
-        weak:"geography", tiers:["M"], hp:100,
+        weak:"geography", tiers:["M"], hp:100, dmg:12, drop:{icon:"🧀",name:"Hoard cheese",heal:15},
         still:P+"glacier-treasure-chest-mimic.png",
         attack:V+"Treasure_chest_ambush_attack_ani…_202607280032.mp4",
         defeat:V+"Treasure_chest_defeated_spilling…_1080p_202607280036.mp4",
@@ -413,14 +492,14 @@
         whisper:"The hoard gleams. The hoard grins.",
         epitaph:"Greed unclenches its jaw. The ice gives back everything it stole." },
       { key:"sphinx", name:"The Frozen Sphinx", role:"Keeper of Riddles", numeral:"IV",
-        weak:"science", tiers:["M","H"], hp:130,
+        weak:"science", tiers:["M","H"], hp:130, dmg:16, drop:{icon:"🫐",name:"Sphinx's figs",heal:18},
         still:P+"ancient-frozen-riddle-sphinx.png",
         defeat:V+"Sphinx_concession_and_treasure_g…_202607280041.mp4",
         couplet:"The old riddle-keeper of the vale, <br>set now as Malrune's frozen lock.",
         whisper:"Answer well. It has devoured the unsure.",
         epitaph:"The riddle yields. The keeper inclines its head, and thaws into memory." },
       { key:"dragon", name:"Vyrmouth, Herald of Malrune", role:"The First Flame · Final Guardian", numeral:"V", boss:true,
-        weak:"history", tiers:["H","VH"], hp:250,
+        weak:"history", tiers:["H","VH"], hp:250, dmg:22,
         still:P+"Dragon1.png", defeatStill:P+"dragon-cut.png",
         intro:V+"Dragon_spreading_wings_cinematic…_1080p_202607261644.mp4",
         idle:V+"Dragon_breathing_fog_embers_1080p_202607261637.mp4",
@@ -614,11 +693,53 @@
     async function storyLine(html,hold=T.epitaph){ cineLine.innerHTML=html; cineLine.classList.add("show"); await sleep(hold); cineLine.classList.remove("show"); await sleep(T.fade); }
 
     // ============ State ============
-    let foeIdx=0, foe=null, foeHP=0, foeMax=0, hearts=5, combo=0, gold=0, runes=0, locked=false, timerId=null, _correct="";
+    let foeIdx=0, foe=null, foeHP=0, foeMax=0, combo=0, gold=0, runes=0, locked=false, timerId=null, _correct="";
+    // The seeker: level, XP, strength (HP persists between battles), pack of food
+    let hero=HEROES[0], plevel=1, pxp=0, pmax=BASE_HP, php=BASE_HP, inv=[];
+    const pmaxFor=()=>BASE_HP+HP_PER_LEVEL*(plevel-1)+hero.hp;
     let navLock=false;   // guards overlay buttons against double/rapid taps
     let running=false;   // a fight/transition is in progress
 
-    function renderHearts(breakLast){ el("hearts").innerHTML=Array.from({length:5},(_,i)=>`<span class="${i<hearts?"":"lost"} ${breakLast&&i===hearts?"breaking":""}">${i<hearts?"❤️":"🖤"}</span>`).join(""); }
+    function paintPlayer(){ el("plvl").textContent=`${hero.icon} Lv ${plevel}`;
+      el("pHpBar").style.transform=`scaleX(${Math.max(0,php/pmax)})`;
+      el("pHpTxt").textContent=`${php} / ${pmax}`;
+      el("phpWrap").classList.toggle("low", php<=pmax*LOW_HP);
+      el("pXpBar").style.transform=`scaleX(${Math.min(1,pxp/xpNeed(plevel))})`; }
+    // XP = damage dealt (skill feeds growth) + kill bonuses. Level-up is the
+    // ONLY free full heal: strength refills and both bars swell.
+    function gainXp(n){ pxp+=Math.round(n*hero.xp); let leveled=false;
+      while(pxp>=xpNeed(plevel)){ pxp-=xpNeed(plevel); plevel++; leveled=true; }
+      if(leveled){ pmax=pmaxFor(); php=pmax;
+        bigToast(`LEVEL UP — Lv ${plevel} · strength restored!`,"#9fe8b8"); whiteFlash(.55); }
+      paintPlayer(); }
+    function eatItem(i,rerender){ const it=inv[i]; if(!it)return;
+      if(php>=pmax){ bigToast("You are at full strength","#9fc0ee"); return; }
+      inv.splice(i,1); php=Math.min(pmax,php+it.heal);
+      bigToast(`${it.icon} ${it.name} — +${it.heal} strength`,"#9fe8b8");
+      paintPlayer(); if(rerender)rerender(); }
+    function buyItem(i,rerender){ const it=FOOD_SHOP[i];
+      if(gold<it.cost){ bigToast("Not enough gold","#ff9d8c"); return; }
+      gold-=it.cost; inv.push({icon:it.icon,name:it.name,heal:it.heal});
+      bigToast(`${it.icon} ${it.name} joins your pack`,"#ffe6ad");
+      if(rerender)rerender(); }
+    // Shared renderers for the two eating surfaces (spoils camp + rest prompt)
+    function renderPack(boxId,rerender){ const box=el(boxId);
+      box.innerHTML=inv.length?"":`<span class="inv-empty">Your pack is empty.</span>`;
+      inv.forEach((it,i)=>{ const b=document.createElement("button"); b.className="inv-chip";
+        b.innerHTML=`${it.icon} ${it.name} <b>+${it.heal}</b>`; b.onclick=()=>eatItem(i,rerender); box.appendChild(b); }); }
+    function renderShop(boxId,rerender){ const box=el(boxId); box.innerHTML="";
+      FOOD_SHOP.forEach((it,i)=>{ const b=document.createElement("button"); b.className="inv-chip shop";
+        b.innerHTML=`${it.icon} ${it.name} <b>+${it.heal}</b> · ${it.cost} gold`;
+        if(gold<it.cost)b.setAttribute("disabled","");
+        b.onclick=()=>buyItem(i,rerender); box.appendChild(b); }); }
+    // The camp block on the spoils screen: strength bar + pack + wraith shop
+    function renderCamp(){ el("campHpBar").style.transform=`scaleX(${Math.max(0,php/pmax)})`;
+      el("campHpWrap").classList.toggle("low", php<=pmax*LOW_HP);
+      el("campHpTxt").textContent=`${php} / ${pmax}`;
+      renderPack("campInv",renderCamp); renderShop("campShop",renderCamp); }
+    // Low-strength gate before the next fight: eat first, or press on
+    function openRest(){ const paint=()=>{ el("restHp").textContent=`${php} / ${pmax}`;
+        renderPack("restInv",paint); }; paint(); show("ovRest"); }
     function renderPips(){ el("pips").innerHTML=FOES.map((f,i)=>`<i class="${i<foeIdx?"done":i===foeIdx?"cur":""}"></i>`).join(""); }
     function setCombo(){ const c=el("combo"); if(combo>=2){c.classList.add("on");c.textContent=`COMBO ×${combo}`;} else c.classList.remove("on"); }
     function setFoeHP(v,ghostFrom){ foeHP=Math.max(0,v);
@@ -626,7 +747,7 @@
       el("foeHpGhost").style.transform=`scaleX(${(ghostFrom!=null?ghostFrom:foeHP)/foeMax})`;
       el("foeHpTxt").textContent=`${foeHP} / ${foeMax}`; }
 
-    const OVS=["ovTitle","ovSpoils","ovResult"];
+    const OVS=["ovTitle","ovHero","ovSpoils","ovRest","ovResult"];
     function show(id){ OVS.forEach(o=>{ const e=el(o); e.classList.toggle("hidden",o!==id); e.classList.remove("fade"); }); }
     function hideOverlays(){ OVS.forEach(o=>el(o).classList.add("hidden")); }
     async function fadeOutOverlay(id){ const e=el(id); e.classList.add("fade"); await sleep(800); e.classList.add("hidden"); e.classList.remove("fade"); }
@@ -657,12 +778,12 @@
 
     // ============ Fight flow ============
     async function beginFoe(){
-      running=true; foe=FOES[foeIdx]; foeMax=foe.hp;
+      running=true; foe=FOES[foeIdx]; foeMax=foe.hp; paintPlayer();
       const gc=WEAK_COLOR[foe.weak]||WEAK_COLOR._default;
       stage.style.setProperty("--glow",gc.solid); stage.style.setProperty("--glow-soft",gc.soft);
       el("foeName").textContent=foe.name;
       el("weakChip").innerHTML=foe.boss?`★ Final · weak to ${CAT_LABEL[foe.weak]}`:`✦ Weak to ${CAT_LABEL[foe.weak]}`;
-      renderPips(); renderHearts(); setCombo();
+      renderPips(); setCombo();
       el("dock").classList.add("hidden"); el("hud").classList.add("hidden");
       setStill(foe.still);                 // correct backdrop before the card
       await chapterCard(foe);
@@ -705,11 +826,12 @@
       [...box.children].forEach(b=>b.classList.add("dim")); btn.classList.remove("dim");
       if(correct){
         btn.classList.add("correct"); combo++; setCombo();
-        // Damage is earned, never random: tier base × weak-point × swift crit.
+        // Damage is earned, never random: (tier base + level/hero bonus) ×
+        // weak-point × swift crit. Levels sharpen every strike a little.
         const isWeak=q.cat===foe.weak;
         const remain=1-(performance.now()-qStart)/1000/qSecs;
         const crit=!!CRIT_TIERS[q.tier] && remain>=CRIT_WINDOW;
-        let dmg=TIER_DMG[q.tier]||TIER_DMG.M;
+        let dmg=(TIER_DMG[q.tier]||TIER_DMG.M)+DMG_PER_LEVEL*(plevel-1)+hero.dmg;
         if(isWeak) dmg=Math.round(dmg*WEAK_BONUS);
         if(crit)   dmg*=CRIT_MULT;
         if(combo>=4) dmg+=COMBO_DMG;
@@ -721,6 +843,7 @@
         else if(combo>=3) bigToast("COMBO ×"+combo,"#ffcf6b");
         const from=foeHP; setFoeHP(foeHP-dmg,from);
         gold+=crit?4:isWeak?3:2; runes+=(crit||isWeak)?1:0;
+        gainXp(Math.ceil(dmg/2)); // strike XP = half damage dealt — skill feeds growth
         if(foeHP<=0){ setTimeout(defeatFoe,820); return; }
         setTimeout(()=>nextQuestion(), T.betweenQ);
       } else {
@@ -731,11 +854,12 @@
       combo=0; setCombo(); bigToast("TOO SLOW","#ff7d8c"); enemyStrike(); }
 
     async function enemyStrike(){
-      hearts--; renderHearts(true); redFlash(); shakeScreen(true); floatText("✖","#ff4d5e",50,38);
+      php=Math.max(0,php-foe.dmg); paintPlayer();
+      redFlash(); shakeScreen(true); floatText(`−${foe.dmg}`,"#ff4d5e",50,38);
       if(foe.attack){ await playVid(foe.attack,{loop:false,fallback:foe.still,maxMs:4200});
-        if(hearts>0){ if(foe.idle) playVid(foe.idle,{loop:true,fallback:foe.still}); else setStill(foe.still); } }
+        if(php>0){ if(foe.idle) playVid(foe.idle,{loop:true,fallback:foe.still}); else setStill(foe.still); } }
       else { await sleep(1200); }
-      if(hearts<=0){ await sleep(700); endRun(false); return; }
+      if(php<=0){ await sleep(700); endRun(false); return; }
       await sleep(T.afterWrong); nextQuestion();
     }
 
@@ -743,6 +867,8 @@
       running=true; el("dock").classList.add("hidden");
       bigToast(foe.boss?"THE HERALD FALLS":"VANQUISHED","#ffe6ad"); whiteFlash(1); shakeScreen(true);
       gold+=foe.boss?40:10; runes+=foe.boss?5:2;
+      gainXp(foe.boss?BOSS_XP:KILL_XP);
+      if(foe.drop) inv.push({...foe.drop}); // the fallen leave provisions
       letterbox(true);
       if(foe.defeat){ await playVid(foe.defeat,{loop:false,fallback:foe.defeatStill||foe.still,maxMs:12000}); }
       else if(foe.defeatStill){ setStill(foe.defeatStill); await sleep(2200); }
@@ -763,7 +889,9 @@
       el("spoilsTitle").textContent = "Vanquished";
       el("spoilsLoot").innerHTML=`<div><b style="color:var(--gold)">${gold}</b><span>GOLD</span></div>
         <div><b style="color:var(--rune)">${runes}</b><span>RUNES</span></div>
-        <div><b style="color:var(--blood)">${"❤".repeat(hearts)||"—"}</b><span>LIFE</span></div>`;
+        <div><b style="color:#9fe8b8">Lv ${plevel}</b><span>SEEKER</span></div>`;
+      if(foe.drop) bigToast(`The fallen leave ${foe.drop.icon} ${foe.drop.name}`,"#9fe8b8");
+      renderCamp();
       el("spoilsNext").innerHTML = next.boss
         ? "Beyond the ice waits <em>Vyrmouth</em> — Malrune's fire given wings, and the last door before the deep."
         : `Ahead: <b>${next.name}</b>. Weak to ${CAT_LABEL[next.weak]}.`;
@@ -786,19 +914,24 @@
         : `The cold reaches your held breath and stills it. You fell at ${foe.name}, another guardian for the vale… yet the ice keeps what the brave attempt.`;
       el("resLoot").innerHTML=`<div><b style="color:var(--gold)">${gold}</b><span>GOLD</span></div>
         <div><b style="color:var(--rune)">${runes}</b><span>RUNES</span></div>
+        <div><b style="color:#9fe8b8">Lv ${plevel}</b><span>SEEKER</span></div>
         <div><b>${foeIdx}/${FOES.length}</b><span>FELLED</span></div>`;
       if(victory) bigToast("VICTORY","#ffe6ad");
       show("ovResult");
     }
 
-    function resetRun(){ foeIdx=0; hearts=5; combo=0; gold=0; runes=0; used.clear(); }
+    function resetRun(){ foeIdx=0; combo=0; gold=0; runes=0;
+      plevel=1; pxp=0; pmax=pmaxFor(); php=pmax; inv=[]; used.clear(); paintPlayer(); }
 
     // ============ Guarded navigation (anti button-spam) ============
     // A single lock: while a transition runs, extra taps are ignored.
     function guard(fn){ return async()=>{ if(navLock||running)return; navLock=true;
       try{ await fn(); } finally{ navLock=false; } }; }
 
-    el("spoilsBtn").onclick=guard(async()=>{ await fadeOutOverlay("ovSpoils"); await beginFoe(); });
+    el("spoilsBtn").onclick=guard(async()=>{ await fadeOutOverlay("ovSpoils");
+      if(php<=pmax*LOW_HP){ openRest(); return; }  // wounded — offer to eat first
+      await beginFoe(); });
+    el("restGo").onclick  =guard(async()=>{ await fadeOutOverlay("ovRest"); await beginFoe(); });
     el("resAgain").onclick =guard(async()=>{ resetRun(); await fadeOutOverlay("ovResult"); await beginFoe(); });
     el("resHome").onclick  =()=>{ if(navLock)return; navLock=true; location.href="./"; };
     el("quit").onclick     =()=>{ if(confirm("Leave the saga and return to the menu?")) location.href="./"; };
@@ -814,6 +947,15 @@
       }
     });
 
+    // Hero select: resolves when a seeker card is tapped (inside the guarded
+    // start flow, so no navLock check here — the guard is already held).
+    function chooseHero(){ return new Promise(res=>{ const box=el("heroCards"); box.innerHTML="";
+      HEROES.forEach(h=>{ const b=document.createElement("button"); b.className="hero-card";
+        b.innerHTML=`<span class="hicon">${h.icon}</span><span><div class="hname">${h.name}</div><div class="hperk">${h.perk}</div></span>`;
+        b.onclick=()=>{ hero=h; plevel=1; pxp=0; pmax=pmaxFor(); php=pmax; inv=[]; paintPlayer(); res(); };
+        box.appendChild(b); });
+      show("ovHero"); }); }
+
     // ============ boot ============
     function boot(){
       show("ovTitle");
@@ -821,6 +963,8 @@
       startBtn.onclick=guard(async()=>{
         applyMute(); // the tap is the audio-unlock gesture — starts the bed ONLY if sound is on
         await fadeOutOverlay("ovTitle");
+        await chooseHero();                          // pick your seeker before the tale begins
+        await fadeOutOverlay("ovHero");
         await runOpening();                          // → shows ovTitle again as the launch gate
         const b=el("startBtn"); b.textContent="Enter the Vale ▸";
         b.onclick=guard(async()=>{ await fadeOutOverlay("ovTitle"); await beginFoe(); });
