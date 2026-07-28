@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Riddle &amp; Rune — The Saga</title>
-  <meta name="theme-color" content="#070a14" />
+  <title>Riddle &amp; Rune — The Reckoning</title>
+  <meta name="theme-color" content="#05070f" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="apple-touch-icon" href="icon-bolt.png" />
@@ -14,116 +14,124 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Marcellus&display=swap" rel="stylesheet" />
   <style>
     :root{
-      --bg:#070a14; --frost:#bfe6ff; --frost-2:#7fb6e6; --ice:#dff2ff;
-      --gold:#ffcf6b; --rune:#a98bff; --blood:#ff4d5e; --good:#66f0b6;
-      --panel:rgba(10,16,30,.72); --line:rgba(150,190,240,.22);
-      --shadow:0 12px 40px rgba(0,0,0,.55);
+      --bg:#05070f; --frost:#bfe6ff; --frost-2:#7fb6e6; --ice:#dff2ff;
+      --gold:#ffcf6b; --rune:#b49cff; --blood:#ff4d5e; --good:#66f0b6;
+      --panel:rgba(9,14,26,.74); --line:rgba(150,190,240,.22);
+      --shadow:0 14px 46px rgba(0,0,0,.6);
     }
     *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     html,body{margin:0;height:100%;background:var(--bg);color:#eaf3ff;
       font-family:"Marcellus",Georgia,serif;overflow:hidden;overscroll-behavior:none}
     body{position:fixed;inset:0}
     h1,h2,h3,.cin{font-family:"Cinzel",serif}
-    button{font-family:inherit;color:inherit;cursor:pointer}
+    button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none}
     .stage{position:absolute;inset:0;display:flex;flex-direction:column}
+    .hidden{display:none !important}
 
     /* ---------- Cinematic backdrop ---------- */
     #scene{position:absolute;inset:0;overflow:hidden;background:
-      radial-gradient(120% 80% at 50% -10%, #16243f 0%, #0a1020 45%, #05070f 100%)}
+      radial-gradient(120% 80% at 50% -8%, #16273f 0%, #0a1120 46%, #04060d 100%)}
     #scene video,#scene img.enemy-still{position:absolute;inset:0;width:100%;height:100%;
-      object-fit:cover;opacity:0;transition:opacity .6s ease;filter:saturate(1.05) contrast(1.05)}
+      object-fit:cover;opacity:0;transition:opacity .9s ease;filter:saturate(1.06) contrast(1.05)}
     #scene .show{opacity:1}
-    .vignette{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 200px 60px rgba(2,4,10,.9);
-      background:radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(3,6,14,.7) 100%)}
-    .frost-edge{position:absolute;inset:0;pointer-events:none;opacity:.5;mix-blend-mode:screen;
-      background:radial-gradient(60% 40% at 50% 108%, rgba(140,200,255,.28), transparent 70%)}
-    #fx{position:absolute;inset:0;pointer-events:none}
+    #frost{position:absolute;inset:0;pointer-events:none;z-index:1}
+    .vignette{position:absolute;inset:0;pointer-events:none;z-index:2;box-shadow:inset 0 0 210px 64px rgba(2,4,10,.92);
+      background:radial-gradient(120% 92% at 50% 42%, transparent 54%, rgba(3,6,14,.72) 100%)}
+    .frost-edge{position:absolute;inset:0;pointer-events:none;z-index:2;opacity:.5;mix-blend-mode:screen;
+      background:radial-gradient(62% 42% at 50% 110%, rgba(140,200,255,.3), transparent 70%)}
+    #fx{position:absolute;inset:0;pointer-events:none;z-index:9}
     .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
-    .hurt{position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 50%,transparent 40%,rgba(255,40,60,.55) 100%);opacity:0;pointer-events:none}
+    .hurt{position:absolute;inset:0;background:radial-gradient(120% 92% at 50% 50%,transparent 38%,rgba(255,40,60,.6) 100%);opacity:0;pointer-events:none}
+    .bar{position:absolute;left:0;right:0;height:11vh;background:#000;z-index:12;pointer-events:none;transition:transform 1s cubic-bezier(.7,0,.3,1)}
+    .bar.top{top:0;transform:translateY(-100%)} .bar.bot{bottom:0;transform:translateY(100%)}
+    .letterbox .bar.top{transform:translateY(0)} .letterbox .bar.bot{transform:translateY(0)}
     @keyframes shake{10%,90%{transform:translate(-2px,1px)}20%,80%{transform:translate(4px,-2px)}
-      30%,50%,70%{transform:translate(-7px,2px)}40%,60%{transform:translate(7px,-1px)}}
+      30%,50%,70%{transform:translate(-8px,2px)}40%,60%{transform:translate(8px,-1px)}}
     .shake{animation:shake .5s cubic-bezier(.36,.07,.19,.97) both}
-    .shake-hard{animation:shake .6s cubic-bezier(.36,.07,.19,.97) both;animation-iteration-count:1}
+    .shake-hard{animation:shake .62s cubic-bezier(.36,.07,.19,.97) both}
 
     /* ---------- Top: enemy bar ---------- */
-    .topbar{position:relative;z-index:5;padding:calc(env(safe-area-inset-top) + 14px) 16px 10px;
-      display:flex;flex-direction:column;gap:8px}
+    .topbar{position:relative;z-index:6;padding:calc(env(safe-area-inset-top) + 14px) 16px 10px;
+      display:flex;flex-direction:column;gap:9px;transition:opacity .5s}
     .foe-row{display:flex;align-items:center;gap:12px}
     .foe-quit{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);
-      background:rgba(8,12,24,.6);font-size:18px;flex:0 0 auto}
+      background:rgba(8,12,24,.62);font-size:18px;flex:0 0 auto}
     .foe-meta{flex:1 1 auto;min-width:0}
     .foe-name{font-family:"Cinzel";font-weight:700;font-size:clamp(16px,4.4vw,24px);
-      letter-spacing:.04em;text-shadow:0 2px 14px rgba(0,0,0,.8);line-height:1.05}
-    .foe-sub{font-size:12px;opacity:.75;margin-top:2px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+      letter-spacing:.04em;text-shadow:0 2px 16px rgba(0,0,0,.85);line-height:1.05}
+    .foe-sub{font-size:12px;opacity:.8;margin-top:3px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .weak-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;
-      background:rgba(169,139,255,.16);border:1px solid rgba(169,139,255,.5);color:#d9ccff;font-size:11px;letter-spacing:.05em}
+      background:rgba(180,156,255,.16);border:1px solid rgba(180,156,255,.5);color:#e0d6ff;font-size:11px;letter-spacing:.05em}
     .stage-pips{display:flex;gap:5px}
     .stage-pips i{width:9px;height:9px;border-radius:50%;background:rgba(200,225,255,.22);border:1px solid var(--line)}
     .stage-pips i.done{background:var(--frost);box-shadow:0 0 8px var(--frost)}
     .stage-pips i.cur{background:var(--gold);box-shadow:0 0 10px var(--gold)}
-    .hpbar{height:16px;border-radius:9px;background:rgba(10,16,30,.7);border:1px solid var(--line);
+    .hpbar{height:16px;border-radius:9px;background:rgba(9,14,26,.72);border:1px solid var(--line);
       overflow:hidden;position:relative;box-shadow:var(--shadow)}
-    .hpbar>i{position:absolute;inset:0;transform-origin:left;transition:transform .5s cubic-bezier(.2,.8,.2,1);
-      background:linear-gradient(90deg,#ff5566,#ff8a4d);box-shadow:0 0 14px rgba(255,80,90,.6) inset}
-    .hpbar>.ghost{background:rgba(255,255,255,.35);transition:transform .9s ease .15s;z-index:-0}
+    .hpbar>i{position:absolute;inset:0;transform-origin:left;transition:transform .55s cubic-bezier(.2,.8,.2,1);
+      background:linear-gradient(90deg,#ff5566,#ff8a4d)}
+    .hpbar>.ghost{background:rgba(255,255,255,.4);transition:transform 1s ease .18s}
     .hpbar>b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
       font-family:"Cinzel";font-size:11px;letter-spacing:.12em;text-shadow:0 1px 3px #000;z-index:2}
 
-    /* floating damage / labels */
-    .float{position:absolute;z-index:8;font-family:"Cinzel";font-weight:900;pointer-events:none;
-      text-shadow:0 3px 12px rgba(0,0,0,.8);will-change:transform,opacity}
-    @keyframes floatUp{0%{opacity:0;transform:translate(-50%,10px) scale(.7)}
-      15%{opacity:1;transform:translate(-50%,-6px) scale(1.15)}
-      100%{opacity:0;transform:translate(-50%,-70px) scale(1)}}
+    .float{position:absolute;z-index:11;font-family:"Cinzel";font-weight:900;pointer-events:none;
+      text-shadow:0 3px 12px rgba(0,0,0,.85);will-change:transform,opacity}
+    @keyframes floatUp{0%{opacity:0;transform:translate(-50%,12px) scale(.7)}
+      16%{opacity:1;transform:translate(-50%,-6px) scale(1.16)}
+      100%{opacity:0;transform:translate(-50%,-78px) scale(1)}}
 
     /* ---------- Bottom: hero + question ---------- */
-    .dock{position:relative;z-index:6;margin-top:auto;padding:12px 14px calc(env(safe-area-inset-bottom) + 14px);
-      background:linear-gradient(0deg,rgba(4,7,15,.94) 20%,rgba(4,7,15,.6) 70%,transparent);}
+    .dock{position:relative;z-index:7;margin-top:auto;padding:12px 14px calc(env(safe-area-inset-bottom) + 14px);
+      background:linear-gradient(0deg,rgba(3,6,13,.95) 22%,rgba(3,6,13,.62) 72%,transparent);transition:opacity .5s,transform .5s}
+    .dock.enter{animation:dockIn .55s ease both}
+    @keyframes dockIn{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
     .hero-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-    .hearts{display:flex;gap:4px;font-size:20px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))}
-    .hearts .lost{opacity:.22;filter:grayscale(1)}
+    .hearts{display:flex;gap:5px;font-size:21px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.65))}
+    .hearts span{transition:transform .3s}
+    .hearts .lost{opacity:.24;filter:grayscale(1)}
+    @keyframes heartbreak{0%{transform:scale(1.5)}60%{transform:scale(.8) rotate(-8deg)}100%{transform:scale(1)}}
+    .hearts .breaking{animation:heartbreak .5s ease}
     .combo{margin-left:auto;font-family:"Cinzel";font-size:13px;letter-spacing:.08em;opacity:0;transition:opacity .3s}
-    .combo.on{opacity:1;color:var(--gold);text-shadow:0 0 12px rgba(255,207,107,.6)}
-    .qcard{background:var(--panel);backdrop-filter:blur(8px);border:1px solid var(--line);
+    .combo.on{opacity:1;color:var(--gold);text-shadow:0 0 12px rgba(255,207,107,.65)}
+    .qcard{background:var(--panel);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);border:1px solid var(--line);
       border-radius:16px;padding:14px 16px;box-shadow:var(--shadow)}
-    .qtier{font-size:11px;letter-spacing:.22em;text-transform:uppercase;opacity:.7;margin-bottom:6px;
+    .qtier{font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.72;margin-bottom:6px;
       display:flex;align-items:center;gap:8px}
     .qtier .tag{padding:2px 8px;border-radius:6px;border:1px solid var(--line);background:rgba(255,255,255,.05)}
-    .qtext{font-size:clamp(16px,4.6vw,21px);line-height:1.32;margin:0 0 12px;font-family:"Marcellus"}
+    .qtext{font-size:clamp(16px,4.6vw,21px);line-height:1.34;margin:0 0 12px;font-family:"Marcellus"}
     .opts{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-    @media(max-width:430px){.opts{grid-template-columns:1fr}}
+    @media(max-width:440px){.opts{grid-template-columns:1fr}}
     .opt{position:relative;text-align:left;padding:13px 14px;border-radius:12px;border:1px solid var(--line);
-      background:rgba(14,22,40,.72);font-size:15px;line-height:1.25;transition:transform .08s,border-color .2s,background .2s;
-      min-height:50px;display:flex;align-items:center}
+      background:rgba(13,21,38,.74);font-size:15px;line-height:1.28;transition:transform .09s,border-color .2s,background .2s,box-shadow .2s;
+      min-height:50px;display:flex;align-items:center;width:100%}
     .opt:active{transform:scale(.98)}
     .opt .k{display:inline-flex;width:22px;height:22px;border-radius:6px;margin-right:10px;flex:0 0 auto;
       align-items:center;justify-content:center;font-family:"Cinzel";font-size:12px;
-      background:rgba(169,139,255,.18);border:1px solid rgba(169,139,255,.4);color:#d9ccff}
-    .opt.correct{background:rgba(60,200,140,.24);border-color:var(--good);color:#daffe9}
-    .opt.wrong{background:rgba(255,70,90,.22);border-color:var(--blood)}
+      background:rgba(180,156,255,.18);border:1px solid rgba(180,156,255,.42);color:#e0d6ff}
+    .opt.correct{background:rgba(60,200,140,.26);border-color:var(--good);color:#daffe9;box-shadow:0 0 22px rgba(102,240,182,.3)}
+    .opt.wrong{background:rgba(255,70,90,.24);border-color:var(--blood)}
     .opt.dim{opacity:.4}
-    .opt.correct .k{background:rgba(60,200,140,.35);border-color:var(--good);color:#eafff5}
+    .opt.correct .k{background:rgba(60,200,140,.36);border-color:var(--good);color:#eafff5}
 
     .timer{height:4px;border-radius:4px;background:rgba(255,255,255,.08);margin:0 0 12px;overflow:hidden}
     .timer>i{display:block;height:100%;width:100%;transform-origin:left;
       background:linear-gradient(90deg,var(--good),var(--gold),var(--blood))}
 
-    /* ---------- Overlays (map / intro / result) ---------- */
+    /* ---------- Overlays ---------- */
     .overlay{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;
-      justify-content:center;text-align:center;padding:30px;gap:14px;
-      background:radial-gradient(120% 90% at 50% 30%,rgba(10,18,36,.7),rgba(3,6,14,.96));
+      justify-content:center;text-align:center;padding:30px;gap:15px;
+      background:radial-gradient(120% 92% at 50% 32%,rgba(9,16,32,.72),rgba(3,6,14,.97));
       -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
-    .overlay.hidden{display:none}
-    .ov-rune{font-size:46px;filter:drop-shadow(0 0 20px var(--rune));animation:pulse 3s ease-in-out infinite}
-    @keyframes pulse{50%{opacity:.6;transform:scale(1.08)}}
-    .ov-title{font-family:"Cinzel";font-weight:900;font-size:clamp(26px,8vw,50px);letter-spacing:.04em;
-      text-shadow:0 4px 30px rgba(120,80,255,.4)}
-    .ov-sub{max-width:34ch;opacity:.85;line-height:1.5;font-size:16px}
-    .ov-kicker{font-family:"Cinzel";letter-spacing:.34em;font-size:12px;opacity:.7;text-transform:uppercase}
-    .cta{margin-top:8px;padding:15px 34px;border-radius:14px;border:1px solid rgba(255,207,107,.6);
-      background:linear-gradient(180deg,rgba(255,207,107,.2),rgba(255,207,107,.06));
+    .ov-rune{font-size:46px;filter:drop-shadow(0 0 22px var(--rune));animation:pulse 3.4s ease-in-out infinite}
+    @keyframes pulse{50%{opacity:.62;transform:scale(1.08)}}
+    .ov-kicker{font-family:"Cinzel";letter-spacing:.34em;font-size:12px;opacity:.72;text-transform:uppercase}
+    .ov-title{font-family:"Cinzel";font-weight:900;font-size:clamp(28px,8.4vw,52px);letter-spacing:.04em;
+      text-shadow:0 4px 34px rgba(140,110,255,.42);line-height:1.04}
+    .ov-sub{max-width:34ch;opacity:.88;line-height:1.55;font-size:16px}
+    .cta{margin-top:8px;padding:15px 34px;border-radius:14px;border:1px solid rgba(255,207,107,.62);
+      background:linear-gradient(180deg,rgba(255,207,107,.22),rgba(255,207,107,.06));
       font-family:"Cinzel";font-weight:700;letter-spacing:.12em;font-size:16px;color:#ffe6ad;
-      box-shadow:0 0 30px rgba(255,207,107,.25)}
+      box-shadow:0 0 34px rgba(255,207,107,.24)}
     .cta.ghost{border-color:var(--line);background:rgba(255,255,255,.04);color:#cfe0f5;box-shadow:none}
     .cta:active{transform:scale(.97)}
     .btnrow{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
@@ -132,44 +140,78 @@
     .map{display:flex;flex-direction:column;gap:0;margin:6px 0 4px;width:100%;max-width:340px}
     .node{display:flex;align-items:center;gap:14px;padding:8px 4px;position:relative}
     .node .dot{width:44px;height:44px;border-radius:13px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
-      font-size:24px;background:rgba(14,22,40,.8);border:1px solid var(--line);transition:.3s}
-    .node.done .dot{border-color:var(--good);box-shadow:0 0 14px rgba(102,240,182,.4);opacity:.7}
+      font-size:24px;background:rgba(13,21,38,.82);border:1px solid var(--line);transition:.3s}
+    .node.done .dot{border-color:var(--good);box-shadow:0 0 14px rgba(102,240,182,.4);opacity:.72}
     .node.cur .dot{border-color:var(--gold);box-shadow:0 0 20px rgba(255,207,107,.5);transform:scale(1.08)}
-    .node.locked .dot{opacity:.4}
+    .node.locked .dot{opacity:.42}
     .node .lbl{text-align:left}
     .node .lbl b{font-family:"Cinzel";display:block;font-size:15px}
-    .node .lbl span{font-size:12px;opacity:.65}
+    .node .lbl span{font-size:12px;opacity:.66}
     .node:not(:last-child)::before{content:"";position:absolute;left:25px;top:52px;height:20px;width:2px;
       background:linear-gradient(var(--line),transparent)}
 
-    .loot{display:flex;gap:18px;justify-content:center;margin:4px 0}
-    .loot b{font-family:"Cinzel";font-size:22px;display:block}
-    .loot span{font-size:11px;opacity:.7;letter-spacing:.1em}
+    .loot{display:flex;gap:20px;justify-content:center;margin:4px 0}
+    .loot b{font-family:"Cinzel";font-size:23px;display:block}
+    .loot span{font-size:11px;opacity:.72;letter-spacing:.1em}
 
-    .mute{position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:16px;z-index:30;
-      width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:rgba(8,12,24,.6);font-size:16px}
-    .toast{position:absolute;left:50%;top:22%;transform:translateX(-50%);z-index:25;
+    /* opening cinematic line */
+    #cineLine{position:absolute;left:0;right:0;top:38%;transform:translateY(-50%);z-index:22;
+      text-align:center;padding:0 34px;font-family:"Cinzel";font-weight:500;
+      font-size:clamp(19px,5.6vw,30px);line-height:1.4;letter-spacing:.02em;color:#eaf3ff;
+      opacity:0;transition:opacity 1.1s ease;text-shadow:0 3px 26px rgba(0,0,0,.9),0 0 40px rgba(120,90,255,.25)}
+    #cineLine.show{opacity:1}
+    #cineLine em{font-style:normal;color:var(--rune);text-shadow:0 0 26px rgba(180,156,255,.7)}
+    #cineLine b{color:var(--gold);font-weight:700}
+
+    /* chapter card */
+    #chapter{position:absolute;inset:0;z-index:21;display:flex;flex-direction:column;align-items:center;justify-content:center;
+      gap:10px;text-align:center;background:radial-gradient(120% 90% at 50% 40%,rgba(8,14,30,.5),rgba(3,6,14,.94));opacity:0;transition:opacity .8s}
+    #chapter.show{opacity:1}
+    .ch-num{font-family:"Cinzel";font-weight:900;font-size:clamp(46px,15vw,92px);color:transparent;
+      -webkit-text-stroke:1.5px rgba(191,230,255,.5);letter-spacing:.06em;opacity:.9}
+    .ch-name{font-family:"Cinzel";font-weight:700;font-size:clamp(22px,6.6vw,36px);letter-spacing:.03em;text-shadow:0 3px 24px rgba(0,0,0,.8)}
+    .ch-role{font-size:14px;letter-spacing:.24em;text-transform:uppercase;opacity:.7}
+    .ch-weak{margin-top:6px}
+
+    /* nameplate reveal */
+    #nameplate{position:absolute;top:34%;left:0;right:0;z-index:10;text-align:center;pointer-events:none;opacity:0}
+    #nameplate.show{animation:npIn 2.6s ease forwards}
+    @keyframes npIn{0%{opacity:0;transform:translateY(14px) scale(.96)}
+      14%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
+    #nameplate .np-name{font-family:"Cinzel";font-weight:900;font-size:clamp(26px,8vw,44px);letter-spacing:.05em;
+      text-shadow:0 4px 30px rgba(0,0,0,.9),0 0 40px rgba(255,80,90,.35)}
+    #nameplate .np-role{font-size:13px;letter-spacing:.34em;text-transform:uppercase;opacity:.85;margin-top:6px;color:var(--frost)}
+
+    .mute{position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:16px;z-index:40;
+      width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:rgba(8,12,24,.62);font-size:16px}
+    .skip{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 18px);right:18px;z-index:40;
+      font-family:"Cinzel";letter-spacing:.16em;font-size:13px;opacity:.72;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:rgba(8,12,24,.5)}
+    .toast{position:absolute;left:50%;top:23%;transform:translateX(-50%);z-index:14;
       font-family:"Cinzel";font-size:clamp(20px,7vw,42px);font-weight:900;letter-spacing:.06em;
-      opacity:0;pointer-events:none;text-shadow:0 4px 24px rgba(0,0,0,.8)}
+      opacity:0;pointer-events:none;text-shadow:0 4px 26px rgba(0,0,0,.85)}
     @keyframes burst{0%{opacity:0;transform:translateX(-50%) scale(.5)}
-      20%{opacity:1;transform:translateX(-50%) scale(1.15)}
-      75%{opacity:1;transform:translateX(-50%) scale(1)}
+      18%{opacity:1;transform:translateX(-50%) scale(1.16)}
+      74%{opacity:1;transform:translateX(-50%) scale(1)}
       100%{opacity:0;transform:translateX(-50%) scale(1.05)}}
   </style>
 </head>
 <body>
-  <div class="stage">
+  <div class="stage" id="stage">
     <div id="scene">
+      <canvas id="frost"></canvas>
       <div class="frost-edge"></div>
       <div class="vignette"></div>
       <div id="fx"><div class="flash" id="flash"></div><div class="hurt" id="hurt"></div></div>
     </div>
+    <div class="bar top"></div><div class="bar bot"></div>
 
     <button class="mute" id="mute" aria-label="Sound">🔇</button>
+    <button class="skip hidden" id="skip">Skip ▸</button>
     <div class="toast" id="toast"></div>
+    <div id="nameplate"><div class="np-name" id="npName"></div><div class="np-role" id="npRole"></div></div>
 
     <!-- Battle HUD -->
-    <div class="topbar" id="hud" hidden>
+    <div class="topbar hidden" id="hud">
       <div class="foe-row">
         <button class="foe-quit" id="quit" title="Leave the saga">←</button>
         <div class="foe-meta">
@@ -183,35 +225,46 @@
       <div class="hpbar"><i class="ghost" id="foeHpGhost"></i><i id="foeHp"></i><b id="foeHpTxt">HP</b></div>
     </div>
 
-    <div class="dock" id="dock" hidden>
+    <div class="dock hidden" id="dock">
       <div class="hero-row">
         <div class="hearts" id="hearts"></div>
         <div class="combo" id="combo">COMBO ×2</div>
       </div>
       <div class="qcard">
         <div class="qtier" id="qtier"><span class="tag">TIER</span><span id="qcat"></span></div>
-        <div class="timer" id="timerWrap" hidden><i id="timerBar"></i></div>
+        <div class="timer" id="timerWrap"><i id="timerBar"></i></div>
         <p class="qtext" id="qtext">…</p>
         <div class="opts" id="opts"></div>
       </div>
     </div>
 
+    <!-- Opening cinematic line layer -->
+    <div id="cineLine"></div>
+
+    <!-- Chapter card -->
+    <div id="chapter" class="hidden">
+      <div class="ch-num" id="chNum">I</div>
+      <div class="ch-name" id="chName">—</div>
+      <div class="ch-role" id="chRole"></div>
+      <div class="ch-weak"><span class="weak-chip" id="chWeak">✦ Weak to —</span></div>
+    </div>
+
     <!-- Overlays -->
-    <div class="overlay" id="ovTitle">
+    <div class="overlay hidden" id="ovTitle">
       <div class="ov-rune">ᛟ</div>
-      <div class="ov-kicker">The Saga · Playable Demo</div>
+      <div class="ov-kicker">The Reckoning · Playable Demo</div>
       <div class="ov-title">Riddle &amp; Rune</div>
-      <p class="ov-sub">The Frostwyrm’s reach has frozen the vale and woken its guardians. You carry no blade — only what you <b>know</b>. Answer to strike. Falter, and be devoured.</p>
-      <div class="map" id="mapTitle"></div>
-      <button class="cta" id="startBtn">Enter the Vale ▸</button>
+      <p class="ov-sub">You carry no blade — only what you <b>know</b>. Descend the frozen vale, fell each guardian with truth, and stand before the beast of <em>Malrune</em> himself.</p>
+      <button class="cta" id="startBtn">Begin ▸</button>
       <p style="font-size:12px;opacity:.5">Tap enables sound · headphones recommended</p>
     </div>
 
-    <div class="overlay hidden" id="ovMap">
-      <div class="ov-kicker" id="mapKicker">The path deepens</div>
-      <div class="map" id="map"></div>
-      <div class="loot" id="mapLoot"></div>
-      <button class="cta" id="mapBtn">Descend ▸</button>
+    <div class="overlay hidden" id="ovSpoils">
+      <div class="ov-kicker" id="spoilsKicker">The guardian falls</div>
+      <div class="ov-title" id="spoilsTitle" style="font-size:clamp(24px,7vw,40px)">Vanquished</div>
+      <div class="loot" id="spoilsLoot"></div>
+      <p class="ov-sub" id="spoilsNext" style="opacity:.75"></p>
+      <button class="cta" id="spoilsBtn">Descend ▸</button>
     </div>
 
     <div class="overlay hidden" id="ovResult">
@@ -220,355 +273,445 @@
       <p class="ov-sub" id="resSub"></p>
       <div class="loot" id="resLoot"></div>
       <div class="btnrow">
-        <button class="cta" id="resAgain">Try Again</button>
+        <button class="cta" id="resAgain">Descend Again</button>
         <button class="cta ghost" id="resHome">Leave the Saga</button>
       </div>
     </div>
   </div>
 
+  <!-- Question banks -->
+  <script src="bank.js"></script>
+  <script src="bank-imported.js"></script>
+  <script src="bank-generated.js"></script>
+  <script src="bank-generated-sport.js"></script>
+  <script src="bank-generated-extra.js"></script>
   <script src="saga-questions.js"></script>
   <script>
   (function(){
     "use strict";
     const V="media/saga/App Videos/", P="media/saga/App Pics/";
-    const enc = s => encodeURI(s);   // handles spaces & the … char in filenames
+    const enc = s => encodeURI(s);
+    const el = id => document.getElementById(id);
+    const sleep = ms => new Promise(r=>setTimeout(r,ms));
 
-    // ---- Enemy roster (mapped to the real frozen-realm assets) ----
+    // ============ Enemy roster (only the guardians with uploaded video) ============
     const FOES = [
-      { key:"armor", name:"The Hollow Sentinel", role:"Frozen Armour Guard",
-        weak:"history", tiers:["VE","E"], hp:5,
+      { key:"armor", name:"The Hollow Sentinel", role:"Frozen Armour Guard", numeral:"I",
+        weak:"history", diffs:["easy"], hp:4,
         still:P+"forgotten-frozen-armor-guard.png",
         idle:V+"Animated_empty_armor_loop_1080p_202607280016.mp4",
         attack:V+"Armor_attacks_with_mist_1080p_202607280017.mp4" },
-      { key:"statue", name:"The Forgotten Hero", role:"Living Stone Statue",
-        weak:"arts", tiers:["E","M"], hp:5,
+      { key:"statue", name:"The Forgotten Hero", role:"Living Stone Statue", numeral:"II",
+        weak:"arts", diffs:["easy","medium"], hp:4,
         still:P+"forgotten-hero-stone-statue.png",
         idle:V+"Animate_statue_seamless_loop_1080p_202607280018.mp4",
         defeat:V+"Statue_breaking,_light_rememberi…_1080p_202607280019.mp4" },
-      { key:"mimic", name:"The Glacier Mimic", role:"Treasure That Bites",
-        weak:"geography", tiers:["M"], hp:5,
+      { key:"mimic", name:"The Glacier Mimic", role:"Treasure That Bites", numeral:"III",
+        weak:"geography", diffs:["medium"], hp:5,
         still:P+"glacier-treasure-chest-mimic.png",
         attack:V+"Treasure_chest_ambush_attack_ani…_202607280032.mp4",
         defeat:V+"Treasure_chest_defeated_spilling…_1080p_202607280036.mp4" },
-      { key:"sphinx", name:"The Frozen Sphinx", role:"Keeper of Riddles",
-        weak:"science", tiers:["M","H"], hp:6,
+      { key:"sphinx", name:"The Frozen Sphinx", role:"Keeper of Riddles", numeral:"IV",
+        weak:"science", diffs:["medium","hard"], hp:6,
         still:P+"ancient-frozen-riddle-sphinx.png",
         defeat:V+"Sphinx_concession_and_treasure_g…_202607280041.mp4" },
-      { key:"dragon", name:"Vyrmouth, the Frostwyrm", role:"— FINAL —", boss:true,
-        weak:"history", tiers:["H","VH"], hp:9,
+      { key:"dragon", name:"Vyrmouth, Herald of Malrune", role:"The Frostwyrm · Final Guardian", numeral:"V", boss:true,
+        weak:"history", diffs:["hard"], hp:8,
         still:P+"Dragon1.png", defeatStill:P+"dragon-cut.png",
         intro:V+"Dragon_spreading_wings_cinematic…_1080p_202607261644.mp4",
         idle:V+"Dragon_breathing_fog_embers_1080p_202607261637.mp4",
         attack:V+"Dragon_breathing_fire_in_darkness_202607261528.mp4" },
     ];
     const CAT_LABEL={geography:"Geography",science:"Science",history:"History",sport:"Sport",
-      music:"Music",arts:"Arts & Lit",politics:"Politics",chess:"Chess",food:"Food",general:"General"};
-    const TIER_LABEL={VE:"Very Easy",E:"Easy",M:"Medium",H:"Hard",VH:"Very Hard"};
+      music:"Music",arts:"Arts & Lit",politics:"Politics",chess:"Chess",food:"Food",
+      general:"General",animals:"Animals",entertainment:"Entertainment",mythology:"Mythology",popculture:"Pop Culture"};
+    const DIFF_LABEL={easy:"Easy",medium:"Medium",hard:"Hard"};
 
-    // ---- Question pools ----
-    const QALL = (window.SAGA_QUESTIONS||[]).slice();
-    const numberish = a => /^(a\s)?(\d[\d,]*(\s?(minutes|years|metres))?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen)$/i.test(a.trim());
-    const byTier={}, byCat={}, numbers=[], texts=[];
-    QALL.forEach(q=>{(byTier[q.t]=byTier[q.t]||[]).push(q);(byCat[q.c]=byCat[q.c]||[]).push(q);
-      (numberish(q.a)?numbers:texts).push(q.a);});
-    const uniq=a=>[...new Set(a)];
+    // ============ Build the combined question pool (35k bank + the 176) ============
+    // Banks are top-level consts in sibling <script>s — reach them by direct name
+    // (some assign window.*, some don't), guarded by typeof.
+    function bank(name){ try { const v=eval(name); return Array.isArray(v)?v:[]; } catch(e){ return []; } }
+    const TIER2DIFF={VE:"easy",E:"easy",M:"medium",H:"hard",VH:"hard"};
 
-    function optionsFor(q){
-      const pool = numberish(q.a) ? uniq(numbers) :
-        uniq((byCat[q.c]||[]).map(x=>x.a));
-      let decoys = pool.filter(a=>a!==q.a);
-      shuffle(decoys);
-      decoys = decoys.slice(0,3);
-      // top up from other text answers if the category was thin
-      if(decoys.length<3){
-        const extra = uniq(texts).filter(a=>a!==q.a && !decoys.includes(a));
-        shuffle(extra); decoys = decoys.concat(extra).slice(0,3);
-      }
-      return shuffle([q.a,...decoys]);
-    }
+    const POOL=[];                    // normalized {cat,diff,text,correct,wrong?,gen?}
+    // bank records already carry curated, format-matched options
+    ["QUIZRUSH_BANK","IMPORTED_BANK","GENERATED_BANK","GENERATED_SPORT_BANK","GENERATED_EXTRA_BANK"].forEach(n=>{
+      bank(n).forEach(q=>{
+        if(!q||!q.text||!q.correct||!Array.isArray(q.wrong)||q.wrong.length<3)return;
+        POOL.push({cat:q.cat||"general",diff:q.difficulty||"medium",text:q.text,correct:q.correct,wrong:q.wrong.slice(0,3)});
+      });
+    });
+    // the curated 176 — options generated to match the answer's format
+    bank("SAGA_QUESTIONS").forEach(q=>{
+      POOL.push({cat:q.c,diff:TIER2DIFF[q.t]||"medium",text:q.q,correct:q.a,gen:true});
+    });
+
+    // indexes for fast, weakness-biased drawing
+    const byDiff={easy:[],medium:[],hard:[]}, byDiffCat={};
+    const catAnswers={};               // cat -> unique correct answers (for text decoys)
+    POOL.forEach(q=>{
+      (byDiff[q.diff]||(byDiff[q.diff]=[])).push(q);
+      const k=q.diff+"|"+q.cat; (byDiffCat[k]||(byDiffCat[k]=[])).push(q);
+      (catAnswers[q.cat]||(catAnswers[q.cat]=new Set())).add(q.correct);
+    });
+    Object.keys(catAnswers).forEach(c=>catAnswers[c]=[...catAnswers[c]]);
+    const allAnswers=[...new Set(POOL.map(q=>q.correct))];
+
     function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+    const pick=a=>a[Math.floor(Math.random()*a.length)];
 
-    // per-run: don't repeat a question
+    // ---------- format-matched decoys for the curated set ----------
+    const NUMWORDS=["zero","one","two","three","four","five","six","seven","eight","nine","ten",
+      "eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty"];
+    const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
+    function yearDecoys(y){ const offs=shuffle([-3,-2,-1,1,2,3,-5,4,5,-7,6,-4,8,-9]); const out=[];
+      for(const o of offs){ const v=y+o; if(v>0 && v!==y && !out.includes(String(v))){out.push(String(v));} if(out.length>=3)break; } return out; }
+    function intDecoys(n,unit){ let cands = n<=15?[-3,-2,-1,1,2,3,4,-4,5]:[-2,2,5,-5,10,-10,Math.round(n*.5)-n,Math.round(n*1.5)-n];
+      cands=shuffle(cands); const out=[]; for(const d of cands){ const v=n+d; if(v>0 && v!==n){ const s=v.toLocaleString("en-GB")+unit; if(!out.includes(s))out.push(s);} if(out.length>=3)break; } return out; }
+    function wordDecoys(w){ const i=NUMWORDS.indexOf(w.toLowerCase()); if(i<0)return[]; const cands=shuffle([-2,-1,1,2,3,-3,4]);
+      const out=[]; for(const d of cands){ const j=i+d; if(j>=0&&j<NUMWORDS.length&&j!==i){ const val=w[0]===w[0].toUpperCase()?cap(NUMWORDS[j]):NUMWORDS[j]; if(!out.includes(val))out.push(val);} if(out.length>=3)break; } return out; }
+    // shape signature so decoys read as the SAME KIND of thing as the answer
+    function sig(s){ const w=s.trim().split(/\s+/).length;
+      return { n:w<=1?1:(w<=3?2:3), digit:/\d/.test(s), paren:/[()]/.test(s),
+        the:/^(the|a|an)\s/i.test(s),
+        name:/^[A-Z]/.test(s)&&!/^(the|a|an)\s/i.test(s)&&!/\d/.test(s) }; }
+    function sigScore(a,b){ let sc=0; if(a.n===b.n)sc+=2; if(a.digit===b.digit)sc+=2;
+      if(a.paren===b.paren)sc+=1; if(a.the===b.the)sc+=1; if(a.name===b.name)sc+=2; return sc; }
+    function textDecoys(correct,cat){ const src=(catAnswers[cat]&&catAnswers[cat].length>6)?catAnswers[cat]:allAnswers;
+      const cs=sig(correct), L=correct.length;
+      const scored=src.filter(a=>a!==correct).map(a=>({a,s:sigScore(cs,sig(a))-Math.abs(a.length-L)*0.05+Math.random()*0.6}));
+      scored.sort((x,y)=>y.s-x.s);
+      const top=scored.slice(0,Math.min(18,scored.length)); shuffle(top);
+      const out=[]; for(const o of top){ if(!out.includes(o.a))out.push(o.a); if(out.length>=3)break; } return out; }
+
+    function genOptions(q){
+      const a=q.correct.trim(); let decoys=[];
+      const yr=a.match(/^(1[0-9]{3}|20[0-9]{2})$/);
+      const numUnit=a.match(/^([0-9][0-9,]*)(\s?[A-Za-z%°]+)?$/);
+      if(yr) decoys=yearDecoys(parseInt(a,10));
+      else if(numUnit) decoys=intDecoys(parseInt(numUnit[1].replace(/,/g,""),10), numUnit[2]||"");
+      else if(NUMWORDS.includes(a.toLowerCase())) decoys=wordDecoys(a);
+      if(decoys.length<3) decoys=decoys.concat(textDecoys(a,q.cat)).filter((v,i,s)=>s.indexOf(v)===i && v!==a).slice(0,3);
+      // absolute fallback
+      let guard=0; while(decoys.length<3 && guard++<50){ const x=pick(allAnswers); if(x!==a && !decoys.includes(x))decoys.push(x); }
+      return shuffle([a,...decoys.slice(0,3)]);
+    }
+    function optionsFor(q){
+      if(q.gen) return genOptions(q);
+      // bank record: use its curated wrong answers, de-duped
+      let opts=[q.correct,...q.wrong].filter((v,i,s)=>s.indexOf(v)===i);
+      let guard=0; while(opts.length<4 && guard++<50){ const x=pick(allAnswers); if(!opts.includes(x))opts.push(x); }
+      return shuffle(opts.slice(0,4));
+    }
+
+    // ---------- weakness-biased draw, no repeats within a run ----------
     const used=new Set();
     function drawQuestion(foe){
-      let cand = QALL.filter(q=>foe.tiers.includes(q.t) && !used.has(q.q));
-      // bias ~55% toward the enemy's weak category so crits are reachable
-      const weakCand = cand.filter(q=>q.c===foe.weak);
-      let pick;
-      if(weakCand.length && Math.random()<0.5) pick = weakCand[Math.floor(Math.random()*weakCand.length)];
-      else if(cand.length) pick = cand[Math.floor(Math.random()*cand.length)];
-      else { used.clear(); cand=QALL.filter(q=>foe.tiers.includes(q.t)); pick=cand[Math.floor(Math.random()*cand.length)]; }
-      used.add(pick.q);
-      return pick;
+      const weak=[], any=[];
+      foe.diffs.forEach(d=>{ (byDiffCat[d+"|"+foe.weak]||[]).forEach(q=>{if(!used.has(q.text))weak.push(q);});
+        (byDiff[d]||[]).forEach(q=>{if(!used.has(q.text))any.push(q);}); });
+      let q;
+      if(weak.length && Math.random()<0.55) q=pick(weak);
+      else if(any.length) q=pick(any);
+      else { // exhausted — reset just this run's memory
+        used.clear(); const all=[]; foe.diffs.forEach(d=>(byDiff[d]||[]).forEach(x=>all.push(x))); q=pick(all)||POOL[0];
+      }
+      used.add(q.text);
+      return q;
     }
 
-    // ---------- Audio (WebAudio SFX + ambience) ----------
-    let AC=null, muted=true, ambience=null;
-    function audioOn(){ if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
-      if(AC&&AC.state==="suspended")AC.resume(); }
-    function beep(freq,dur,type,gain,slideTo){ if(!AC||muted)return;
-      const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime;
-      o.type=type||"sine";o.frequency.setValueAtTime(freq,t);
-      if(slideTo)o.frequency.exponentialRampToValueAtTime(slideTo,t+dur);
-      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(gain||.2,t+.01);
-      g.gain.exponentialRampToValueAtTime(.0001,t+dur);
-      o.connect(g).connect(AC.destination);o.start(t);o.stop(t+dur+.02);}
-    function noise(dur,gain){ if(!AC||muted)return;
-      const n=AC.sampleRate*dur,b=AC.createBuffer(1,n,AC.sampleRate),d=b.getChannelData(0);
-      for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);
-      const s=AC.createBufferSource();s.buffer=b;const g=AC.createGain();
-      g.gain.value=gain||.25;s.connect(g).connect(AC.destination);s.start();}
-    const SFX={
-      hit(){beep(320,.12,"triangle",.22,180);beep(160,.14,"sine",.16);},
-      crit(){beep(660,.09,"square",.18,990);beep(440,.16,"sawtooth",.2,120);noise(.16,.18);},
-      miss(){beep(150,.22,"sawtooth",.22,70);},
-      roar(){beep(90,.5,"sawtooth",.28,50);noise(.5,.22);},
-      win(){[523,659,784,1046].forEach((f,i)=>setTimeout(()=>beep(f,.3,"triangle",.2),i*110));},
-      lose(){[400,300,220,150].forEach((f,i)=>setTimeout(()=>beep(f,.35,"sine",.2,f*.7),i*140));},
-      shatter(){noise(.4,.3);beep(1200,.2,"triangle",.12,300);},
-      click(){beep(520,.05,"sine",.1);}
-    };
-    function startAmbience(){
-      if(muted)return;
-      if(!ambience){ambience=new Audio("music/ambient-synth-overture.mp3");ambience.loop=true;ambience.volume=0;}
-      ambience.play().then(()=>{let v=0;const id=setInterval(()=>{v=Math.min(.35,v+.02);ambience.volume=v;if(v>=.35)clearInterval(id);},120);}).catch(()=>{});
-    }
-    const muteBtn=document.getElementById("mute");
-    muteBtn.onclick=()=>{muted=!muted;muteBtn.textContent=muted?"🔇":"🔊";
-      if(muted){if(ambience)ambience.pause();}else{audioOn();startAmbience();}};
+    // ============ Audio — ambient music only (battle SFX removed) ============
+    let muted=true, ambience=null, ac=null;
+    function ensureAmb(){ if(!ambience){ambience=new Audio("music/ambient-synth-overture.mp3");ambience.loop=true;ambience.volume=0;} }
+    function startAmbience(){ if(muted)return; ensureAmb();
+      ambience.play().then(()=>{let v=ambience.volume;const id=setInterval(()=>{v=Math.min(.4,v+.02);ambience.volume=v;if(v>=.4)clearInterval(id);},110);}).catch(()=>{}); }
+    const muteBtn=el("mute");
+    function applyMute(){ muteBtn.textContent=muted?"🔇":"🔊";
+      if(muted){ if(ambience)ambience.pause(); } else { startAmbience(); } }
+    muteBtn.onclick=()=>{ muted=!muted; applyMute(); };
 
-    // ---------- Scene / video management ----------
-    const scene=document.getElementById("scene");
+    // ============ Frost particle canvas ============
+    const fc=el("frost"), fctx=fc.getContext("2d"); let flakes=[], embers=[], dpr=1;
+    function sizeFrost(){ dpr=Math.min(2,window.devicePixelRatio||1); fc.width=innerWidth*dpr; fc.height=innerHeight*dpr;
+      fc.style.width=innerWidth+"px"; fc.style.height=innerHeight+"px"; }
+    function seedFrost(){ flakes=Array.from({length:70},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,
+      r:Math.random()*1.8+.5,s:Math.random()*.4+.15,d:Math.random()*.6-.3,o:Math.random()*.5+.2}));
+      embers=Array.from({length:16},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,
+      r:Math.random()*1.4+.6,s:Math.random()*.5+.25,o:Math.random()*.4+.15,h:Math.random()<.5?"270":"24"})); }
+    function frostLoop(){ fctx.setTransform(dpr,0,0,dpr,0,0); fctx.clearRect(0,0,innerWidth,innerHeight);
+      flakes.forEach(f=>{ f.y+=f.s; f.x+=f.d; if(f.y>innerHeight+4){f.y=-4;f.x=Math.random()*innerWidth;} if(f.x<-4)f.x=innerWidth; if(f.x>innerWidth+4)f.x=0;
+        fctx.beginPath();fctx.arc(f.x,f.y,f.r,0,7);fctx.fillStyle="rgba(213,235,255,"+f.o+")";fctx.fill(); });
+      embers.forEach(e=>{ e.y-=e.s; e.x+=Math.sin(e.y*.02)*.3; if(e.y<-4){e.y=innerHeight+4;e.x=Math.random()*innerWidth;}
+        fctx.beginPath();fctx.arc(e.x,e.y,e.r,0,7);fctx.fillStyle="hsla("+e.h+",90%,65%,"+e.o+")";fctx.fill(); });
+      requestAnimationFrame(frostLoop); }
+    sizeFrost(); seedFrost(); frostLoop();
+    addEventListener("resize",()=>{ sizeFrost(); });
+
+    // ============ Scene / video manager ============
+    const scene=el("scene");
     let curVid=null;
-    function setStill(src){
-      clearVid();
-      let img=scene.querySelector("img.enemy-still");
+    function setStill(src){ clearVid(); let img=scene.querySelector("img.enemy-still");
       if(!img){img=document.createElement("img");img.className="enemy-still";scene.insertBefore(img,scene.firstChild);}
-      img.src=enc(src); requestAnimationFrame(()=>img.classList.add("show"));
+      img.src=enc(src); requestAnimationFrame(()=>img.classList.add("show")); }
+    function clearVid(){ if(curVid){const v=curVid;v.classList.remove("show");setTimeout(()=>v.remove(),950);curVid=null;} }
+    // returns a promise that resolves when a non-loop clip ends (or after maxMs safety)
+    function playVid(src,{loop=true,fallback=null,maxMs=9000}={}){
+      return new Promise(resolve=>{
+        const still=scene.querySelector("img.enemy-still"); if(still)still.classList.remove("show");
+        const v=document.createElement("video");
+        v.playsInline=true;v.muted=true;v.setAttribute("muted","");v.loop=loop;v.preload="auto";v.src=enc(src);
+        let done=false; const finish=()=>{ if(done)return; done=true; resolve(); };
+        v.addEventListener("error",()=>{ if(fallback)setStill(fallback); finish(); });
+        if(!loop){ v.addEventListener("ended",finish,{once:true}); setTimeout(finish,maxMs); }
+        scene.insertBefore(v,scene.firstChild);
+        const prev=curVid; curVid=v;
+        v.play().then(()=>{ requestAnimationFrame(()=>v.classList.add("show"));
+          if(prev){prev.classList.remove("show");setTimeout(()=>prev.remove(),950);}
+          if(loop) resolve();
+        }).catch(()=>{ if(fallback)setStill(fallback); finish(); });
+      });
     }
-    function clearVid(){ if(curVid){curVid.classList.remove("show");const v=curVid;setTimeout(()=>v.remove(),650);curVid=null;} }
-    function playVid(src,{loop=true,onEnd=null,fallback=null}={}){
-      const still=scene.querySelector("img.enemy-still"); if(still)still.classList.remove("show");
-      const v=document.createElement("video");
-      v.playsInline=true;v.muted=true;v.setAttribute("muted","");v.loop=loop;v.preload="auto";
-      v.src=enc(src);
-      v.addEventListener("error",()=>{ if(fallback)setStill(fallback); });
-      if(onEnd&&!loop)v.addEventListener("ended",onEnd,{once:true});
-      scene.insertBefore(v,scene.firstChild);
-      const prev=curVid;curVid=v;
-      v.play().then(()=>{requestAnimationFrame(()=>v.classList.add("show"));
-        if(prev){prev.classList.remove("show");setTimeout(()=>prev.remove(),650);}
-      }).catch(()=>{ if(fallback)setStill(fallback); });
-      return v;
-    }
-    // preload the next foe's idle/still quietly
     function warm(foe){ const s=foe.idle||foe.still; if(!s)return;
-      if(/\.mp4$/i.test(s)){const v=document.createElement("video");v.preload="auto";v.muted=true;v.src=enc(s);}
+      if(/\.mp4$/i.test(s)){const vv=document.createElement("video");vv.preload="auto";vv.muted=true;vv.src=enc(s);}
       else{const i=new Image();i.src=enc(s);} }
 
-    // ---------- FX ----------
-    const flash=document.getElementById("flash"),hurt=document.getElementById("hurt"),
-          fxToast=document.getElementById("toast"),stage=document.querySelector(".stage");
-    function boom(el,cls){el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);}
-    function whiteFlash(a=.9){flash.style.transition="none";flash.style.opacity=a;requestAnimationFrame(()=>{flash.style.transition="opacity .5s ease";flash.style.opacity=0;});}
-    function redFlash(){hurt.style.transition="none";hurt.style.opacity=1;requestAnimationFrame(()=>{hurt.style.transition="opacity .6s ease";hurt.style.opacity=0;});}
-    function shakeScreen(hard){boom(stage,hard?"shake-hard":"shake");}
-    function bigToast(txt,color){fxToast.textContent=txt;fxToast.style.color=color||"#fff";
-      fxToast.style.animation="none";void fxToast.offsetWidth;fxToast.style.animation="burst 1.1s ease forwards";}
-    function floatText(txt,color,x,y){const f=document.createElement("div");f.className="float";
-      f.textContent=txt;f.style.color=color;f.style.left=(x||50)+"%";f.style.top=(y||42)+"%";
-      f.style.fontSize="clamp(22px,7vw,44px)";f.style.animation="floatUp 1s ease forwards";
-      stage.appendChild(f);setTimeout(()=>f.remove(),1000);}
+    // ============ FX (visual only) ============
+    const flash=el("flash"),hurt=el("hurt"),fxToast=el("toast"),stage=el("stage");
+    function whiteFlash(a=.9){flash.style.transition="none";flash.style.opacity=a;requestAnimationFrame(()=>{flash.style.transition="opacity .55s ease";flash.style.opacity=0;});}
+    function redFlash(){hurt.style.transition="none";hurt.style.opacity=1;requestAnimationFrame(()=>{hurt.style.transition="opacity .65s ease";hurt.style.opacity=0;});}
+    function shakeScreen(hard){const c=hard?"shake-hard":"shake";stage.classList.remove(c);void stage.offsetWidth;stage.classList.add(c);}
+    function bigToast(txt,color){fxToast.textContent=txt;fxToast.style.color=color||"#fff";fxToast.style.animation="none";void fxToast.offsetWidth;fxToast.style.animation="burst 1.2s ease forwards";}
+    function floatText(txt,color,x,y){const f=document.createElement("div");f.className="float";f.textContent=txt;
+      f.style.color=color;f.style.left=(x||50)+"%";f.style.top=(y||40)+"%";f.style.fontSize="clamp(24px,7.5vw,46px)";
+      f.style.animation="floatUp 1.05s ease forwards";stage.appendChild(f);setTimeout(()=>f.remove(),1100);}
+    function letterbox(on){ stage.classList.toggle("letterbox",on); }
 
-    // ---------- State ----------
-    let foeIdx=0, foe=null, foeHP=0, foeMax=0, hearts=4, combo=0, gold=0, runes=0, locked=false, timerId=null, _correct="";
-    const el=id=>document.getElementById(id);
+    // ============ State ============
+    let foeIdx=0, foe=null, foeHP=0, foeMax=0, hearts=5, combo=0, gold=0, runes=0, locked=false, timerId=null, _correct="", busy=false;
 
-    function renderMap(target){
-      target.innerHTML="";
-      FOES.forEach((f,i)=>{
-        const st=i<foeIdx?"done":i===foeIdx?"cur":"locked";
-        const icons={armor:"🛡️",statue:"🗿",mimic:"🎁",sphinx:"🦁",dragon:"🐉"};
-        const n=document.createElement("div");n.className="node "+st;
-        n.innerHTML=`<div class="dot">${icons[f.key]}</div><div class="lbl"><b>${st==="locked"&&!f.boss?"???":f.name}</b>
-          <span>${f.boss?"The Frostwyrm — final stand":"Weak to "+CAT_LABEL[f.weak]}</span></div>`;
-        target.appendChild(n);
-      });
-    }
-    function renderHearts(){el("hearts").innerHTML=Array.from({length:4},(_,i)=>
-      `<span class="${i<hearts?"":"lost"}">${i<hearts?"❤️":"🖤"}</span>`).join("");}
-    function setFoeHP(v,ghost){foeHP=Math.max(0,v);
+    function renderHearts(breakLast){ const h=el("hearts");
+      h.innerHTML=Array.from({length:5},(_,i)=>`<span class="${i<hearts?"":"lost"} ${breakLast&&i===hearts?"breaking":""}">${i<hearts?"❤️":"🖤"}</span>`).join(""); }
+    function renderPips(){ el("pips").innerHTML=FOES.map((f,i)=>`<i class="${i<foeIdx?"done":i===foeIdx?"cur":""}"></i>`).join(""); }
+    function setCombo(){ const c=el("combo"); if(combo>=2){c.classList.add("on");c.textContent=`COMBO ×${combo}`;} else c.classList.remove("on"); }
+    function setFoeHP(v,ghostFrom){ foeHP=Math.max(0,v);
       el("foeHp").style.transform=`scaleX(${foeHP/foeMax})`;
-      if(ghost)el("foeHpGhost").style.transform=`scaleX(${(v+ghost)/foeMax})`;
-      else el("foeHpGhost").style.transform=`scaleX(${foeHP/foeMax})`;
-      el("foeHpTxt").textContent=`${foeHP} / ${foeMax}`;}
-    function renderPips(){el("pips").innerHTML=FOES.map((f,i)=>
-      `<i class="${i<foeIdx?"done":i===foeIdx?"cur":""}"></i>`).join("");}
-    function setCombo(){const c=el("combo");if(combo>=2){c.classList.add("on");c.textContent=`COMBO ×${combo}`;}else c.classList.remove("on");}
+      el("foeHpGhost").style.transform=`scaleX(${(ghostFrom!=null?ghostFrom:foeHP)/foeMax})`;
+      el("foeHpTxt").textContent=`${foeHP} / ${foeMax}`; }
 
-    // ---------- Flow ----------
-    function beginFoe(){
-      foe=FOES[foeIdx];foeMax=foe.hp;
-      el("foeName").textContent=foe.name;
-      el("weakChip").innerHTML=foe.boss?`★ Final Boss · weak to ${CAT_LABEL[foe.weak]}`:`✦ Weak to ${CAT_LABEL[foe.weak]}`;
-      renderPips();renderHearts();setCombo();
-      el("hud").hidden=false;el("dock").hidden=false;
-      // establish the scene
-      if(foe.boss && foe.intro){
-        el("dock").hidden=true;
-        SFX.roar();
-        playVid(foe.intro,{loop:false,fallback:foe.still,onEnd:()=>{
-          if(foe.idle)playVid(foe.idle,{loop:true,fallback:foe.still}); else setStill(foe.still);
-          el("dock").hidden=false;setFoeHP(foeMax);nextQuestion();
-        }});
-        // safety: if intro never fires ended, continue after 9s
-        setTimeout(()=>{if(el("dock").hidden){if(foe.idle)playVid(foe.idle,{loop:true,fallback:foe.still});else setStill(foe.still);el("dock").hidden=false;setFoeHP(foeMax);nextQuestion();}},9000);
-        setFoeHP(foeMax);
-        return;
+    // ============ Overlay helpers ============
+    const OVS=["ovTitle","ovSpoils","ovResult"];
+    function show(id){ OVS.forEach(o=>el(o).classList.toggle("hidden",o!==id)); }
+    function hideOverlays(){ OVS.forEach(o=>el(o).classList.add("hidden")); }
+
+    // ============ Opening cinematic (directed, Malrune) ============
+    const OPENING=[
+      {h:"In the age of answers, no riddle went <em>unsolved</em>."},
+      {h:"Then he woke in the deep — <em>Malrune</em>, the Unanswered."},
+      {h:"Where he treads, knowledge <em>freezes</em>. Truth forgets its name."},
+      {h:"His frost has woken the guardians of the vale."},
+      {h:"You carry no blade. Only <b>what you know</b>."},
+    ];
+    let skipOpening=false;
+    el("skip").onclick=()=>{ skipOpening=true; };
+    async function runOpening(){
+      el("skip").classList.remove("hidden");
+      letterbox(true);
+      const line=el("cineLine");
+      // slow frost descent with narrated lines
+      for(const L of OPENING){
+        if(skipOpening)break;
+        line.innerHTML=L.h; line.classList.add("show");
+        await waitOrSkip(2900);
+        line.classList.remove("show");
+        await waitOrSkip(750);
       }
-      if(foe.idle)playVid(foe.idle,{loop:true,fallback:foe.still}); else setStill(foe.still);
+      // the beast reveal — Malrune's frostwyrm spreads its wings
+      if(!skipOpening){
+        line.innerHTML="But the vale is <em>frozen</em>… and something vast stirs beneath it.";
+        line.classList.add("show");
+      }
+      await playVid(FOES[4].intro,{loop:false,fallback:FOES[4].still,maxMs:skipOpening?200:8000});
+      line.classList.remove("show");
+      el("skip").classList.add("hidden");
+      letterbox(false);
+      // settle to title
+      hideOverlays(); show("ovTitle"); // reuse title overlay as the launch gate
+      el("ovTitle").classList.remove("hidden");
+    }
+    function waitOrSkip(ms){ return new Promise(res=>{ const step=60; let t=0;
+      const id=setInterval(()=>{ t+=step; if(skipOpening||t>=ms){clearInterval(id);res();} },step); }); }
+
+    // ============ Chapter card ============
+    async function chapterCard(f){
+      const c=el("chapter"); el("chNum").textContent=f.numeral; el("chName").textContent=f.name;
+      el("chRole").textContent=f.role; el("chWeak").innerHTML=f.boss?`★ Final Guardian · weak to ${CAT_LABEL[f.weak]}`:`✦ Weak to ${CAT_LABEL[f.weak]}`;
+      c.classList.remove("hidden"); await sleep(30); c.classList.add("show");
+      await sleep(2700); c.classList.remove("show"); await sleep(800); c.classList.add("hidden");
+    }
+    function nameplate(f){ el("npName").textContent=f.name; el("npRole").textContent=f.role;
+      const n=el("nameplate"); n.classList.remove("show"); void n.offsetWidth; n.classList.add("show"); }
+
+    // ============ Fight flow ============
+    async function beginFoe(){
+      busy=true; foe=FOES[foeIdx]; foeMax=foe.hp;
+      el("foeName").textContent=foe.name;
+      el("weakChip").innerHTML=foe.boss?`★ Final · weak to ${CAT_LABEL[foe.weak]}`:`✦ Weak to ${CAT_LABEL[foe.weak]}`;
+      renderPips(); renderHearts(); setCombo();
+      el("dock").classList.add("hidden");
+      // put the correct backdrop up BEFORE the chapter card so no wrong enemy
+      // (e.g. the opening dragon) shows through the transition
+      setStill(foe.still);
+      // chapter card first (unrushed)
+      await chapterCard(foe);
+      el("hud").classList.remove("hidden");
       setFoeHP(foeMax);
-      nextQuestion();
+      // establish the scene (boss gets its wing-spread intro if not already shown)
+      if(foe.boss && foe.intro){
+        letterbox(true);
+        await playVid(foe.intro,{loop:false,fallback:foe.still,maxMs:9000});
+        letterbox(false);
+        if(foe.idle) await playVid(foe.idle,{loop:true,fallback:foe.still}); else setStill(foe.still);
+      } else {
+        if(foe.idle) await playVid(foe.idle,{loop:true,fallback:foe.still}); else setStill(foe.still);
+      }
+      nameplate(foe);
+      await sleep(1400);          // let the nameplate breathe before the first question
+      busy=false;
+      nextQuestion(true);
     }
 
-    function nextQuestion(){
-      if(foeIdx+1<FOES.length)warm(FOES[foeIdx+1]);
+    function nextQuestion(first){
+      if(foeIdx+1<FOES.length) warm(FOES[foeIdx+1]);
       locked=false;
-      const q=drawQuestion(foe);
-      _correct=q.a;
-      el("qtier").querySelector(".tag").textContent=TIER_LABEL[q.t]||q.t;
-      const isWeak=q.c===foe.weak;
-      el("qcat").innerHTML = isWeak
-        ? `<span style="color:var(--rune)">✦ ${CAT_LABEL[q.c]} — weak point!</span>`
-        : CAT_LABEL[q.c]||q.c;
-      el("qtext").textContent=q.q;
-      const opts=optionsFor(q);
-      const box=el("opts");box.innerHTML="";
-      opts.forEach((opt,i)=>{
-        const b=document.createElement("button");b.className="opt";
+      const q=drawQuestion(foe); _correct=q.correct;
+      el("qtier").querySelector(".tag").textContent=DIFF_LABEL[q.diff]||q.diff;
+      const isWeak=q.cat===foe.weak;
+      el("qcat").innerHTML=isWeak?`<span style="color:var(--rune)">✦ ${CAT_LABEL[q.cat]||q.cat} — weak point!</span>`:(CAT_LABEL[q.cat]||q.cat);
+      el("qtext").textContent=q.text;
+      const opts=optionsFor(q), box=el("opts"); box.innerHTML="";
+      opts.forEach((opt,i)=>{ const b=document.createElement("button"); b.className="opt";
         b.innerHTML=`<span class="k">${"ABCD"[i]}</span><span>${opt}</span>`;
-        b.onclick=()=>answer(b,opt===q.a,isWeak,box);
-        box.appendChild(b);
-      });
+        b.onclick=()=>answer(b,opt===q.correct,isWeak,box); box.appendChild(b); });
+      const dock=el("dock"); dock.classList.remove("hidden");
+      dock.classList.remove("enter"); void dock.offsetWidth; dock.classList.add("enter");
       startTimer(q);
     }
 
-    function startTimer(q){
-      clearTimeout(timerId);
-      const secs = foe.boss?18:(q.t==="VH"||q.t==="H"?20:15);
-      const bar=el("timerBar");bar.style.transition="none";bar.style.transform="scaleX(1)";
-      el("timerWrap").hidden=false;
-      requestAnimationFrame(()=>{bar.style.transition=`transform ${secs}s linear`;bar.style.transform="scaleX(0)";});
-      timerId=setTimeout(()=>{ if(!locked) timeOut(); }, secs*1000);
-    }
+    function startTimer(q){ clearTimeout(timerId);
+      const secs = foe.boss?34:(q.diff==="hard"?32:28);
+      const bar=el("timerBar"); bar.style.transition="none"; bar.style.transform="scaleX(1)";
+      requestAnimationFrame(()=>{ bar.style.transition=`transform ${secs}s linear`; bar.style.transform="scaleX(0)"; });
+      timerId=setTimeout(()=>{ if(!locked) timeOut(); }, secs*1000); }
 
     function answer(btn,correct,isWeak,box){
-      if(locked)return;locked=true;clearTimeout(timerId);
-      audioOn();
-      [...box.children].forEach(b=>b.classList.add("dim"));
-      btn.classList.remove("dim");
+      if(locked)return; locked=true; clearTimeout(timerId);
+      [...box.children].forEach(b=>b.classList.add("dim")); btn.classList.remove("dim");
       if(correct){
-        btn.classList.add("correct");
-        combo++;setCombo();
-        const crit=isWeak;
-        let dmg = 1 + (combo>=3?1:0) + (crit?1:0);
-        SFX[crit?"crit":"hit"]();
-        whiteFlash(crit?.85:.5);shakeScreen(crit);
-        floatText((crit?"CRIT ":"")+"−"+dmg, crit?"#d9ccff":"#eafff5", 50, 34);
-        if(crit)bigToast("CRITICAL!","#c9b6ff");
-        else if(combo>=3)bigToast("COMBO ×"+combo,"#ffcf6b");
-        // enemy flinch: replay idle or brief attack-as-recoil
-        const prev=foeHP;setFoeHP(foeHP-dmg,0);
-        el("foeHpGhost").style.transform=`scaleX(${prev/foeMax})`;
-        if(foeHP<=0){ setTimeout(()=>defeatFoe(),620); return; }
+        btn.classList.add("correct"); combo++; setCombo();
+        const crit=isWeak; let dmg=(crit?2:1)+(combo>=4?1:0);
+        whiteFlash(crit?.85:.5); shakeScreen(crit);
+        floatText((crit?"CRIT ":"")+"−"+dmg, crit?"#c9b6ff":"#eafff5", 50, 33);
+        if(crit) bigToast("CRITICAL!","#c9b6ff"); else if(combo>=3) bigToast("COMBO ×"+combo,"#ffcf6b");
+        const from=foeHP; setFoeHP(foeHP-dmg,from);
         gold+=crit?3:2; runes+=crit?1:0;
-        setTimeout(nextQuestion,760);
+        if(foeHP<=0){ setTimeout(defeatFoe,760); return; }
+        setTimeout(()=>nextQuestion(), 1300);        // unrushed beat between questions
       } else {
         btn.classList.add("wrong");
-        // reveal the true answer among the options
-        [...box.children].forEach(b=>{ if(b.querySelector("span:last-child").textContent===_correct)b.classList.remove("dim"),b.classList.add("correct"); });
-        combo=0;setCombo();
+        [...box.children].forEach(b=>{ if(b.querySelector("span:last-child").textContent===_correct){ b.classList.remove("dim"); b.classList.add("correct"); } });
+        combo=0; setCombo();
         enemyStrike();
       }
     }
-    function timeOut(){locked=true;const box=el("opts");[...box.children].forEach(b=>b.classList.add("dim"));
-      combo=0;setCombo();bigToast("TOO SLOW","#ff7d8c");enemyStrike();}
+    function timeOut(){ locked=true; const box=el("opts"); [...box.children].forEach(b=>b.classList.add("dim"));
+      [...box.children].forEach(b=>{ if(b.querySelector("span:last-child").textContent===_correct){ b.classList.remove("dim"); b.classList.add("correct"); } });
+      combo=0; setCombo(); bigToast("TOO SLOW","#ff7d8c"); enemyStrike(); }
 
-    function enemyStrike(){
-      SFX.miss();
-      hearts--;renderHearts();redFlash();shakeScreen(true);
-      floatText("✖","#ff4d5e",50,40);
-      // play the foe's attack clip if it has one, then return to idle
-      if(foe.attack){
-        const v=playVid(foe.attack,{loop:false,fallback:foe.still,onEnd:()=>{
-          if(foe.idle)playVid(foe.idle,{loop:true,fallback:foe.still});else setStill(foe.still);
-        }});
-        SFX.roar();
-      }
+    async function enemyStrike(){
+      const before=hearts; hearts--; renderHearts(true); redFlash(); shakeScreen(true);
+      floatText("✖","#ff4d5e",50,38);
+      if(foe.attack){ await playVid(foe.attack,{loop:false,fallback:foe.still,maxMs:4200});
+        if(hearts>0){ if(foe.idle) playVid(foe.idle,{loop:true,fallback:foe.still}); else setStill(foe.still); } }
+      else { await sleep(1100); }
       if(hearts<=0){ setTimeout(()=>endRun(false),700); return; }
-      setTimeout(nextQuestion,foe.attack?1400:900);
+      await sleep(900);                              // breathing room before the next question
+      nextQuestion();
     }
 
-    function defeatFoe(){
-      el("dock").hidden=true;
-      bigToast(foe.boss?"THE WYRM FALLS":"VANQUISHED","#ffe6ad");
-      whiteFlash(1);shakeScreen(true);
-      SFX.shatter();setTimeout(()=>SFX.win(),160);
+    async function defeatFoe(){
+      el("dock").classList.add("hidden"); busy=true;
+      bigToast(foe.boss?"THE HERALD FALLS":"VANQUISHED","#ffe6ad"); whiteFlash(1); shakeScreen(true);
       gold+=foe.boss?40:10; runes+=foe.boss?5:2;
-      const finish=()=>{ foeIdx++; if(foeIdx>=FOES.length) endRun(true); else showMap(); };
-      if(foe.defeat){
-        playVid(foe.defeat,{loop:false,fallback:foe.defeatStill||foe.still,onEnd:()=>setTimeout(finish,700)});
-        setTimeout(()=>{ if(el("ovMap").classList.contains("hidden")&&el("ovResult").classList.contains("hidden")&&el("dock").hidden){/*guard*/} },10);
-        // safety timeout in case 'ended' doesn't fire
-        setTimeout(()=>{ if(el("dock").hidden && el("ovMap").classList.contains("hidden") && el("ovResult").classList.contains("hidden")) finish(); }, 9000);
-      } else if(foe.defeatStill){ setStill(foe.defeatStill); setTimeout(finish,1400); }
-      else { setTimeout(finish,1200); }
+      letterbox(true);
+      if(foe.defeat){ await playVid(foe.defeat,{loop:false,fallback:foe.defeatStill||foe.still,maxMs:12000}); }
+      else if(foe.defeatStill){ setStill(foe.defeatStill); await sleep(2200); }
+      else { whiteFlash(.8); await sleep(1800); }     // armour: no clip → flash + hold
+      await sleep(1400);                               // let the moment land
+      letterbox(false);
+      foeIdx++;
+      if(foeIdx>=FOES.length){ endRun(true); return; }
+      showSpoils();
     }
 
-    function showMap(){
-      renderMap(el("map"));
-      el("mapKicker").textContent = foeIdx===FOES.length-1 ? "The air turns to frost — the Wyrm awaits" : "The path deepens";
-      el("mapLoot").innerHTML=`<div><b style="color:var(--gold)">${gold}</b><span>GOLD</span></div>
+    function showSpoils(){
+      el("hud").classList.add("hidden");
+      const next=FOES[foeIdx];
+      el("spoilsKicker").textContent = foeIdx===FOES.length-1 ? "The air turns to frost" : "The guardian falls";
+      el("spoilsTitle").textContent = "Vanquished";
+      el("spoilsLoot").innerHTML=`<div><b style="color:var(--gold)">${gold}</b><span>GOLD</span></div>
         <div><b style="color:var(--rune)">${runes}</b><span>RUNES</span></div>
         <div><b style="color:var(--blood)">${"❤".repeat(hearts)||"—"}</b><span>LIFE</span></div>`;
-      el("mapBtn").textContent = FOES[foeIdx].boss ? "Face the Frostwyrm ▸" : "Descend ▸";
-      show("ovMap");
+      el("spoilsNext").textContent = next.boss
+        ? "Beyond the ice, the Frostwyrm — Malrune's herald — waits."
+        : `Ahead: ${next.name}. Weak to ${CAT_LABEL[next.weak]}.`;
+      el("spoilsBtn").textContent = next.boss ? "Face the Frostwyrm ▸" : "Descend ▸";
+      busy=false; show("ovSpoils");
     }
 
     function endRun(victory){
-      clearTimeout(timerId);
-      el("hud").hidden=true;el("dock").hidden=true;
+      clearTimeout(timerId); el("hud").classList.add("hidden"); el("dock").classList.add("hidden"); busy=false;
       el("resRune").textContent=victory?"👑":"☠";
-      el("resTitle").textContent=victory?"The Vale is Free":"You Were Devoured";
-      el("resSub").textContent=victory
-        ? "The Frostwyrm lies broken and the thaw begins. You bested every guardian with knowledge alone."
+      el("resTitle").textContent=victory?"The Vale Thaws":"You Were Devoured";
+      el("resSub").innerHTML=victory
+        ? "Vyrmouth lies broken and the ice recedes — yet far below, <em>Malrune</em> stirs still. The Unanswered awaits, in the full saga to come."
         : `You fell at ${foe.name}. The frost claims another scholar… but the vale remembers the brave.`;
       el("resLoot").innerHTML=`<div><b style="color:var(--gold)">${gold}</b><span>GOLD</span></div>
         <div><b style="color:var(--rune)">${runes}</b><span>RUNES</span></div>
         <div><b>${foeIdx}/${FOES.length}</b><span>FELLED</span></div>`;
-      if(victory){SFX.win();bigToast("VICTORY","#ffe6ad");if(FOES[FOES.length-1].defeatStill)setStill(FOES[FOES.length-1].defeatStill);}
-      else SFX.lose();
+      if(victory){ bigToast("VICTORY","#ffe6ad"); if(FOES[FOES.length-1].defeatStill)setStill(FOES[FOES.length-1].defeatStill); }
       show("ovResult");
     }
 
-    // ---------- overlay switching ----------
-    function show(id){["ovTitle","ovMap","ovResult"].forEach(o=>el(o).classList.toggle("hidden",o!==id));}
-    function hideAll(){["ovTitle","ovMap","ovResult"].forEach(o=>el(o).classList.add("hidden"));}
+    function resetRun(){ foeIdx=0; hearts=5; combo=0; gold=0; runes=0; used.clear(); }
 
-    function resetRun(){foeIdx=0;hearts=4;combo=0;gold=0;runes=0;used.clear();}
-
-    // ---------- wire buttons ----------
-    renderMap(el("mapTitle"));
-    el("startBtn").onclick=()=>{ muted=false;muteBtn.textContent="🔊";audioOn();startAmbience();
-      SFX.click();hideAll();beginFoe(); };
-    el("mapBtn").onclick=()=>{ SFX.click();hideAll();beginFoe(); };
-    el("resAgain").onclick=()=>{ SFX.click();resetRun();hideAll();beginFoe(); };
+    // ============ wire buttons ============
+    el("startBtn").onclick=async()=>{ muted=false; applyMute(); hideOverlays(); await beginFoe(); };
+    el("spoilsBtn").onclick=async()=>{ hideOverlays(); await beginFoe(); };
+    el("resAgain").onclick=async()=>{ resetRun(); hideOverlays(); await beginFoe(); };
     el("resHome").onclick=()=>{ location.href="./"; };
     el("quit").onclick=()=>{ if(confirm("Leave the saga and return to the menu?"))location.href="./"; };
 
-    // pause videos when tab hidden (saves battery)
     document.addEventListener("visibilitychange",()=>{ if(document.hidden&&ambience)ambience.pause();
       else if(!muted&&ambience)ambience.play().catch(()=>{}); });
+
+    // ============ boot ============
+    async function boot(){
+      // first user gesture unlocks audio; opening plays after Begin? No — we open with the cinematic,
+      // then present the title/launch gate. But audio needs a gesture, so gate the whole thing behind one tap.
+      show("ovTitle");
+      // Replace the title overlay's primary action: first tap starts the *cinematic*, second (its own button) begins play.
+      const startBtn=el("startBtn");
+      startBtn.textContent="Begin the Tale ▸";
+      startBtn.onclick=async()=>{
+        muted=false; applyMute();
+        hideOverlays();
+        await runOpening();                 // directed Malrune cinematic → shows title gate again
+        // after opening, ovTitle is shown again as the "Enter the Vale" gate
+        el("startBtn").textContent="Enter the Vale ▸";
+        el("startBtn").onclick=async()=>{ hideOverlays(); await beginFoe(); };
+      };
+    }
+    boot();
   })();
   </script>
 </body>
