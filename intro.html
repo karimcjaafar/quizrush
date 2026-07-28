@@ -12,7 +12,9 @@
   #cine{position:fixed;inset:0;width:100%;height:100%;background:#000;overflow:hidden;cursor:pointer}
   #dragonVid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;opacity:0;
     filter:brightness(.66) contrast(1.14) saturate(1.05);transform:scale(1.04);
-    transition:opacity .6s ease;will-change:opacity,transform}
+    transition:opacity .6s ease;will-change:opacity,transform;
+    -webkit-mask-image:radial-gradient(ellipse 78% 74% at 50% 44%, #000 42%, rgba(0,0,0,.3) 80%, rgba(0,0,0,0) 100%);
+    mask-image:radial-gradient(ellipse 78% 74% at 50% 44%, #000 42%, rgba(0,0,0,.3) 80%, rgba(0,0,0,0) 100%)}
   canvas{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:2}
   .layer{position:absolute;inset:0;pointer-events:none}
   .vignette{z-index:12;background:radial-gradient(125% 95% at 50% 48%,transparent 40%,rgba(0,0,0,.5) 76%,rgba(0,0,0,.94) 100%)}
@@ -46,9 +48,9 @@
   .tagline.show{opacity:.9;transform:none}
 
   .tap{position:absolute;left:0;right:0;bottom:12%;z-index:17;text-align:center;font-size:12px;letter-spacing:.4em;
-    text-transform:uppercase;color:#d3d5f2;opacity:0;transition:opacity 1s;animation:tapPulse 2s ease-in-out infinite}
-  .tap.show{opacity:.8;pointer-events:auto}
-  @keyframes tapPulse{50%{opacity:.4}}
+    text-transform:uppercase;color:#d3d5f2;opacity:0;transition:opacity 1s}
+  .tap.show{opacity:.8;pointer-events:auto;animation:tapPulse 2s ease-in-out infinite}
+  @keyframes tapPulse{0%,100%{opacity:.8}50%{opacity:.4}}
 
   .gate{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
     background:radial-gradient(120% 80% at 50% 40%,#160f33,#000 78%);text-align:center;transition:opacity .55s}

@@ -1177,7 +1177,10 @@ const IMPORTED = (typeof IMPORTED_BANK !== "undefined" && Array.isArray(IMPORTED
 const GENERATED = (typeof GENERATED_BANK !== "undefined" && Array.isArray(GENERATED_BANK)) ? GENERATED_BANK : [];
 const GENERATED_SPORT = (typeof GENERATED_SPORT_BANK !== "undefined" && Array.isArray(GENERATED_SPORT_BANK)) ? GENERATED_SPORT_BANK : [];
 const GENERATED_EXTRA = (typeof GENERATED_EXTRA_BANK !== "undefined" && Array.isArray(GENERATED_EXTRA_BANK)) ? GENERATED_EXTRA_BANK : [];
-const BANK_ALL = QUIZRUSH_BANK.concat(IMPORTED, GENERATED, GENERATED_SPORT, GENERATED_EXTRA);
+// Curated "Quizzer Accepted" set, normalised into all app formats (built from
+// saga-questions.js by scratchpad/build-saga-bank.mjs).
+const GENERATED_SAGA = (typeof GENERATED_SAGA_BANK !== "undefined" && Array.isArray(GENERATED_SAGA_BANK)) ? GENERATED_SAGA_BANK : [];
+const BANK_ALL = QUIZRUSH_BANK.concat(IMPORTED, GENERATED, GENERATED_SPORT, GENERATED_EXTRA, GENERATED_SAGA);
 
 function fetchFromBank({ amount, catId, difficulty }) {
   const pool = BANK_ALL.filter(

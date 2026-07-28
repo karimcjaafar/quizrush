@@ -11,7 +11,7 @@
   <link rel="icon" href="icon-bolt.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Marcellus&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Marcellus&display=swap" rel="stylesheet" />
   <style>
     :root{
       --bg:#05070f; --frost:#bfe6ff; --frost-2:#7fb6e6; --ice:#dff2ff;
@@ -31,18 +31,22 @@
     /* ---------- Cinematic backdrop ---------- */
     #scene{position:absolute;inset:0;overflow:hidden;background:
       radial-gradient(120% 80% at 50% -8%, #16273f 0%, #0a1120 46%, #04060d 100%)}
+    /* the monster animation melts into darkness at the edges — dark outer band,
+       soft feather into the central ~70% where the creature lives */
     #scene video,#scene img.enemy-still{position:absolute;inset:0;width:100%;height:100%;
-      object-fit:cover;opacity:0;transition:opacity .9s ease;filter:saturate(1.06) contrast(1.05)}
+      object-fit:cover;opacity:0;transition:opacity 1.1s ease;filter:saturate(1.05) contrast(1.04);
+      -webkit-mask-image:radial-gradient(ellipse 72% 66% at 50% 43%, #000 40%, rgba(0,0,0,.35) 78%, rgba(0,0,0,0) 100%);
+      mask-image:radial-gradient(ellipse 72% 66% at 50% 43%, #000 40%, rgba(0,0,0,.35) 78%, rgba(0,0,0,0) 100%)}
     #scene .show{opacity:1}
     #frost{position:absolute;inset:0;pointer-events:none;z-index:1}
-    .vignette{position:absolute;inset:0;pointer-events:none;z-index:2;box-shadow:inset 0 0 210px 64px rgba(2,4,10,.92);
-      background:radial-gradient(120% 92% at 50% 42%, transparent 54%, rgba(3,6,14,.72) 100%)}
+    .vignette{position:absolute;inset:0;pointer-events:none;z-index:2;box-shadow:inset 0 0 230px 78px rgba(2,4,10,.95);
+      background:radial-gradient(120% 92% at 50% 43%, transparent 46%, rgba(3,6,14,.86) 100%)}
     .frost-edge{position:absolute;inset:0;pointer-events:none;z-index:2;opacity:.5;mix-blend-mode:screen;
       background:radial-gradient(62% 42% at 50% 110%, rgba(140,200,255,.3), transparent 70%)}
     #fx{position:absolute;inset:0;pointer-events:none;z-index:9}
     .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
     .hurt{position:absolute;inset:0;background:radial-gradient(120% 92% at 50% 50%,transparent 38%,rgba(255,40,60,.6) 100%);opacity:0;pointer-events:none}
-    .bar{position:absolute;left:0;right:0;height:11vh;background:#000;z-index:12;pointer-events:none;transition:transform 1s cubic-bezier(.7,0,.3,1)}
+    .bar{position:absolute;left:0;right:0;height:12vh;background:#000;z-index:12;pointer-events:none;transition:transform 1.2s cubic-bezier(.7,0,.3,1)}
     .bar.top{top:0;transform:translateY(-100%)} .bar.bot{bottom:0;transform:translateY(100%)}
     .letterbox .bar.top{transform:translateY(0)} .letterbox .bar.bot{transform:translateY(0)}
     @keyframes shake{10%,90%{transform:translate(-2px,1px)}20%,80%{transform:translate(4px,-2px)}
@@ -52,7 +56,7 @@
 
     /* ---------- Top: enemy bar ---------- */
     .topbar{position:relative;z-index:6;padding:calc(env(safe-area-inset-top) + 14px) 16px 10px;
-      display:flex;flex-direction:column;gap:9px;transition:opacity .5s}
+      display:flex;flex-direction:column;gap:9px;transition:opacity .6s}
     .foe-row{display:flex;align-items:center;gap:12px}
     .foe-quit{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);
       background:rgba(8,12,24,.62);font-size:18px;flex:0 0 auto}
@@ -68,9 +72,9 @@
     .stage-pips i.cur{background:var(--gold);box-shadow:0 0 10px var(--gold)}
     .hpbar{height:16px;border-radius:9px;background:rgba(9,14,26,.72);border:1px solid var(--line);
       overflow:hidden;position:relative;box-shadow:var(--shadow)}
-    .hpbar>i{position:absolute;inset:0;transform-origin:left;transition:transform .55s cubic-bezier(.2,.8,.2,1);
+    .hpbar>i{position:absolute;inset:0;transform-origin:left;transition:transform .6s cubic-bezier(.2,.8,.2,1);
       background:linear-gradient(90deg,#ff5566,#ff8a4d)}
-    .hpbar>.ghost{background:rgba(255,255,255,.4);transition:transform 1s ease .18s}
+    .hpbar>.ghost{background:rgba(255,255,255,.4);transition:transform 1.1s ease .2s}
     .hpbar>b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
       font-family:"Cinzel";font-size:11px;letter-spacing:.12em;text-shadow:0 1px 3px #000;z-index:2}
 
@@ -78,12 +82,12 @@
       text-shadow:0 3px 12px rgba(0,0,0,.85);will-change:transform,opacity}
     @keyframes floatUp{0%{opacity:0;transform:translate(-50%,12px) scale(.7)}
       16%{opacity:1;transform:translate(-50%,-6px) scale(1.16)}
-      100%{opacity:0;transform:translate(-50%,-78px) scale(1)}}
+      100%{opacity:0;transform:translate(-50%,-80px) scale(1)}}
 
     /* ---------- Bottom: hero + question ---------- */
     .dock{position:relative;z-index:7;margin-top:auto;padding:12px 14px calc(env(safe-area-inset-bottom) + 14px);
-      background:linear-gradient(0deg,rgba(3,6,13,.95) 22%,rgba(3,6,13,.62) 72%,transparent);transition:opacity .5s,transform .5s}
-    .dock.enter{animation:dockIn .55s ease both}
+      background:linear-gradient(0deg,rgba(3,6,13,.96) 24%,rgba(3,6,13,.6) 74%,transparent);transition:opacity .6s}
+    .dock.enter{animation:dockIn .6s ease both}
     @keyframes dockIn{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
     .hero-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
     .hearts{display:flex;gap:5px;font-size:21px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.65))}
@@ -121,72 +125,65 @@
     .overlay{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;
       justify-content:center;text-align:center;padding:30px;gap:15px;
       background:radial-gradient(120% 92% at 50% 32%,rgba(9,16,32,.72),rgba(3,6,14,.97));
-      -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
-    .ov-rune{font-size:46px;filter:drop-shadow(0 0 22px var(--rune));animation:pulse 3.4s ease-in-out infinite}
+      -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);transition:opacity .8s ease}
+    .overlay.fade{opacity:0;pointer-events:none}
+    .ov-rune{font-size:46px;filter:drop-shadow(0 0 22px var(--rune));animation:pulse 3.6s ease-in-out infinite}
     @keyframes pulse{50%{opacity:.62;transform:scale(1.08)}}
     .ov-kicker{font-family:"Cinzel";letter-spacing:.34em;font-size:12px;opacity:.72;text-transform:uppercase}
     .ov-title{font-family:"Cinzel";font-weight:900;font-size:clamp(28px,8.4vw,52px);letter-spacing:.04em;
       text-shadow:0 4px 34px rgba(140,110,255,.42);line-height:1.04}
-    .ov-sub{max-width:34ch;opacity:.88;line-height:1.55;font-size:16px}
+    .ov-sub{max-width:35ch;opacity:.9;line-height:1.6;font-size:16px;font-family:"Cormorant Garamond",Georgia,serif}
+    .ov-sub em{font-style:italic;color:var(--rune)}
     .cta{margin-top:8px;padding:15px 34px;border-radius:14px;border:1px solid rgba(255,207,107,.62);
       background:linear-gradient(180deg,rgba(255,207,107,.22),rgba(255,207,107,.06));
       font-family:"Cinzel";font-weight:700;letter-spacing:.12em;font-size:16px;color:#ffe6ad;
-      box-shadow:0 0 34px rgba(255,207,107,.24)}
+      box-shadow:0 0 34px rgba(255,207,107,.24);transition:opacity .5s,transform .1s}
     .cta.ghost{border-color:var(--line);background:rgba(255,255,255,.04);color:#cfe0f5;box-shadow:none}
     .cta:active{transform:scale(.97)}
+    .cta[disabled]{opacity:.4;pointer-events:none}
     .btnrow{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-
-    /* map path */
-    .map{display:flex;flex-direction:column;gap:0;margin:6px 0 4px;width:100%;max-width:340px}
-    .node{display:flex;align-items:center;gap:14px;padding:8px 4px;position:relative}
-    .node .dot{width:44px;height:44px;border-radius:13px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
-      font-size:24px;background:rgba(13,21,38,.82);border:1px solid var(--line);transition:.3s}
-    .node.done .dot{border-color:var(--good);box-shadow:0 0 14px rgba(102,240,182,.4);opacity:.72}
-    .node.cur .dot{border-color:var(--gold);box-shadow:0 0 20px rgba(255,207,107,.5);transform:scale(1.08)}
-    .node.locked .dot{opacity:.42}
-    .node .lbl{text-align:left}
-    .node .lbl b{font-family:"Cinzel";display:block;font-size:15px}
-    .node .lbl span{font-size:12px;opacity:.66}
-    .node:not(:last-child)::before{content:"";position:absolute;left:25px;top:52px;height:20px;width:2px;
-      background:linear-gradient(var(--line),transparent)}
 
     .loot{display:flex;gap:20px;justify-content:center;margin:4px 0}
     .loot b{font-family:"Cinzel";font-size:23px;display:block}
     .loot span{font-size:11px;opacity:.72;letter-spacing:.1em}
 
-    /* opening cinematic line */
-    #cineLine{position:absolute;left:0;right:0;top:38%;transform:translateY(-50%);z-index:22;
-      text-align:center;padding:0 34px;font-family:"Cinzel";font-weight:500;
-      font-size:clamp(19px,5.6vw,30px);line-height:1.4;letter-spacing:.02em;color:#eaf3ff;
-      opacity:0;transition:opacity 1.1s ease;text-shadow:0 3px 26px rgba(0,0,0,.9),0 0 40px rgba(120,90,255,.25)}
+    /* narration line layer — used for opening, epitaphs, descent, epilogue */
+    #cineLine{position:absolute;left:0;right:0;top:41%;transform:translateY(-50%);z-index:22;
+      text-align:center;padding:0 34px;font-family:"Cormorant Garamond","Marcellus",serif;font-weight:500;
+      font-size:clamp(20px,5.8vw,32px);line-height:1.5;letter-spacing:.01em;color:#eef4ff;font-style:italic;
+      opacity:0;transition:opacity 1.3s ease;text-shadow:0 3px 30px rgba(0,0,0,.95),0 0 46px rgba(120,90,255,.28)}
     #cineLine.show{opacity:1}
-    #cineLine em{font-style:normal;color:var(--rune);text-shadow:0 0 26px rgba(180,156,255,.7)}
-    #cineLine b{color:var(--gold);font-weight:700}
+    #cineLine em{font-style:italic;color:var(--rune);text-shadow:0 0 28px rgba(180,156,255,.75)}
+    #cineLine b{font-style:normal;color:var(--gold);font-weight:600}
 
     /* chapter card */
     #chapter{position:absolute;inset:0;z-index:21;display:flex;flex-direction:column;align-items:center;justify-content:center;
-      gap:10px;text-align:center;background:radial-gradient(120% 90% at 50% 40%,rgba(8,14,30,.5),rgba(3,6,14,.94));opacity:0;transition:opacity .8s}
+      gap:9px;text-align:center;padding:34px;background:radial-gradient(120% 90% at 50% 42%,rgba(6,10,22,.86),rgba(2,4,11,.97));opacity:0;transition:opacity 1.1s ease}
     #chapter.show{opacity:1}
-    .ch-num{font-family:"Cinzel";font-weight:900;font-size:clamp(46px,15vw,92px);color:transparent;
-      -webkit-text-stroke:1.5px rgba(191,230,255,.5);letter-spacing:.06em;opacity:.9}
-    .ch-name{font-family:"Cinzel";font-weight:700;font-size:clamp(22px,6.6vw,36px);letter-spacing:.03em;text-shadow:0 3px 24px rgba(0,0,0,.8)}
-    .ch-role{font-size:14px;letter-spacing:.24em;text-transform:uppercase;opacity:.7}
+    .ch-num{font-family:"Cinzel";font-weight:900;font-size:clamp(40px,13vw,84px);color:transparent;
+      -webkit-text-stroke:1.5px rgba(191,230,255,.5);letter-spacing:.08em;opacity:.9;margin-bottom:2px}
+    .ch-name{font-family:"Cinzel";font-weight:700;font-size:clamp(22px,6.6vw,36px);letter-spacing:.03em;text-shadow:0 3px 24px rgba(0,0,0,.85)}
+    .ch-role{font-size:13px;letter-spacing:.26em;text-transform:uppercase;opacity:.7}
+    .ch-couplet{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:clamp(16px,4.6vw,21px);
+      line-height:1.55;opacity:.9;max-width:30ch;margin:10px 0 4px;color:#e7eeff}
     .ch-weak{margin-top:6px}
 
-    /* nameplate reveal */
-    #nameplate{position:absolute;top:34%;left:0;right:0;z-index:10;text-align:center;pointer-events:none;opacity:0}
-    #nameplate.show{animation:npIn 2.6s ease forwards}
+    /* nameplate + whisper reveal */
+    #nameplate{position:absolute;top:30%;left:0;right:0;z-index:10;text-align:center;pointer-events:none;opacity:0;padding:0 24px}
+    #nameplate.show{animation:npIn 4.4s ease forwards}
     @keyframes npIn{0%{opacity:0;transform:translateY(14px) scale(.96)}
-      14%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
+      10%{opacity:1;transform:none}82%{opacity:1}100%{opacity:0}}
     #nameplate .np-name{font-family:"Cinzel";font-weight:900;font-size:clamp(26px,8vw,44px);letter-spacing:.05em;
-      text-shadow:0 4px 30px rgba(0,0,0,.9),0 0 40px rgba(255,80,90,.35)}
-    #nameplate .np-role{font-size:13px;letter-spacing:.34em;text-transform:uppercase;opacity:.85;margin-top:6px;color:var(--frost)}
+      text-shadow:0 4px 30px rgba(0,0,0,.92),0 0 40px rgba(255,80,90,.35)}
+    #nameplate .np-role{font-size:13px;letter-spacing:.3em;text-transform:uppercase;opacity:.85;margin-top:6px;color:var(--frost)}
+    #nameplate .np-whisper{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:clamp(15px,4.4vw,20px);
+      margin-top:12px;opacity:.9;color:#dfe8ff;text-shadow:0 2px 20px rgba(0,0,0,.9)}
 
     .mute{position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:16px;z-index:40;
       width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:rgba(8,12,24,.62);font-size:16px}
     .skip{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 18px);right:18px;z-index:40;
       font-family:"Cinzel";letter-spacing:.16em;font-size:13px;opacity:.72;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:rgba(8,12,24,.5)}
-    .toast{position:absolute;left:50%;top:23%;transform:translateX(-50%);z-index:14;
+    .toast{position:absolute;left:50%;top:22%;transform:translateX(-50%);z-index:14;
       font-family:"Cinzel";font-size:clamp(20px,7vw,42px);font-weight:900;letter-spacing:.06em;
       opacity:0;pointer-events:none;text-shadow:0 4px 26px rgba(0,0,0,.85)}
     @keyframes burst{0%{opacity:0;transform:translateX(-50%) scale(.5)}
@@ -208,7 +205,7 @@
     <button class="mute" id="mute" aria-label="Sound">🔇</button>
     <button class="skip hidden" id="skip">Skip ▸</button>
     <div class="toast" id="toast"></div>
-    <div id="nameplate"><div class="np-name" id="npName"></div><div class="np-role" id="npRole"></div></div>
+    <div id="nameplate"><div class="np-name" id="npName"></div><div class="np-role" id="npRole"></div><div class="np-whisper" id="npWhisper"></div></div>
 
     <!-- Battle HUD -->
     <div class="topbar hidden" id="hud">
@@ -238,7 +235,7 @@
       </div>
     </div>
 
-    <!-- Opening cinematic line layer -->
+    <!-- Narration line layer -->
     <div id="cineLine"></div>
 
     <!-- Chapter card -->
@@ -246,6 +243,7 @@
       <div class="ch-num" id="chNum">I</div>
       <div class="ch-name" id="chName">—</div>
       <div class="ch-role" id="chRole"></div>
+      <div class="ch-couplet" id="chCouplet"></div>
       <div class="ch-weak"><span class="weak-chip" id="chWeak">✦ Weak to —</span></div>
     </div>
 
@@ -254,8 +252,8 @@
       <div class="ov-rune">ᛟ</div>
       <div class="ov-kicker">The Reckoning · Playable Demo</div>
       <div class="ov-title">Riddle &amp; Rune</div>
-      <p class="ov-sub">You carry no blade — only what you <b>know</b>. Descend the frozen vale, fell each guardian with truth, and stand before the beast of <em>Malrune</em> himself.</p>
-      <button class="cta" id="startBtn">Begin ▸</button>
+      <p class="ov-sub">The vale of Fenrime is frozen, and its guardians turned cruel. You go down alone, bearing no blade — only <b>what you know</b> — to reach the silence that woke beneath it: <em>Malrune</em>, the Unanswered.</p>
+      <button class="cta" id="startBtn">Begin the Tale ▸</button>
       <p style="font-size:12px;opacity:.5">Tap enables sound · headphones recommended</p>
     </div>
 
@@ -263,7 +261,7 @@
       <div class="ov-kicker" id="spoilsKicker">The guardian falls</div>
       <div class="ov-title" id="spoilsTitle" style="font-size:clamp(24px,7vw,40px)">Vanquished</div>
       <div class="loot" id="spoilsLoot"></div>
-      <p class="ov-sub" id="spoilsNext" style="opacity:.75"></p>
+      <p class="ov-sub" id="spoilsNext" style="opacity:.8"></p>
       <button class="cta" id="spoilsBtn">Descend ▸</button>
     </div>
 
@@ -294,33 +292,73 @@
     const el = id => document.getElementById(id);
     const sleep = ms => new Promise(r=>setTimeout(r,ms));
 
-    // ============ Enemy roster (only the guardians with uploaded video) ============
+    // pacing — deliberately slow around the storytelling beats
+    const T={ chapter:4800, couplet:600, whisper:2800, epitaph:3600, descent:3400,
+              settle:1700, betweenQ:1350, afterWrong:1000, fade:1100, defeatHold:1500 };
+
+    // ============ Enemy roster + lore (only guardians with uploaded video) ============
     const FOES = [
       { key:"armor", name:"The Hollow Sentinel", role:"Frozen Armour Guard", numeral:"I",
         weak:"history", diffs:["easy"], hp:4,
         still:P+"forgotten-frozen-armor-guard.png",
         idle:V+"Animated_empty_armor_loop_1080p_202607280016.mp4",
-        attack:V+"Armor_attacks_with_mist_1080p_202607280017.mp4" },
+        attack:V+"Armor_attacks_with_mist_1080p_202607280017.mp4",
+        couplet:"It swore an oath it can no longer recall — <br>now only the cold keeps its watch.",
+        whisper:"The armour is empty. The duty is not.",
+        epitaph:"The oath is kept at last. The armour settles into stillness." },
       { key:"statue", name:"The Forgotten Hero", role:"Living Stone Statue", numeral:"II",
-        weak:"arts", diffs:["easy","medium"], hp:4,
+        weak:"arts", diffs:["easy","medium"], hp:5,
         still:P+"forgotten-hero-stone-statue.png",
         idle:V+"Animate_statue_seamless_loop_1080p_202607280018.mp4",
-        defeat:V+"Statue_breaking,_light_rememberi…_1080p_202607280019.mp4" },
+        defeat:V+"Statue_breaking,_light_rememberi…_1080p_202607280019.mp4",
+        couplet:"A champion so praised they carved it in stone — <br>then let the story go untold.",
+        whisper:"It reaches for a name it cannot find.",
+        epitaph:"You speak its tale aloud. The stone remembers, and is finally allowed to rest." },
       { key:"mimic", name:"The Glacier Mimic", role:"Treasure That Bites", numeral:"III",
         weak:"geography", diffs:["medium"], hp:5,
         still:P+"glacier-treasure-chest-mimic.png",
         attack:V+"Treasure_chest_ambush_attack_ani…_202607280032.mp4",
-        defeat:V+"Treasure_chest_defeated_spilling…_1080p_202607280036.mp4" },
+        defeat:V+"Treasure_chest_defeated_spilling…_1080p_202607280036.mp4",
+        couplet:"Not all treasure wishes to be found. <br>Some of it is hungry.",
+        whisper:"The hoard gleams. The hoard grins.",
+        epitaph:"Greed unclenches its jaw. The ice gives back everything it stole." },
       { key:"sphinx", name:"The Frozen Sphinx", role:"Keeper of Riddles", numeral:"IV",
         weak:"science", diffs:["medium","hard"], hp:6,
         still:P+"ancient-frozen-riddle-sphinx.png",
-        defeat:V+"Sphinx_concession_and_treasure_g…_202607280041.mp4" },
+        defeat:V+"Sphinx_concession_and_treasure_g…_202607280041.mp4",
+        couplet:"The old riddle-keeper of the vale, <br>set now as Malrune's frozen lock.",
+        whisper:"Answer well. It has devoured the unsure.",
+        epitaph:"The riddle yields. The keeper inclines its head, and thaws into memory." },
       { key:"dragon", name:"Vyrmouth, Herald of Malrune", role:"The Frostwyrm · Final Guardian", numeral:"V", boss:true,
         weak:"history", diffs:["hard"], hp:8,
         still:P+"Dragon1.png", defeatStill:P+"dragon-cut.png",
         intro:V+"Dragon_spreading_wings_cinematic…_1080p_202607261644.mp4",
         idle:V+"Dragon_breathing_fog_embers_1080p_202607261637.mp4",
-        attack:V+"Dragon_breathing_fire_in_darkness_202607261528.mp4" },
+        attack:V+"Dragon_breathing_fire_in_darkness_202607261528.mp4",
+        couplet:"Malrune's own beast, wound from frost and dread — <br>the last door before the deep.",
+        whisper:"Vyrmouth wakes. The cold sharpens to a single point.",
+        epitaph:"The herald shatters like struck glass. Far below, something vast turns over." },
+    ];
+    // descent interludes shown between guardians (index = foe just felled)
+    const DESCENT=[
+      "You descend. The stair sweats black ice, and the dark leans closer.",
+      "Deeper. The runes cut into these walls have long stopped glowing.",
+      "Deeper still. Your breath hangs before you and freezes in the air.",
+      "The last steps now. Even the silence seems afraid to move.",
+    ];
+    const OPENING=[
+      "Once, the vale of Fenrime held every answer beneath its ice.",
+      "Its scholars asked, and the whole world answered back.",
+      "Then, in the deep, a silence woke — <em>Malrune</em>, the Unanswered.",
+      "What he cannot answer, he freezes. What he freezes, forgets.",
+      "One by one, the vale's guardians turned to frost, and to cruelty.",
+      "You go down alone, bearing no blade — only <b>what you know</b>.",
+    ];
+    const VICTORY=[
+      "Vyrmouth lies broken, and the ice loosens its grip on the vale.",
+      "Warmth creeps back into old stone. Somewhere, a rune remembers how to glow.",
+      "But far below, in the last dark, <em>Malrune</em> turns his blind gaze upward…",
+      "The Unanswered is waiting. Your saga has only begun.",
     ];
     const CAT_LABEL={geography:"Geography",science:"Science",history:"History",sport:"Sport",
       music:"Music",arts:"Arts & Lit",politics:"Politics",chess:"Chess",food:"Food",
@@ -328,27 +366,26 @@
     const DIFF_LABEL={easy:"Easy",medium:"Medium",hard:"Hard"};
 
     // ============ Build the combined question pool (35k bank + the 176) ============
-    // Banks are top-level consts in sibling <script>s — reach them by direct name
-    // (some assign window.*, some don't), guarded by typeof.
     function bank(name){ try { const v=eval(name); return Array.isArray(v)?v:[]; } catch(e){ return []; } }
     const TIER2DIFF={VE:"easy",E:"easy",M:"medium",H:"hard",VH:"hard"};
-
-    const POOL=[];                    // normalized {cat,diff,text,correct,wrong?,gen?}
-    // bank records already carry curated, format-matched options
+    const POOL=[];
+    // The saga shows text-only questions — exclude picture/puzzle rounds and any
+    // record that needs an image/video slot (flags, emoji-films, "this flag?"…),
+    // plus the US-skewed celeb pack, to keep the descent clean and UK-friendly.
+    const SKIP_CATS=new Set(["flags","emovies","shapes","dingbats","celebs","logic","numbers"]);
+    const MEDIA_TEXT=/\bthis (flag|shape|outline|emoji|picture|image|logo|map|silhouette)\b/i;
     ["QUIZRUSH_BANK","IMPORTED_BANK","GENERATED_BANK","GENERATED_SPORT_BANK","GENERATED_EXTRA_BANK"].forEach(n=>{
       bank(n).forEach(q=>{
         if(!q||!q.text||!q.correct||!Array.isArray(q.wrong)||q.wrong.length<3)return;
+        if(q.big||q.svgPath||q.vid) return;              // needs a media slot the saga lacks
+        if(SKIP_CATS.has(q.cat)) return;                 // picture/puzzle/US-celeb rounds
+        if(MEDIA_TEXT.test(q.text)) return;              // "which country flies this flag?"
         POOL.push({cat:q.cat||"general",diff:q.difficulty||"medium",text:q.text,correct:q.correct,wrong:q.wrong.slice(0,3)});
       });
     });
-    // the curated 176 — options generated to match the answer's format
-    bank("SAGA_QUESTIONS").forEach(q=>{
-      POOL.push({cat:q.c,diff:TIER2DIFF[q.t]||"medium",text:q.q,correct:q.a,gen:true});
-    });
+    bank("SAGA_QUESTIONS").forEach(q=>{ POOL.push({cat:q.c,diff:TIER2DIFF[q.t]||"medium",text:q.q,correct:q.a,gen:true}); });
 
-    // indexes for fast, weakness-biased drawing
-    const byDiff={easy:[],medium:[],hard:[]}, byDiffCat={};
-    const catAnswers={};               // cat -> unique correct answers (for text decoys)
+    const byDiff={easy:[],medium:[],hard:[]}, byDiffCat={}, catAnswers={};
     POOL.forEach(q=>{
       (byDiff[q.diff]||(byDiff[q.diff]=[])).push(q);
       const k=q.diff+"|"+q.cat; (byDiffCat[k]||(byDiffCat[k]=[])).push(q);
@@ -356,88 +393,63 @@
     });
     Object.keys(catAnswers).forEach(c=>catAnswers[c]=[...catAnswers[c]]);
     const allAnswers=[...new Set(POOL.map(q=>q.correct))];
-
     function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
     const pick=a=>a[Math.floor(Math.random()*a.length)];
 
-    // ---------- format-matched decoys for the curated set ----------
+    // ---- format-matched decoys for the curated set ----
     const NUMWORDS=["zero","one","two","three","four","five","six","seven","eight","nine","ten",
       "eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen","twenty"];
-    const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
+    const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
     function yearDecoys(y){ const offs=shuffle([-3,-2,-1,1,2,3,-5,4,5,-7,6,-4,8,-9]); const out=[];
-      for(const o of offs){ const v=y+o; if(v>0 && v!==y && !out.includes(String(v))){out.push(String(v));} if(out.length>=3)break; } return out; }
-    function intDecoys(n,unit){ let cands = n<=15?[-3,-2,-1,1,2,3,4,-4,5]:[-2,2,5,-5,10,-10,Math.round(n*.5)-n,Math.round(n*1.5)-n];
-      cands=shuffle(cands); const out=[]; for(const d of cands){ const v=n+d; if(v>0 && v!==n){ const s=v.toLocaleString("en-GB")+unit; if(!out.includes(s))out.push(s);} if(out.length>=3)break; } return out; }
-    function wordDecoys(w){ const i=NUMWORDS.indexOf(w.toLowerCase()); if(i<0)return[]; const cands=shuffle([-2,-1,1,2,3,-3,4]);
-      const out=[]; for(const d of cands){ const j=i+d; if(j>=0&&j<NUMWORDS.length&&j!==i){ const val=w[0]===w[0].toUpperCase()?cap(NUMWORDS[j]):NUMWORDS[j]; if(!out.includes(val))out.push(val);} if(out.length>=3)break; } return out; }
-    // shape signature so decoys read as the SAME KIND of thing as the answer
+      for(const o of offs){ const v=y+o; if(v>0&&v!==y&&!out.includes(String(v)))out.push(String(v)); if(out.length>=3)break; } return out; }
+    function intDecoys(n,unit){ let c=n<=15?[-3,-2,-1,1,2,3,4,-4,5]:[-2,2,5,-5,10,-10,Math.round(n*.5)-n,Math.round(n*1.5)-n];
+      c=shuffle(c); const out=[]; for(const d of c){ const v=n+d; if(v>0&&v!==n){ const s=v.toLocaleString("en-GB")+unit; if(!out.includes(s))out.push(s);} if(out.length>=3)break; } return out; }
+    function wordDecoys(w){ const i=NUMWORDS.indexOf(w.toLowerCase()); if(i<0)return[]; const c=shuffle([-2,-1,1,2,3,-3,4]); const out=[];
+      for(const d of c){ const j=i+d; if(j>=0&&j<NUMWORDS.length&&j!==i){ const val=w[0]===w[0].toUpperCase()?cap(NUMWORDS[j]):NUMWORDS[j]; if(!out.includes(val))out.push(val);} if(out.length>=3)break; } return out; }
     function sig(s){ const w=s.trim().split(/\s+/).length;
-      return { n:w<=1?1:(w<=3?2:3), digit:/\d/.test(s), paren:/[()]/.test(s),
-        the:/^(the|a|an)\s/i.test(s),
-        name:/^[A-Z]/.test(s)&&!/^(the|a|an)\s/i.test(s)&&!/\d/.test(s) }; }
-    function sigScore(a,b){ let sc=0; if(a.n===b.n)sc+=2; if(a.digit===b.digit)sc+=2;
-      if(a.paren===b.paren)sc+=1; if(a.the===b.the)sc+=1; if(a.name===b.name)sc+=2; return sc; }
+      return { n:w<=1?1:(w<=3?2:3), digit:/\d/.test(s), paren:/[()]/.test(s), the:/^(the|a|an)\s/i.test(s), name:/^[A-Z]/.test(s)&&!/^(the|a|an)\s/i.test(s)&&!/\d/.test(s) }; }
+    function sigScore(a,b){ let s=0; if(a.n===b.n)s+=2; if(a.digit===b.digit)s+=2; if(a.paren===b.paren)s+=1; if(a.the===b.the)s+=1; if(a.name===b.name)s+=2; return s; }
     function textDecoys(correct,cat){ const src=(catAnswers[cat]&&catAnswers[cat].length>6)?catAnswers[cat]:allAnswers;
       const cs=sig(correct), L=correct.length;
       const scored=src.filter(a=>a!==correct).map(a=>({a,s:sigScore(cs,sig(a))-Math.abs(a.length-L)*0.05+Math.random()*0.6}));
-      scored.sort((x,y)=>y.s-x.s);
-      const top=scored.slice(0,Math.min(18,scored.length)); shuffle(top);
+      scored.sort((x,y)=>y.s-x.s); const top=scored.slice(0,Math.min(18,scored.length)); shuffle(top);
       const out=[]; for(const o of top){ if(!out.includes(o.a))out.push(o.a); if(out.length>=3)break; } return out; }
+    function genOptions(q){ const a=q.correct.trim(); let d=[];
+      const yr=a.match(/^(1[0-9]{3}|20[0-9]{2})$/), nu=a.match(/^([0-9][0-9,]*)(\s?[A-Za-z%°]+)?$/);
+      if(yr) d=yearDecoys(parseInt(a,10));
+      else if(nu) d=intDecoys(parseInt(nu[1].replace(/,/g,""),10), nu[2]||"");
+      else if(NUMWORDS.includes(a.toLowerCase())) d=wordDecoys(a);
+      if(d.length<3) d=d.concat(textDecoys(a,q.cat)).filter((v,i,s)=>s.indexOf(v)===i&&v!==a).slice(0,3);
+      let g=0; while(d.length<3&&g++<50){ const x=pick(allAnswers); if(x!==a&&!d.includes(x))d.push(x); }
+      return shuffle([a,...d.slice(0,3)]); }
+    function optionsFor(q){ if(q.gen)return genOptions(q);
+      let o=[q.correct,...q.wrong].filter((v,i,s)=>s.indexOf(v)===i); let g=0;
+      while(o.length<4&&g++<50){ const x=pick(allAnswers); if(!o.includes(x))o.push(x); } return shuffle(o.slice(0,4)); }
 
-    function genOptions(q){
-      const a=q.correct.trim(); let decoys=[];
-      const yr=a.match(/^(1[0-9]{3}|20[0-9]{2})$/);
-      const numUnit=a.match(/^([0-9][0-9,]*)(\s?[A-Za-z%°]+)?$/);
-      if(yr) decoys=yearDecoys(parseInt(a,10));
-      else if(numUnit) decoys=intDecoys(parseInt(numUnit[1].replace(/,/g,""),10), numUnit[2]||"");
-      else if(NUMWORDS.includes(a.toLowerCase())) decoys=wordDecoys(a);
-      if(decoys.length<3) decoys=decoys.concat(textDecoys(a,q.cat)).filter((v,i,s)=>s.indexOf(v)===i && v!==a).slice(0,3);
-      // absolute fallback
-      let guard=0; while(decoys.length<3 && guard++<50){ const x=pick(allAnswers); if(x!==a && !decoys.includes(x))decoys.push(x); }
-      return shuffle([a,...decoys.slice(0,3)]);
-    }
-    function optionsFor(q){
-      if(q.gen) return genOptions(q);
-      // bank record: use its curated wrong answers, de-duped
-      let opts=[q.correct,...q.wrong].filter((v,i,s)=>s.indexOf(v)===i);
-      let guard=0; while(opts.length<4 && guard++<50){ const x=pick(allAnswers); if(!opts.includes(x))opts.push(x); }
-      return shuffle(opts.slice(0,4));
-    }
-
-    // ---------- weakness-biased draw, no repeats within a run ----------
     const used=new Set();
-    function drawQuestion(foe){
-      const weak=[], any=[];
+    function drawQuestion(foe){ const weak=[],any=[];
       foe.diffs.forEach(d=>{ (byDiffCat[d+"|"+foe.weak]||[]).forEach(q=>{if(!used.has(q.text))weak.push(q);});
         (byDiff[d]||[]).forEach(q=>{if(!used.has(q.text))any.push(q);}); });
       let q;
-      if(weak.length && Math.random()<0.55) q=pick(weak);
+      if(weak.length&&Math.random()<0.55) q=pick(weak);
       else if(any.length) q=pick(any);
-      else { // exhausted — reset just this run's memory
-        used.clear(); const all=[]; foe.diffs.forEach(d=>(byDiff[d]||[]).forEach(x=>all.push(x))); q=pick(all)||POOL[0];
-      }
-      used.add(q.text);
-      return q;
-    }
+      else { used.clear(); const all=[]; foe.diffs.forEach(d=>(byDiff[d]||[]).forEach(x=>all.push(x))); q=pick(all)||POOL[0]; }
+      used.add(q.text); return q; }
 
-    // ============ Audio — ambient music only (battle SFX removed) ============
-    let muted=true, ambience=null, ac=null;
+    // ============ Audio — ambient music only. Animations are always silent. ============
+    let muted=true, ambience=null;
     function ensureAmb(){ if(!ambience){ambience=new Audio("music/ambient-synth-overture.mp3");ambience.loop=true;ambience.volume=0;} }
     function startAmbience(){ if(muted)return; ensureAmb();
       ambience.play().then(()=>{let v=ambience.volume;const id=setInterval(()=>{v=Math.min(.4,v+.02);ambience.volume=v;if(v>=.4)clearInterval(id);},110);}).catch(()=>{}); }
     const muteBtn=el("mute");
-    function applyMute(){ muteBtn.textContent=muted?"🔇":"🔊";
-      if(muted){ if(ambience)ambience.pause(); } else { startAmbience(); } }
+    function applyMute(){ muteBtn.textContent=muted?"🔇":"🔊"; if(muted){ if(ambience)ambience.pause(); } else startAmbience(); }
     muteBtn.onclick=()=>{ muted=!muted; applyMute(); };
 
-    // ============ Frost particle canvas ============
-    const fc=el("frost"), fctx=fc.getContext("2d"); let flakes=[], embers=[], dpr=1;
-    function sizeFrost(){ dpr=Math.min(2,window.devicePixelRatio||1); fc.width=innerWidth*dpr; fc.height=innerHeight*dpr;
-      fc.style.width=innerWidth+"px"; fc.style.height=innerHeight+"px"; }
-    function seedFrost(){ flakes=Array.from({length:70},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,
-      r:Math.random()*1.8+.5,s:Math.random()*.4+.15,d:Math.random()*.6-.3,o:Math.random()*.5+.2}));
-      embers=Array.from({length:16},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,
-      r:Math.random()*1.4+.6,s:Math.random()*.5+.25,o:Math.random()*.4+.15,h:Math.random()<.5?"270":"24"})); }
+    // ============ Frost particles ============
+    const fc=el("frost"), fctx=fc.getContext("2d"); let flakes=[],embers=[],dpr=1;
+    function sizeFrost(){ dpr=Math.min(2,window.devicePixelRatio||1); fc.width=innerWidth*dpr; fc.height=innerHeight*dpr; fc.style.width=innerWidth+"px"; fc.style.height=innerHeight+"px"; }
+    function seedFrost(){ flakes=Array.from({length:70},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*1.8+.5,s:Math.random()*.4+.15,d:Math.random()*.6-.3,o:Math.random()*.5+.2}));
+      embers=Array.from({length:14},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*1.4+.6,s:Math.random()*.5+.25,o:Math.random()*.4+.15,h:Math.random()<.5?"270":"24"})); }
     function frostLoop(){ fctx.setTransform(dpr,0,0,dpr,0,0); fctx.clearRect(0,0,innerWidth,innerHeight);
       flakes.forEach(f=>{ f.y+=f.s; f.x+=f.d; if(f.y>innerHeight+4){f.y=-4;f.x=Math.random()*innerWidth;} if(f.x<-4)f.x=innerWidth; if(f.x>innerWidth+4)f.x=0;
         fctx.beginPath();fctx.arc(f.x,f.y,f.r,0,7);fctx.fillStyle="rgba(213,235,255,"+f.o+")";fctx.fill(); });
@@ -445,28 +457,26 @@
         fctx.beginPath();fctx.arc(e.x,e.y,e.r,0,7);fctx.fillStyle="hsla("+e.h+",90%,65%,"+e.o+")";fctx.fill(); });
       requestAnimationFrame(frostLoop); }
     sizeFrost(); seedFrost(); frostLoop();
-    addEventListener("resize",()=>{ sizeFrost(); });
+    addEventListener("resize",()=>sizeFrost());
 
-    // ============ Scene / video manager ============
-    const scene=el("scene");
-    let curVid=null;
+    // ============ Scene / video manager (all clips muted, no audio) ============
+    const scene=el("scene"); let curVid=null;
     function setStill(src){ clearVid(); let img=scene.querySelector("img.enemy-still");
       if(!img){img=document.createElement("img");img.className="enemy-still";scene.insertBefore(img,scene.firstChild);}
       img.src=enc(src); requestAnimationFrame(()=>img.classList.add("show")); }
-    function clearVid(){ if(curVid){const v=curVid;v.classList.remove("show");setTimeout(()=>v.remove(),950);curVid=null;} }
-    // returns a promise that resolves when a non-loop clip ends (or after maxMs safety)
+    function clearVid(){ if(curVid){const v=curVid;v.classList.remove("show");setTimeout(()=>{try{v.pause();}catch(e){} v.remove();},1150);curVid=null;} }
     function playVid(src,{loop=true,fallback=null,maxMs=9000}={}){
       return new Promise(resolve=>{
         const still=scene.querySelector("img.enemy-still"); if(still)still.classList.remove("show");
         const v=document.createElement("video");
-        v.playsInline=true;v.muted=true;v.setAttribute("muted","");v.loop=loop;v.preload="auto";v.src=enc(src);
+        v.playsInline=true; v.muted=true; v.defaultMuted=true; v.volume=0; v.setAttribute("muted",""); v.loop=loop; v.preload="auto"; v.src=enc(src);
         let done=false; const finish=()=>{ if(done)return; done=true; resolve(); };
         v.addEventListener("error",()=>{ if(fallback)setStill(fallback); finish(); });
         if(!loop){ v.addEventListener("ended",finish,{once:true}); setTimeout(finish,maxMs); }
         scene.insertBefore(v,scene.firstChild);
         const prev=curVid; curVid=v;
         v.play().then(()=>{ requestAnimationFrame(()=>v.classList.add("show"));
-          if(prev){prev.classList.remove("show");setTimeout(()=>prev.remove(),950);}
+          if(prev){prev.classList.remove("show");setTimeout(()=>{try{prev.pause();}catch(e){} prev.remove();},1150);}
           if(loop) resolve();
         }).catch(()=>{ if(fallback)setStill(fallback); finish(); });
       });
@@ -477,20 +487,25 @@
 
     // ============ FX (visual only) ============
     const flash=el("flash"),hurt=el("hurt"),fxToast=el("toast"),stage=el("stage");
-    function whiteFlash(a=.9){flash.style.transition="none";flash.style.opacity=a;requestAnimationFrame(()=>{flash.style.transition="opacity .55s ease";flash.style.opacity=0;});}
-    function redFlash(){hurt.style.transition="none";hurt.style.opacity=1;requestAnimationFrame(()=>{hurt.style.transition="opacity .65s ease";hurt.style.opacity=0;});}
+    function whiteFlash(a=.9){flash.style.transition="none";flash.style.opacity=a;requestAnimationFrame(()=>{flash.style.transition="opacity .6s ease";flash.style.opacity=0;});}
+    function redFlash(){hurt.style.transition="none";hurt.style.opacity=1;requestAnimationFrame(()=>{hurt.style.transition="opacity .7s ease";hurt.style.opacity=0;});}
     function shakeScreen(hard){const c=hard?"shake-hard":"shake";stage.classList.remove(c);void stage.offsetWidth;stage.classList.add(c);}
-    function bigToast(txt,color){fxToast.textContent=txt;fxToast.style.color=color||"#fff";fxToast.style.animation="none";void fxToast.offsetWidth;fxToast.style.animation="burst 1.2s ease forwards";}
+    function bigToast(txt,color){fxToast.textContent=txt;fxToast.style.color=color||"#fff";fxToast.style.animation="none";void fxToast.offsetWidth;fxToast.style.animation="burst 1.3s ease forwards";}
     function floatText(txt,color,x,y){const f=document.createElement("div");f.className="float";f.textContent=txt;
       f.style.color=color;f.style.left=(x||50)+"%";f.style.top=(y||40)+"%";f.style.fontSize="clamp(24px,7.5vw,46px)";
-      f.style.animation="floatUp 1.05s ease forwards";stage.appendChild(f);setTimeout(()=>f.remove(),1100);}
+      f.style.animation="floatUp 1.1s ease forwards";stage.appendChild(f);setTimeout(()=>f.remove(),1150);}
     function letterbox(on){ stage.classList.toggle("letterbox",on); }
 
-    // ============ State ============
-    let foeIdx=0, foe=null, foeHP=0, foeMax=0, hearts=5, combo=0, gold=0, runes=0, locked=false, timerId=null, _correct="", busy=false;
+    // narration line (used for opening / epitaph / descent / epilogue)
+    const cineLine=el("cineLine");
+    async function storyLine(html,hold=T.epitaph){ cineLine.innerHTML=html; cineLine.classList.add("show"); await sleep(hold); cineLine.classList.remove("show"); await sleep(T.fade); }
 
-    function renderHearts(breakLast){ const h=el("hearts");
-      h.innerHTML=Array.from({length:5},(_,i)=>`<span class="${i<hearts?"":"lost"} ${breakLast&&i===hearts?"breaking":""}">${i<hearts?"❤️":"🖤"}</span>`).join(""); }
+    // ============ State ============
+    let foeIdx=0, foe=null, foeHP=0, foeMax=0, hearts=5, combo=0, gold=0, runes=0, locked=false, timerId=null, _correct="";
+    let navLock=false;   // guards overlay buttons against double/rapid taps
+    let running=false;   // a fight/transition is in progress
+
+    function renderHearts(breakLast){ el("hearts").innerHTML=Array.from({length:5},(_,i)=>`<span class="${i<hearts?"":"lost"} ${breakLast&&i===hearts?"breaking":""}">${i<hearts?"❤️":"🖤"}</span>`).join(""); }
     function renderPips(){ el("pips").innerHTML=FOES.map((f,i)=>`<i class="${i<foeIdx?"done":i===foeIdx?"cur":""}"></i>`).join(""); }
     function setCombo(){ const c=el("combo"); if(combo>=2){c.classList.add("on");c.textContent=`COMBO ×${combo}`;} else c.classList.remove("on"); }
     function setFoeHP(v,ghostFrom){ foeHP=Math.max(0,v);
@@ -498,89 +513,55 @@
       el("foeHpGhost").style.transform=`scaleX(${(ghostFrom!=null?ghostFrom:foeHP)/foeMax})`;
       el("foeHpTxt").textContent=`${foeHP} / ${foeMax}`; }
 
-    // ============ Overlay helpers ============
     const OVS=["ovTitle","ovSpoils","ovResult"];
-    function show(id){ OVS.forEach(o=>el(o).classList.toggle("hidden",o!==id)); }
+    function show(id){ OVS.forEach(o=>{ const e=el(o); e.classList.toggle("hidden",o!==id); e.classList.remove("fade"); }); }
     function hideOverlays(){ OVS.forEach(o=>el(o).classList.add("hidden")); }
+    async function fadeOutOverlay(id){ const e=el(id); e.classList.add("fade"); await sleep(800); e.classList.add("hidden"); e.classList.remove("fade"); }
 
     // ============ Opening cinematic (directed, Malrune) ============
-    const OPENING=[
-      {h:"In the age of answers, no riddle went <em>unsolved</em>."},
-      {h:"Then he woke in the deep — <em>Malrune</em>, the Unanswered."},
-      {h:"Where he treads, knowledge <em>freezes</em>. Truth forgets its name."},
-      {h:"His frost has woken the guardians of the vale."},
-      {h:"You carry no blade. Only <b>what you know</b>."},
-    ];
     let skipOpening=false;
     el("skip").onclick=()=>{ skipOpening=true; };
+    function waitOrSkip(ms){ return new Promise(res=>{ let t=0; const step=60; const id=setInterval(()=>{ t+=step; if(skipOpening||t>=ms){clearInterval(id);res();} },step); }); }
     async function runOpening(){
-      el("skip").classList.remove("hidden");
-      letterbox(true);
-      const line=el("cineLine");
-      // slow frost descent with narrated lines
-      for(const L of OPENING){
-        if(skipOpening)break;
-        line.innerHTML=L.h; line.classList.add("show");
-        await waitOrSkip(2900);
-        line.classList.remove("show");
-        await waitOrSkip(750);
-      }
-      // the beast reveal — Malrune's frostwyrm spreads its wings
-      if(!skipOpening){
-        line.innerHTML="But the vale is <em>frozen</em>… and something vast stirs beneath it.";
-        line.classList.add("show");
-      }
+      el("skip").classList.remove("hidden"); letterbox(true);
+      for(const L of OPENING){ if(skipOpening)break; cineLine.innerHTML=L; cineLine.classList.add("show"); await waitOrSkip(3100); cineLine.classList.remove("show"); await waitOrSkip(850); }
+      if(!skipOpening){ cineLine.innerHTML="And at the roots of the ice, his <em>herald</em> stirs…"; cineLine.classList.add("show"); }
       await playVid(FOES[4].intro,{loop:false,fallback:FOES[4].still,maxMs:skipOpening?200:8000});
-      line.classList.remove("show");
-      el("skip").classList.add("hidden");
-      letterbox(false);
-      // settle to title
-      hideOverlays(); show("ovTitle"); // reuse title overlay as the launch gate
-      el("ovTitle").classList.remove("hidden");
+      cineLine.classList.remove("show"); await sleep(600);
+      el("skip").classList.add("hidden"); letterbox(false);
+      show("ovTitle");
     }
-    function waitOrSkip(ms){ return new Promise(res=>{ const step=60; let t=0;
-      const id=setInterval(()=>{ t+=step; if(skipOpening||t>=ms){clearInterval(id);res();} },step); }); }
 
-    // ============ Chapter card ============
+    // ============ Chapter card + nameplate ============
     async function chapterCard(f){
-      const c=el("chapter"); el("chNum").textContent=f.numeral; el("chName").textContent=f.name;
-      el("chRole").textContent=f.role; el("chWeak").innerHTML=f.boss?`★ Final Guardian · weak to ${CAT_LABEL[f.weak]}`:`✦ Weak to ${CAT_LABEL[f.weak]}`;
-      c.classList.remove("hidden"); await sleep(30); c.classList.add("show");
-      await sleep(2700); c.classList.remove("show"); await sleep(800); c.classList.add("hidden");
+      el("chNum").textContent=f.numeral; el("chName").textContent=f.name; el("chRole").textContent=f.role;
+      el("chCouplet").innerHTML=f.couplet; el("chWeak").innerHTML=f.boss?`★ Final Guardian · weak to ${CAT_LABEL[f.weak]}`:`✦ Weak to ${CAT_LABEL[f.weak]}`;
+      const c=el("chapter"); c.classList.remove("hidden"); await sleep(40); c.classList.add("show");
+      await sleep(T.chapter); c.classList.remove("show"); await sleep(1100); c.classList.add("hidden");
     }
-    function nameplate(f){ el("npName").textContent=f.name; el("npRole").textContent=f.role;
+    function nameplate(f){ el("npName").textContent=f.name; el("npRole").textContent=f.role; el("npWhisper").textContent=f.whisper||"";
       const n=el("nameplate"); n.classList.remove("show"); void n.offsetWidth; n.classList.add("show"); }
 
     // ============ Fight flow ============
     async function beginFoe(){
-      busy=true; foe=FOES[foeIdx]; foeMax=foe.hp;
+      running=true; foe=FOES[foeIdx]; foeMax=foe.hp;
       el("foeName").textContent=foe.name;
       el("weakChip").innerHTML=foe.boss?`★ Final · weak to ${CAT_LABEL[foe.weak]}`:`✦ Weak to ${CAT_LABEL[foe.weak]}`;
       renderPips(); renderHearts(); setCombo();
-      el("dock").classList.add("hidden");
-      // put the correct backdrop up BEFORE the chapter card so no wrong enemy
-      // (e.g. the opening dragon) shows through the transition
-      setStill(foe.still);
-      // chapter card first (unrushed)
+      el("dock").classList.add("hidden"); el("hud").classList.add("hidden");
+      setStill(foe.still);                 // correct backdrop before the card
       await chapterCard(foe);
-      el("hud").classList.remove("hidden");
-      setFoeHP(foeMax);
-      // establish the scene (boss gets its wing-spread intro if not already shown)
-      if(foe.boss && foe.intro){
-        letterbox(true);
-        await playVid(foe.intro,{loop:false,fallback:foe.still,maxMs:9000});
-        letterbox(false);
-        if(foe.idle) await playVid(foe.idle,{loop:true,fallback:foe.still}); else setStill(foe.still);
-      } else {
-        if(foe.idle) await playVid(foe.idle,{loop:true,fallback:foe.still}); else setStill(foe.still);
-      }
+      el("hud").classList.remove("hidden"); setFoeHP(foeMax);
+      if(foe.boss && foe.intro){ letterbox(true); await playVid(foe.intro,{loop:false,fallback:foe.still,maxMs:9000}); letterbox(false);
+        if(foe.idle) await playVid(foe.idle,{loop:true,fallback:foe.still}); else setStill(foe.still); }
+      else { if(foe.idle) await playVid(foe.idle,{loop:true,fallback:foe.still}); else setStill(foe.still); }
       nameplate(foe);
-      await sleep(1400);          // let the nameplate breathe before the first question
-      busy=false;
-      nextQuestion(true);
+      await sleep(T.settle);
+      running=false;
+      nextQuestion();
     }
 
-    function nextQuestion(first){
+    function nextQuestion(){
       if(foeIdx+1<FOES.length) warm(FOES[foeIdx+1]);
       locked=false;
       const q=drawQuestion(foe); _correct=q.correct;
@@ -588,128 +569,127 @@
       const isWeak=q.cat===foe.weak;
       el("qcat").innerHTML=isWeak?`<span style="color:var(--rune)">✦ ${CAT_LABEL[q.cat]||q.cat} — weak point!</span>`:(CAT_LABEL[q.cat]||q.cat);
       el("qtext").textContent=q.text;
-      const opts=optionsFor(q), box=el("opts"); box.innerHTML="";
+      const opts=optionsFor(q), box=el("opts"); box.innerHTML=""; box.style.pointerEvents="";
       opts.forEach((opt,i)=>{ const b=document.createElement("button"); b.className="opt";
         b.innerHTML=`<span class="k">${"ABCD"[i]}</span><span>${opt}</span>`;
         b.onclick=()=>answer(b,opt===q.correct,isWeak,box); box.appendChild(b); });
-      const dock=el("dock"); dock.classList.remove("hidden");
-      dock.classList.remove("enter"); void dock.offsetWidth; dock.classList.add("enter");
+      const dock=el("dock"); dock.classList.remove("hidden"); dock.classList.remove("enter"); void dock.offsetWidth; dock.classList.add("enter");
       startTimer(q);
     }
-
     function startTimer(q){ clearTimeout(timerId);
       const secs = foe.boss?34:(q.diff==="hard"?32:28);
       const bar=el("timerBar"); bar.style.transition="none"; bar.style.transform="scaleX(1)";
       requestAnimationFrame(()=>{ bar.style.transition=`transform ${secs}s linear`; bar.style.transform="scaleX(0)"; });
       timerId=setTimeout(()=>{ if(!locked) timeOut(); }, secs*1000); }
 
+    function revealCorrect(box){ [...box.children].forEach(b=>{ if(b.querySelector("span:last-child").textContent===_correct){ b.classList.remove("dim"); b.classList.add("correct"); } }); }
+
     function answer(btn,correct,isWeak,box){
-      if(locked)return; locked=true; clearTimeout(timerId);
+      if(locked)return; locked=true; clearTimeout(timerId); box.style.pointerEvents="none";
       [...box.children].forEach(b=>b.classList.add("dim")); btn.classList.remove("dim");
       if(correct){
         btn.classList.add("correct"); combo++; setCombo();
         const crit=isWeak; let dmg=(crit?2:1)+(combo>=4?1:0);
         whiteFlash(crit?.85:.5); shakeScreen(crit);
-        floatText((crit?"CRIT ":"")+"−"+dmg, crit?"#c9b6ff":"#eafff5", 50, 33);
+        floatText((crit?"CRIT ":"")+"−"+dmg, crit?"#c9b6ff":"#eafff5", 50, 32);
         if(crit) bigToast("CRITICAL!","#c9b6ff"); else if(combo>=3) bigToast("COMBO ×"+combo,"#ffcf6b");
         const from=foeHP; setFoeHP(foeHP-dmg,from);
         gold+=crit?3:2; runes+=crit?1:0;
-        if(foeHP<=0){ setTimeout(defeatFoe,760); return; }
-        setTimeout(()=>nextQuestion(), 1300);        // unrushed beat between questions
+        if(foeHP<=0){ setTimeout(defeatFoe,820); return; }
+        setTimeout(()=>nextQuestion(), T.betweenQ);
       } else {
-        btn.classList.add("wrong");
-        [...box.children].forEach(b=>{ if(b.querySelector("span:last-child").textContent===_correct){ b.classList.remove("dim"); b.classList.add("correct"); } });
-        combo=0; setCombo();
-        enemyStrike();
+        btn.classList.add("wrong"); revealCorrect(box); combo=0; setCombo(); enemyStrike();
       }
     }
-    function timeOut(){ locked=true; const box=el("opts"); [...box.children].forEach(b=>b.classList.add("dim"));
-      [...box.children].forEach(b=>{ if(b.querySelector("span:last-child").textContent===_correct){ b.classList.remove("dim"); b.classList.add("correct"); } });
+    function timeOut(){ locked=true; const box=el("opts"); box.style.pointerEvents="none"; [...box.children].forEach(b=>b.classList.add("dim")); revealCorrect(box);
       combo=0; setCombo(); bigToast("TOO SLOW","#ff7d8c"); enemyStrike(); }
 
     async function enemyStrike(){
-      const before=hearts; hearts--; renderHearts(true); redFlash(); shakeScreen(true);
-      floatText("✖","#ff4d5e",50,38);
+      hearts--; renderHearts(true); redFlash(); shakeScreen(true); floatText("✖","#ff4d5e",50,38);
       if(foe.attack){ await playVid(foe.attack,{loop:false,fallback:foe.still,maxMs:4200});
         if(hearts>0){ if(foe.idle) playVid(foe.idle,{loop:true,fallback:foe.still}); else setStill(foe.still); } }
-      else { await sleep(1100); }
-      if(hearts<=0){ setTimeout(()=>endRun(false),700); return; }
-      await sleep(900);                              // breathing room before the next question
-      nextQuestion();
+      else { await sleep(1200); }
+      if(hearts<=0){ await sleep(700); endRun(false); return; }
+      await sleep(T.afterWrong); nextQuestion();
     }
 
     async function defeatFoe(){
-      el("dock").classList.add("hidden"); busy=true;
+      running=true; el("dock").classList.add("hidden");
       bigToast(foe.boss?"THE HERALD FALLS":"VANQUISHED","#ffe6ad"); whiteFlash(1); shakeScreen(true);
       gold+=foe.boss?40:10; runes+=foe.boss?5:2;
       letterbox(true);
       if(foe.defeat){ await playVid(foe.defeat,{loop:false,fallback:foe.defeatStill||foe.still,maxMs:12000}); }
       else if(foe.defeatStill){ setStill(foe.defeatStill); await sleep(2200); }
-      else { whiteFlash(.8); await sleep(1800); }     // armour: no clip → flash + hold
-      await sleep(1400);                               // let the moment land
+      else { whiteFlash(.8); await sleep(1900); }
+      el("hud").classList.add("hidden");
+      await storyLine(foe.epitaph, T.epitaph);          // artistic epitaph over the fallen guardian
+      await sleep(T.defeatHold);
       letterbox(false);
       foeIdx++;
       if(foeIdx>=FOES.length){ endRun(true); return; }
+      await storyLine(DESCENT[foeIdx-1]||"You descend.", T.descent);   // descent interlude
       showSpoils();
     }
 
     function showSpoils(){
-      el("hud").classList.add("hidden");
       const next=FOES[foeIdx];
-      el("spoilsKicker").textContent = foeIdx===FOES.length-1 ? "The air turns to frost" : "The guardian falls";
+      el("spoilsKicker").textContent = next.boss ? "The air turns to frost" : "The way deepens";
       el("spoilsTitle").textContent = "Vanquished";
       el("spoilsLoot").innerHTML=`<div><b style="color:var(--gold)">${gold}</b><span>GOLD</span></div>
         <div><b style="color:var(--rune)">${runes}</b><span>RUNES</span></div>
         <div><b style="color:var(--blood)">${"❤".repeat(hearts)||"—"}</b><span>LIFE</span></div>`;
-      el("spoilsNext").textContent = next.boss
-        ? "Beyond the ice, the Frostwyrm — Malrune's herald — waits."
-        : `Ahead: ${next.name}. Weak to ${CAT_LABEL[next.weak]}.`;
+      el("spoilsNext").innerHTML = next.boss
+        ? "Beyond the ice waits <em>Vyrmouth</em> — Malrune's herald, and the last door before the deep."
+        : `Ahead: <b>${next.name}</b>. Weak to ${CAT_LABEL[next.weak]}.`;
       el("spoilsBtn").textContent = next.boss ? "Face the Frostwyrm ▸" : "Descend ▸";
-      busy=false; show("ovSpoils");
+      running=false; show("ovSpoils");
     }
 
-    function endRun(victory){
-      clearTimeout(timerId); el("hud").classList.add("hidden"); el("dock").classList.add("hidden"); busy=false;
+    async function endRun(victory){
+      clearTimeout(timerId); el("hud").classList.add("hidden"); el("dock").classList.add("hidden"); running=false;
+      if(victory){
+        letterbox(true);
+        if(FOES[FOES.length-1].defeatStill) setStill(FOES[FOES.length-1].defeatStill);
+        for(const l of VICTORY){ await storyLine(l, 3600); }
+        letterbox(false);
+      }
       el("resRune").textContent=victory?"👑":"☠";
       el("resTitle").textContent=victory?"The Vale Thaws":"You Were Devoured";
       el("resSub").innerHTML=victory
-        ? "Vyrmouth lies broken and the ice recedes — yet far below, <em>Malrune</em> stirs still. The Unanswered awaits, in the full saga to come."
-        : `You fell at ${foe.name}. The frost claims another scholar… but the vale remembers the brave.`;
+        ? "You bested every guardian with knowledge alone. The vale breathes again — but the Unanswered still waits below, in the saga to come."
+        : `The cold reaches your held breath and stills it. You fell at ${foe.name}, another guardian for the vale… yet the ice keeps what the brave attempt.`;
       el("resLoot").innerHTML=`<div><b style="color:var(--gold)">${gold}</b><span>GOLD</span></div>
         <div><b style="color:var(--rune)">${runes}</b><span>RUNES</span></div>
         <div><b>${foeIdx}/${FOES.length}</b><span>FELLED</span></div>`;
-      if(victory){ bigToast("VICTORY","#ffe6ad"); if(FOES[FOES.length-1].defeatStill)setStill(FOES[FOES.length-1].defeatStill); }
+      if(victory) bigToast("VICTORY","#ffe6ad");
       show("ovResult");
     }
 
     function resetRun(){ foeIdx=0; hearts=5; combo=0; gold=0; runes=0; used.clear(); }
 
-    // ============ wire buttons ============
-    el("startBtn").onclick=async()=>{ muted=false; applyMute(); hideOverlays(); await beginFoe(); };
-    el("spoilsBtn").onclick=async()=>{ hideOverlays(); await beginFoe(); };
-    el("resAgain").onclick=async()=>{ resetRun(); hideOverlays(); await beginFoe(); };
-    el("resHome").onclick=()=>{ location.href="./"; };
-    el("quit").onclick=()=>{ if(confirm("Leave the saga and return to the menu?"))location.href="./"; };
+    // ============ Guarded navigation (anti button-spam) ============
+    // A single lock: while a transition runs, extra taps are ignored.
+    function guard(fn){ return async()=>{ if(navLock||running)return; navLock=true;
+      try{ await fn(); } finally{ navLock=false; } }; }
 
-    document.addEventListener("visibilitychange",()=>{ if(document.hidden&&ambience)ambience.pause();
-      else if(!muted&&ambience)ambience.play().catch(()=>{}); });
+    el("spoilsBtn").onclick=guard(async()=>{ await fadeOutOverlay("ovSpoils"); await beginFoe(); });
+    el("resAgain").onclick =guard(async()=>{ resetRun(); await fadeOutOverlay("ovResult"); await beginFoe(); });
+    el("resHome").onclick  =()=>{ if(navLock)return; navLock=true; location.href="./"; };
+    el("quit").onclick     =()=>{ if(confirm("Leave the saga and return to the menu?")) location.href="./"; };
+
+    document.addEventListener("visibilitychange",()=>{ if(document.hidden&&ambience)ambience.pause(); else if(!muted&&ambience)ambience.play().catch(()=>{}); });
 
     // ============ boot ============
-    async function boot(){
-      // first user gesture unlocks audio; opening plays after Begin? No — we open with the cinematic,
-      // then present the title/launch gate. But audio needs a gesture, so gate the whole thing behind one tap.
+    function boot(){
       show("ovTitle");
-      // Replace the title overlay's primary action: first tap starts the *cinematic*, second (its own button) begins play.
-      const startBtn=el("startBtn");
-      startBtn.textContent="Begin the Tale ▸";
-      startBtn.onclick=async()=>{
+      const startBtn=el("startBtn"); startBtn.textContent="Begin the Tale ▸";
+      startBtn.onclick=guard(async()=>{
         muted=false; applyMute();
-        hideOverlays();
-        await runOpening();                 // directed Malrune cinematic → shows title gate again
-        // after opening, ovTitle is shown again as the "Enter the Vale" gate
-        el("startBtn").textContent="Enter the Vale ▸";
-        el("startBtn").onclick=async()=>{ hideOverlays(); await beginFoe(); };
-      };
+        await fadeOutOverlay("ovTitle");
+        await runOpening();                          // → shows ovTitle again as the launch gate
+        const b=el("startBtn"); b.textContent="Enter the Vale ▸";
+        b.onclick=guard(async()=>{ await fadeOutOverlay("ovTitle"); await beginFoe(); });
+      });
     }
     boot();
   })();
