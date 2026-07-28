@@ -1180,7 +1180,15 @@ const GENERATED_EXTRA = (typeof GENERATED_EXTRA_BANK !== "undefined" && Array.is
 // Curated "Quizzer Accepted" set, normalised into all app formats (built from
 // saga-questions.js by scratchpad/build-saga-bank.mjs).
 const GENERATED_SAGA = (typeof GENERATED_SAGA_BANK !== "undefined" && Array.isArray(GENERATED_SAGA_BANK)) ? GENERATED_SAGA_BANK : [];
-const BANK_ALL = QUIZRUSH_BANK.concat(IMPORTED, GENERATED, GENERATED_SPORT, GENERATED_EXTRA, GENERATED_SAGA);
+// Karim's authored MCQ bank (bank-user.js), imported from the Google Sheet.
+const USER = (typeof USER_BANK !== "undefined" && Array.isArray(USER_BANK)) ? USER_BANK : [];
+// Per request (2026-07): use Karim's authored bank alongside the app's own
+// originals; the imported OpenTriviaQA bank and the earlier generated/made banks
+// are SET ASIDE for the time being (still loaded, just not drawn from). To bring
+// the full ~35k pool back, restore the extra args in the concat below:
+//   QUIZRUSH_BANK.concat(USER, IMPORTED, GENERATED, GENERATED_SPORT, GENERATED_EXTRA, GENERATED_SAGA)
+const BANK_ALL = QUIZRUSH_BANK.concat(USER);
+void [IMPORTED, GENERATED, GENERATED_SPORT, GENERATED_EXTRA, GENERATED_SAGA]; // set aside; keep refs
 
 function fetchFromBank({ amount, catId, difficulty }) {
   const pool = BANK_ALL.filter(
