@@ -203,6 +203,15 @@
     .inv-chip.shop{border-color:rgba(255,207,107,.42);background:rgba(26,21,10,.7);color:#ffedc4}
     .inv-chip[disabled]{opacity:.4;pointer-events:none}
     .inv-empty{font-size:12.5px;opacity:.55}
+    /* Relics: battle-usable treasures, shown as a strip above the question */
+    .relic-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px;min-height:0}
+    .relic-chip{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;
+      border:1px solid rgba(180,156,255,.45);background:rgba(20,15,38,.78);font-size:12.5px;color:#e6dcff}
+    .relic-chip b{opacity:.75;font-weight:600}
+    .relic-chip:active{transform:scale(.96)}
+    .relic-chip[disabled]{opacity:.38;pointer-events:none}
+    .relic-chip.armed{border-color:var(--gold);color:#ffedc4;box-shadow:0 0 12px rgba(255,207,107,.35);pointer-events:none}
+    .ev-choices{display:flex;flex-direction:column;gap:9px;width:min(88vw,360px)}
     .camp{display:flex;flex-direction:column;gap:9px;align-items:center;width:min(92vw,420px);
       padding:11px 12px;border-radius:14px;border:1px solid var(--line);background:rgba(9,14,26,.5)}
     .camp .camp-label{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;opacity:.6}
@@ -365,6 +374,7 @@
         </div>
         <div class="combo" id="combo">COMBO ×2</div>
       </div>
+      <div class="relic-row" id="relics"></div>
       <div class="qcard">
         <div class="qtier" id="qtier"><span id="qcat"></span></div>
         <div class="timer" id="timerWrap"><i id="timerBar"></i></div>
@@ -452,11 +462,12 @@
     </div>
 
     <div class="overlay hidden" id="ovEvent">
-      <div class="ov-rune">✦</div>
-      <div class="ov-kicker">A shape in the snow</div>
-      <div class="ov-title" style="font-size:clamp(24px,7vw,40px)">The Frozen Traveller</div>
+      <div class="ov-rune" id="evRune">✦</div>
+      <div class="ov-kicker" id="evKicker">A shape in the snow</div>
+      <div class="ov-title" id="evTitle" style="font-size:clamp(24px,7vw,40px)">The Frozen Traveller</div>
       <p class="ov-sub" id="evText"></p>
-      <div class="qcard" style="width:min(92vw,420px);text-align:left">
+      <div class="ev-choices hidden" id="evChoices"></div>
+      <div class="qcard hidden" id="evCard" style="width:min(92vw,420px);text-align:left">
         <p class="qtext" id="evQ">…</p>
         <div class="opts" id="evOpts"></div>
       </div>
@@ -529,19 +540,25 @@
     // (The vale is world one of seven; each later land gets its own path.)
     const PATH=[
       {t:"battle",foe:0,loc:"The Oathgate",icon:"⚔"},
+      {t:"event",ev:"cache",loc:"The Ice-Bound Cache",icon:"🧊",kind:"A wayside find"},
       {t:"battle",foe:1,loc:"The Gallery of the Forgotten",icon:"⚔"},
       {t:"waystone",loc:"The Waystone Hollow",icon:"❄"},
       {t:"battle",foe:2,loc:"The Glimmer Hoard",icon:"⚔"},
       {t:"shop",loc:"The Wraith-Market",icon:"🕯"},
+      {t:"event",ev:"shrine",loc:"Shrine of the Old Scholars",icon:"🔮",kind:"A wayside shrine"},
       {t:"battle",foe:3,loc:"The Riddle Gate",icon:"⚔"},
-      {t:"event",loc:"The Frozen Traveller",icon:"✦"},
+      {t:"event",ev:"traveller",loc:"The Frozen Traveller",icon:"✦",kind:"A wayside encounter"},
+      {t:"event",ev:"duel",loc:"A Rival on the Trail",icon:"🗡",kind:"Side quest · a rival seeker"},
       {t:"battle",foe:4,loc:"The Sealbreach",icon:"🔥",boss:true},
     ];
     let pathIdx=0;
     let snapshot=null;                    // seeker state held by the land / waystone
-    const takeSnapshot=()=>{ snapshot={plevel,pxp,gold,runes,pathIdx,foeIdx,bonusHp,inv:inv.map(x=>({...x}))}; };
-    function restoreSnapshot(){ ({plevel,pxp,gold,runes,pathIdx,foeIdx,bonusHp}=snapshot);
-      inv=snapshot.inv.map(x=>({...x})); pmax=pmaxFor(); php=pmax; combo=0; paintPlayer(); }
+    const takeSnapshot=()=>{ snapshot={plevel,pxp,gold,runes,pathIdx,foeIdx,bonusHp,hasLetter,
+      inv:inv.map(x=>({...x})), relics:[...relics]}; };
+    function restoreSnapshot(){ ({plevel,pxp,gold,runes,pathIdx,foeIdx,bonusHp,hasLetter}=snapshot);
+      inv=snapshot.inv.map(x=>({...x})); relics=[...snapshot.relics];
+      shieldOn=false; emberOn=false; quillStrike=false;
+      pmax=pmaxFor(); php=pmax; combo=0; paintPlayer(); }
     const LOW_HP=0.5;                                       // below half → offer to eat before the next fight
     const FOOD_SHOP=[
       {icon:"🍞", name:"Traveller's loaf", heal:15, cost:12},
@@ -766,6 +783,40 @@
       if(crit)s.classList.add("crit");
       s.classList.add("go");
       clearTimeout(slash._t); slash._t=setTimeout(()=>s.classList.remove("go","crit"),620); }
+
+    // ============ Relics in battle ============
+    function paintRelics(){
+      const box=el("relics"); box.innerHTML="";
+      const counts={}; relics.forEach(id=>counts[id]=(counts[id]||0)+1);
+      Object.keys(counts).forEach(id=>{ const r=RELICS[id]; const b=document.createElement("button");
+        b.className="relic-chip"; b.title=r.name+" — "+r.hint;
+        b.innerHTML=`${r.icon} ${counts[id]>1?`×${counts[id]}`:""} <b>${r.hint}</b>`;
+        if(locked || (id==="ward"&&shieldOn) || (id==="ember"&&emberOn)) b.setAttribute("disabled","");
+        b.onclick=()=>useRelic(id); box.appendChild(b); });
+      if(shieldOn){ const s=document.createElement("span"); s.className="relic-chip armed"; s.innerHTML="🛡 warded"; box.appendChild(s); }
+      if(emberOn){ const s=document.createElement("span"); s.className="relic-chip armed"; s.innerHTML="🔥 ember lit"; box.appendChild(s); }
+    }
+    function spendRelic(id){ const i=relics.indexOf(id); if(i>=0) relics.splice(i,1); }
+    function useRelic(id){
+      if(locked || !relics.includes(id)) return;
+      if(id==="quill"){
+        const btn=[...el("opts").children].find(b=>b.querySelector("span:last-child").textContent===_correct);
+        if(!btn) return;
+        spendRelic(id); quillStrike=true;
+        bigToast("🪶 The quill writes the answer for you","#c9b6ff");
+        btn.click(); paintRelics(); return;
+      }
+      if(id==="hourglass"){
+        spendRelic(id); clearTimeout(timerId);
+        const bar=el("timerBar"); const w=getComputedStyle(bar).transform;
+        bar.style.transition="none"; bar.style.transform=w;
+        bigToast("⏳ Time holds its breath","#9fc0ee"); paintRelics(); return;
+      }
+      if(id==="ward"){ spendRelic(id); shieldOn=true;
+        bigToast("🛡 A ward settles over you","#9fe8b8"); paintRelics(); return; }
+      if(id==="ember"){ spendRelic(id); emberOn=true;
+        bigToast("🔥 The ember waits for your next answer","#ffcf6b"); paintRelics(); return; }
+    }
     function bigToast(txt,color){fxToast.textContent=txt;fxToast.style.color=color||"#fff";fxToast.style.animation="none";void fxToast.offsetWidth;fxToast.style.animation="burst 1.3s ease forwards";}
     function floatText(txt,color,x,y){const f=document.createElement("div");f.className="float";f.textContent=txt;
       f.style.color=color;f.style.left=(x||50)+"%";f.style.top=(y||40)+"%";f.style.fontSize="clamp(24px,7.5vw,46px)";
@@ -781,6 +832,17 @@
     // The seeker: level, XP, strength (HP persists between battles), pack of food
     let hero=HEROES[0], plevel=1, pxp=0, pmax=BASE_HP, php=BASE_HP, inv=[], bonusHp=0;
     const pmaxFor=()=>BASE_HP+HP_PER_LEVEL*(plevel-1)+hero.hp+bonusHp;
+    // Relics: battle-usable treasures (tap in the fight, like extra lifelines).
+    // quill = the answer is given for you (a plain strike — never a crit);
+    // hourglass = this question's clock stops; ward = the next enemy blow is
+    // turned; ember = your next correct answer flares into a CRITICAL.
+    const RELICS={
+      quill:    {icon:"🪶", name:"Quill of the First Scholar", hint:"answers for you"},
+      hourglass:{icon:"⏳", name:"Frozen Hourglass",           hint:"stops this clock"},
+      ward:     {icon:"🛡", name:"Warden's Ward",              hint:"turns the next blow"},
+      ember:    {icon:"🔥", name:"Ember of Vyrmouth",          hint:"next answer crits"},
+    };
+    let relics=[], shieldOn=false, emberOn=false, quillStrike=false, hasLetter=false;
     let navLock=false;   // guards overlay buttons against double/rapid taps
     let running=false;   // a fight/transition is in progress
 
@@ -831,9 +893,10 @@
       const box=el("trail"); box.innerHTML="";
       PATH.forEach((n,i)=>{ const d=document.createElement("div");
         d.className="tnode "+(i<pathIdx?"done":i===pathIdx?"cur":"ahead")+(n.boss?" boss":"");
-        d.innerHTML=`<span class="tico">${n.icon}</span><span class="tmeta"><div class="tloc">${n.loc}</div><div class="tkind">${n.boss?"Final guardian":KIND_LABEL[n.t]}</div></span>`;
+        d.innerHTML=`<span class="tico">${n.icon}</span><span class="tmeta"><div class="tloc">${n.loc}</div><div class="tkind">${n.boss?"Final guardian":(n.kind||KIND_LABEL[n.t])}</div></span>`;
         box.appendChild(d); });
-      el("mapYou").textContent=`${hero.icon} Lv ${plevel} · ${php}/${pmax} strength · ${gold} gold`;
+      const rel=relics.map(id=>RELICS[id].icon).join("");
+      el("mapYou").textContent=`${hero.icon} Lv ${plevel} · ${php}/${pmax} strength · ${gold} gold${rel?` · ${rel}`:""}${hasLetter?" · ✉":""}`;
       el("mapGo").textContent=pathIdx===0?"Set forth ▸":(PATH[pathIdx].boss?"Face the First Flame ▸":"Continue ▸");
       running=false; show("ovMap");
     }
@@ -846,7 +909,7 @@
         bigToast("❄ Waystone reached — your tale is held here","#9fc0ee");
         showMap(); return; }
       if(n.t==="shop"){ renderMarket(); show("ovMarket"); return; }
-      if(n.t==="event"){ runTraveller(); return; }
+      if(n.t==="event"){ runEvent(n); return; }
     }
 
     // The Wraith-Market: richer stock than the spoils camp. The draught is a
@@ -856,6 +919,9 @@
       {icon:"🍲",name:"Hearth stew",heal:30,cost:25},
       {icon:"🍷",name:"Emberwine",heal:45,cost:38},
       {icon:"🧪",name:"Warden's draught",maxhp:5,cost:50},
+      {relic:"quill",cost:45},
+      {relic:"hourglass",cost:30},
+      {relic:"ward",cost:30},
     ];
     function renderMarket(){
       el("mktHpBar").style.transform=`scaleX(${Math.max(0,php/pmax)})`;
@@ -863,10 +929,13 @@
       el("mktHpTxt").textContent=`${php} / ${pmax}`;
       const box=el("mktShop"); box.innerHTML="";
       MARKET.forEach(it=>{ const b=document.createElement("button"); b.className="inv-chip shop";
-        b.innerHTML=`${it.icon} ${it.name} <b>${it.maxhp?`+${it.maxhp} max`:`+${it.heal}`}</b> · ${it.cost} gold`;
+        const r=it.relic&&RELICS[it.relic];
+        b.innerHTML=r?`${r.icon} ${r.name} <b>${r.hint}</b> · ${it.cost} gold`
+                    :`${it.icon} ${it.name} <b>${it.maxhp?`+${it.maxhp} max`:`+${it.heal}`}</b> · ${it.cost} gold`;
         if(gold<it.cost)b.setAttribute("disabled","");
         b.onclick=()=>{ if(gold<it.cost)return; gold-=it.cost;
-          if(it.maxhp){ bonusHp+=it.maxhp; pmax=pmaxFor(); php=Math.min(pmax,php+it.maxhp);
+          if(r){ relics.push(it.relic); bigToast(`${r.icon} ${r.name} — carry it into battle`,"#c9b6ff"); }
+          else if(it.maxhp){ bonusHp+=it.maxhp; pmax=pmaxFor(); php=Math.min(pmax,php+it.maxhp);
             bigToast(`🧪 The draught thickens your blood — +${it.maxhp} max strength`,"#9fe8b8"); paintPlayer(); }
           else { inv.push({icon:it.icon,name:it.name,heal:it.heal}); bigToast(`${it.icon} ${it.name} joins your pack`,"#ffe6ad"); }
           renderMarket(); };
@@ -874,30 +943,100 @@
       renderPack("mktInv",renderMarket);
     }
 
-    // The Frozen Traveller: one untimed question. Warm him with the answer
-    // and his hoard is yours; fail, and the cold keeps him.
-    const EV_INTRO=`A scholar of old Fenrime, frost-bound mid-stride — one of the many whose tales Vyrmouth has half-devoured. A voice like cracking ice: <em>“One answer, seeker. Warm me with it, and what I carry is yours.”</em>`;
-    function runTraveller(){
-      el("evText").innerHTML=EV_INTRO;
-      const pool=(byTier.M||[]).filter(q=>!used.has(q.text));
-      const q=pool.length?pick(pool):pick(byTier.M&&byTier.M.length?byTier.M:POOL);
-      used.add(q.text);
+    // ============ Wayside events ============
+    // One overlay, many encounters: choice events (cache, shrine), question
+    // events (traveller), and the rival duel side quest. The Ice-Bound Cache
+    // can yield a frost-sealed LETTER that changes the Frozen Traveller later.
+    function openEvent(rune,kicker,title,html){
+      el("evRune").textContent=rune; el("evKicker").textContent=kicker;
+      el("evTitle").textContent=title; el("evText").innerHTML=html;
+      el("evChoices").classList.add("hidden"); el("evCard").classList.add("hidden");
+      el("evGo").classList.add("hidden"); show("ovEvent");
+    }
+    function evChoices(list){ const box=el("evChoices"); box.innerHTML="";
+      list.forEach(c=>{ const b=document.createElement("button"); b.className="opt";
+        b.innerHTML=`<span>${c.label}</span>`;
+        if(c.disabled)b.setAttribute("disabled","");
+        b.onclick=()=>{ [...box.children].forEach(x=>x.style.pointerEvents="none"); c.pick(); };
+        box.appendChild(b); });
+      box.classList.remove("hidden"); }
+    function evFinish(html){ if(html)el("evText").innerHTML=html;
+      el("evChoices").classList.add("hidden"); el("evCard").classList.add("hidden");
+      el("evGo").classList.remove("hidden"); }
+    function evAsk(q,onDone){ el("evCard").classList.remove("hidden");
       el("evQ").textContent=q.text;
-      const box=el("evOpts"); box.innerHTML=""; el("evGo").classList.add("hidden");
+      const box=el("evOpts"); box.innerHTML="";
       optionsFor(q).forEach((opt,i)=>{ const b=document.createElement("button"); b.className="opt";
         b.innerHTML=`<span class="k">${"ABCD"[i]}</span><span>${opt}</span>`;
         b.onclick=()=>{ [...box.children].forEach(x=>{x.style.pointerEvents="none";x.classList.add("dim");});
-          if(opt===q.correct){ b.classList.remove("dim"); b.classList.add("correct");
-            gold+=25; runes+=1; inv.push({icon:"🫐",name:"Sphinx's figs",heal:18});
-            el("evText").innerHTML="The frost sighs and loosens. He presses a pouch into your hand — <b>25 gold</b>, <b>a rune</b> and <b>🫐 figs</b> — and walks on into the white, warmer than before.";
-          } else {
-            [...box.children].forEach(x=>{ if(x.querySelector("span:last-child").textContent===q.correct){x.classList.remove("dim");x.classList.add("correct");} });
-            b.classList.remove("dim"); b.classList.add("wrong");
-            el("evText").innerHTML="The light behind the ice dims. The traveller keeps his hoard — and the cold keeps the traveller.";
-          }
-          el("evGo").classList.remove("hidden"); };
-        box.appendChild(b); });
-      show("ovEvent");
+          const right=opt===q.correct;
+          if(right){ b.classList.remove("dim"); b.classList.add("correct"); }
+          else { [...box.children].forEach(x=>{ if(x.querySelector("span:last-child").textContent===q.correct){x.classList.remove("dim");x.classList.add("correct");} });
+            b.classList.remove("dim"); b.classList.add("wrong"); }
+          setTimeout(()=>onDone(right),900); };
+        box.appendChild(b); }); }
+    function drawEventQ(tier){ const pool=(byTier[tier]||[]).filter(q=>!used.has(q.text));
+      const q=pool.length?pick(pool):pick((byTier[tier]&&byTier[tier].length)?byTier[tier]:POOL);
+      used.add(q.text); return q; }
+
+    function runEvent(n){
+      if(n.ev==="cache"){
+        openEvent("🧊","A wayside find","The Ice-Bound Cache",
+          `A strongbox of black wood, half-swallowed by the ice. Something pale is folded against the glass-clear lid — a <em>letter, frost-sealed</em>. The lock looks bitter about it.`);
+        evChoices([
+          {label:"🪓 Prise it open",pick:()=>{
+            hasLetter=true;
+            if(Math.random()<0.6){ gold+=30; relics.push("hourglass");
+              evFinish(`The lid gives. Inside: <b>30 gold</b>, a <b>⏳ Frozen Hourglass</b> — and the <b>frost-sealed letter</b>, addressed in a scholar's hand. You pocket it all.`); }
+            else { const bite=Math.max(1,Math.round(pmax*0.25)); php=Math.max(1,php-bite); paintPlayer();
+              evFinish(`The lock was bitter for a reason — a snap of frozen teeth takes <b>${bite} strength</b>. But beneath the trap: the <b>frost-sealed letter</b>. You pocket it, bleeding a little.`); } }},
+          {label:"🚶 Leave it be",pick:()=>evFinish("You let the ice keep its secret. The trail moves on, and so do you.")},
+        ]); return;
+      }
+      if(n.ev==="shrine"){
+        openEvent("🔮","A wayside shrine","Shrine of the Old Scholars",
+          `A ring of standing runes, humming with the questions of the dead. An offering bowl waits — the old scholars trade in <em>gold, or in blood</em>, and pay in understanding.`);
+        evChoices([
+          {label:"🪙 Offer 20 gold",disabled:gold<20,pick:()=>{ gold-=20;
+            const xp=Math.ceil(xpNeed(plevel)*0.25); gainXp(xp);
+            evFinish(`The gold sinks into the bowl and does not land. The runes flare, and knowing pours in — <b>+${xp} experience</b>.`); }},
+          {label:"🩸 Offer your strength",pick:()=>{ const cost=Math.max(1,Math.round(pmax*0.2)); php=Math.max(1,php-cost); paintPlayer();
+            const xp=Math.ceil(xpNeed(plevel)*0.4); gainXp(xp);
+            evFinish(`The bowl drinks. It takes <b>${cost} strength</b> and gives back sight — <b>+${xp} experience</b>. A fair trade, say the dead.`); }},
+          {label:"🚶 Pass by",pick:()=>evFinish("You leave the dead to their questions. The runes dim behind you.")},
+        ]); return;
+      }
+      if(n.ev==="traveller"){
+        openEvent("✦","A shape in the snow","The Frozen Traveller",
+          hasLetter
+            ? `The frost-bound scholar's eyes fix on your pack. <em>“That seal… that is MY letter. My last one, never sent.”</em> The ice around him weeps. <em>“One answer, seeker — and bring it here.”</em>`
+            : `A scholar of old Fenrime, frost-bound mid-stride — one of the many whose tales Vyrmouth has half-devoured. A voice like cracking ice: <em>“One answer, seeker. Warm me with it, and what I carry is yours.”</em>`);
+        evAsk(drawEventQ("M"),right=>{
+          if(right && hasLetter){ hasLetter=false; gold+=50; relics.push("quill"); inv.push({icon:"🫐",name:"Sphinx's figs",heal:18});
+            evFinish(`He reads his own last words, and the ice lets him go. In thanks: <b>50 gold</b>, his <b>🪶 Quill</b> — <em>“it has never written a wrong answer”</em> — and <b>🫐 figs</b> for the road.`); }
+          else if(right){ gold+=25; runes+=1; inv.push({icon:"🫐",name:"Sphinx's figs",heal:18});
+            evFinish(`The frost sighs and loosens. He presses a pouch into your hand — <b>25 gold</b>, <b>a rune</b> and <b>🫐 figs</b> — and walks on into the white, warmer than before.`); }
+          else if(hasLetter){ hasLetter=false; gold+=10;
+            evFinish(`The answer falters — but you hand him the letter anyway. He reads, and something in the ice eases. <b>10 gold</b>, pressed into your palm with stiff thanks.`); }
+          else evFinish(`The light behind the ice dims. The traveller keeps his hoard — and the cold keeps the traveller.`);
+        }); return;
+      }
+      if(n.ev==="duel"){
+        openEvent("🗡","Side quest · a rival seeker","Maelis of the South Road",
+          `A seeker in storm-grey furs bars the trail, unbothered by the cold. <em>“Two of us, one vale. Three questions decides who walks first — and who pays for the lesson. Best of three, stranger.”</em>`);
+        let wins=0, asked=0;
+        const next=()=>{ if(asked>=3){
+            if(wins>=2){ relics.push("ember"); gold+=20;
+              evFinish(`Maelis laughs, beaten and pleased. <em>“The vale chooses well.”</em> She tosses you a banked coal — the <b>🔥 Ember of Vyrmouth</b> — and <b>20 gold</b>, and steps aside.`); }
+            else { gold=Math.max(0,gold-15);
+              evFinish(`<em>“The lesson costs.”</em> Maelis relieves you of <b>15 gold</b> and walks on, humming. The trail feels longer for a while.`); }
+            return; }
+          asked++;
+          el("evText").innerHTML=`<em>Question ${asked} of three.</em> Maelis watches, arms folded. Score: you ${wins} — ${asked-1-wins} her.`;
+          evAsk(drawEventQ(asked===3?"H":"M"),right=>{ if(right)wins++; next(); });
+        };
+        next(); return;
+      }
     }
     function renderPips(){ el("pips").innerHTML=FOES.map((f,i)=>`<i class="${i<foeIdx?"done":i===foeIdx?"cur":""}"></i>`).join(""); }
     function setCombo(){ const c=el("combo"); if(combo>=2){c.classList.add("on");c.textContent=`COMBO ×${combo}`;} else c.classList.remove("on"); }
@@ -968,6 +1107,7 @@
         b.innerHTML=`<span class="k">${"ABCD"[i]}</span><span>${opt}</span>`;
         b.onclick=()=>answer(b,opt===q.correct,q,box); box.appendChild(b); });
       const dock=el("dock"); dock.classList.remove("hidden"); dock.classList.remove("enter"); void dock.offsetWidth; dock.classList.add("enter");
+      paintRelics();
       startTimer(q);
     }
     let qStart=0, qSecs=28; // when the clock started, and its length — feeds the swift-strike crit
@@ -986,10 +1126,15 @@
       if(correct){
         btn.classList.add("correct"); combo++; setCombo();
         // Damage is earned, never random: (tier base + level/hero bonus) ×
-        // weak-point × swift crit. Levels sharpen every strike a little.
+        // weak-point × crit. A swift answer on a tough question crits; a lit
+        // ember crits too. The quill's given answer never does.
         const isWeak=q.cat===foe.weak;
         const remain=1-(performance.now()-qStart)/1000/qSecs;
-        const crit=!!CRIT_TIERS[q.tier] && remain>=CRIT_WINDOW;
+        const swift=!quillStrike && !!CRIT_TIERS[q.tier] && remain>=CRIT_WINDOW;
+        const emberCrit=emberOn && !quillStrike;
+        const crit=swift||emberCrit;
+        if(emberOn && !quillStrike) emberOn=false;
+        quillStrike=false;
         let dmg=Math.max(1,Math.round((TIER_FACTOR[q.tier]||1)*levelPower()))+hero.dmg;
         if(isWeak) dmg=Math.round(dmg*WEAK_BONUS);
         if(crit)   dmg*=CRIT_MULT;
@@ -997,7 +1142,8 @@
         slash(crit);
         whiteFlash(crit?.85:.5); shakeScreen(crit||isWeak);
         floatText("−"+dmg, crit?"#ffd76b":isWeak?"#c9b6ff":"#eafff5", 50, crit?30:32);
-        if(crit) bigToast(`CRITICAL — ${TIER_LABEL[q.tier]}, answered swiftly!`,"#ffd76b");
+        if(emberCrit) bigToast("CRITICAL — the ember flares!","#ffcf6b");
+        else if(crit) bigToast(`CRITICAL — ${TIER_LABEL[q.tier]}, answered swiftly!`,"#ffd76b");
         else if(isWeak) bigToast("WEAK POINT!","#c9b6ff");
         else if(combo>=3) bigToast("COMBO ×"+combo,"#ffcf6b");
         const from=foeHP; setFoeHP(foeHP-dmg,from);
@@ -1013,6 +1159,15 @@
       combo=0; setCombo(); bigToast("TOO SLOW","#ff7d8c"); enemyStrike(); }
 
     async function enemyStrike(){
+      if(shieldOn){ // the ward takes the blow — the strike lands, the damage doesn't
+        shieldOn=false; paintRelics();
+        bigToast("🛡 The ward shatters — the blow is turned!","#9fe8b8");
+        floatText("0","#9fe8b8",50,38);
+        if(foe.attack){ await playVid(foe.attack,{loop:false,fallback:foe.still,maxMs:4200});
+          if(foe.idle) playVid(foe.idle,{loop:true,fallback:foe.still}); else setStill(foe.still); }
+        else { await sleep(1200); }
+        await sleep(T.afterWrong); nextQuestion(); return;
+      }
       php=Math.max(0,php-foe.dmg); paintPlayer();
       redFlash(); shakeScreen(true); floatText(`−${foe.dmg}`,"#ff4d5e",50,38);
       if(foe.attack){ await playVid(foe.attack,{loop:false,fallback:foe.still,maxMs:4200});
@@ -1083,6 +1238,7 @@
 
     function resetRun(){ foeIdx=0; pathIdx=0; combo=0; gold=0; runes=0;
       plevel=1; pxp=0; bonusHp=0; pmax=pmaxFor(); php=pmax; inv=[]; used.clear();
+      relics=[]; shieldOn=false; emberOn=false; quillStrike=false; hasLetter=false;
       lastVictory=false; paintPlayer(); takeSnapshot(); }
 
     // ============ Guarded navigation (anti button-spam) ============
@@ -1124,7 +1280,9 @@
     function chooseHero(){ return new Promise(res=>{ const box=el("heroCards"); box.innerHTML="";
       HEROES.forEach(h=>{ const b=document.createElement("button"); b.className="hero-card";
         b.innerHTML=`<span class="hicon">${h.icon}</span><span><div class="hname">${h.name}</div><div class="hperk">${h.perk}</div></span>`;
-        b.onclick=()=>{ hero=h; plevel=1; pxp=0; bonusHp=0; pathIdx=0; foeIdx=0; pmax=pmaxFor(); php=pmax; inv=[]; snapshot=null; paintPlayer(); res(); };
+        b.onclick=()=>{ hero=h; plevel=1; pxp=0; bonusHp=0; pathIdx=0; foeIdx=0; pmax=pmaxFor(); php=pmax;
+          inv=[]; relics=[]; shieldOn=false; emberOn=false; quillStrike=false; hasLetter=false;
+          snapshot=null; paintPlayer(); res(); };
         box.appendChild(b); });
       show("ovHero"); }); }
 
