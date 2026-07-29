@@ -1,3 +1,16 @@
+// ============ AudioGuard: silence is LAW, not convention ============
+// Sound-on lives in sessionStorage only: every fresh open starts silent,
+// whatever happened before. And play() itself is gated — no unmuted media
+// can sound while the switch is off, so no code path can ever leak audio.
+(function(){
+  try{ localStorage.removeItem("quizrush-audio"); }catch(e){} // erase old persisted unmutes
+  const ok=()=>{ try{ return sessionStorage.getItem("quizrush-audio")==="on"; }catch(e){ return false; } };
+  const origPlay=HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play=function(){
+    if(!ok() && !this.muted){ try{ this.pause(); }catch(e){} return Promise.resolve(); }
+    return origPlay.apply(this,arguments);
+  };
+})();
 /* ================= QuizRush =================
    Modes:
    - classic: 10 questions, per-question 15s timer, speed + streak scoring
@@ -12,7 +25,7 @@ const Sound = (() => {
   // ONE global audio switch shared by every page (index / saga / intro),
   // and the default is SILENT: nothing plays until the player flips it on.
   // (Old per-page keys are deliberately ignored — silence wins by default.)
-  let enabled = localStorage.getItem("quizrush-audio") === "on";
+  let enabled = sessionStorage.getItem("quizrush-audio") === "on";
 
   function ac() {
     if (!ctx) {
@@ -96,7 +109,7 @@ const Sound = (() => {
     get enabled() { return enabled; },
     toggle() {
       enabled = !enabled;
-      try { localStorage.setItem("quizrush-audio", enabled ? "on" : "off"); } catch { /* play on */ }
+      try { sessionStorage.setItem("quizrush-audio", enabled ? "on" : "off"); } catch { /* play on */ }
       return enabled;
     },
     // iOS unlocks audio only inside a user gesture — prime the context on the
@@ -196,7 +209,7 @@ const Music = (() => {
   const MENU_TRACK = "ambient"; // calm, for menus / traversing screens
   const GAME_TRACK = "trance";  // more drive, for an active round
 
-  let enabled = localStorage.getItem("quizrush-audio") === "on"; // shared global switch — silent by default
+  let enabled = sessionStorage.getItem("quizrush-audio") === "on"; // shared global switch — silent by default
   let audio = null, currentKey = null;
   let fadeTimer = null, swapTimer = null, duckTimer = null;
 
@@ -285,7 +298,7 @@ const Music = (() => {
     get ctxState() { return actx ? actx.state : "none"; },
     toggle() {
       enabled = !enabled;
-      try { localStorage.setItem("quizrush-audio", enabled ? "on" : "off"); } catch { /* play on */ }
+      try { sessionStorage.setItem("quizrush-audio", enabled ? "on" : "off"); } catch { /* play on */ }
       if (!enabled) this.stop(); else this.start();
       return enabled;
     },

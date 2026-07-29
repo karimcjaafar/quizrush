@@ -99,6 +99,21 @@
 <audio id="song" src="music/ambient-synth-overture.mp3" preload="auto"></audio>
 
 <script>
+// ============ AudioGuard: silence is LAW, not convention ============
+// Sound-on lives in sessionStorage only: every fresh open starts silent,
+// whatever happened before. And play() itself is gated — no unmuted media
+// can sound while the switch is off, so no code path can ever leak audio.
+(function(){
+  try{ localStorage.removeItem("quizrush-audio"); }catch(e){} // erase old persisted unmutes
+  const ok=()=>{ try{ return sessionStorage.getItem("quizrush-audio")==="on"; }catch(e){ return false; } };
+  const origPlay=HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play=function(){
+    if(!ok() && !this.muted){ try{ this.pause(); }catch(e){} return Promise.resolve(); }
+    return origPlay.apply(this,arguments);
+  };
+})();
+</script>
+<script>
 const cv=document.getElementById('c'), ctx=cv.getContext('2d');
 let W,H,DPR;
 function resize(){DPR=Math.min(2,window.devicePixelRatio||1);W=window.innerWidth;H=window.innerHeight;
@@ -142,7 +157,7 @@ function drawDragon(cx,cy,size,glowP,alpha,rot,bright){
 let AC=null;
 // Global audio switch (same key as the app) — the cinematic stays silent unless
 // the player turned sound on. Toggling mid-film joins the score at the beat.
-let sndOn=false; try{ sndOn=localStorage.getItem('quizrush-audio')==='on'; }catch(e){}
+let sndOn=false; try{ sndOn=sessionStorage.getItem('quizrush-audio')==='on'; }catch(e){}
 addEventListener('pagehide',()=>{ const s=$('song'); try{s.pause();s.currentTime=0;}catch(e){} if(AC){try{AC.close();}catch(e){} AC=null;} });
 function boom(w,f=50,d=1.4,v=.5){const t=AC.currentTime+w;const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.setValueAtTime(f*1.6,t);o.frequency.exponentialRampToValueAtTime(f,t+.5);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(v,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g).connect(AC.destination);o.start(t);o.stop(t+d+.1);}
 function roar(w){const t=AC.currentTime+w;const o=AC.createOscillator(),g=AC.createGain(),lp=AC.createBiquadFilter();o.type='sawtooth';o.frequency.setValueAtTime(120,t);o.frequency.exponentialRampToValueAtTime(58,t+1.1);o.frequency.linearRampToValueAtTime(70,t+1.4);lp.type='lowpass';lp.frequency.value=900;g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(.42,t+.18);g.gain.setValueAtTime(.42,t+1.0);g.gain.exponentialRampToValueAtTime(.0001,t+1.6);o.connect(lp).connect(g).connect(AC.destination);o.start(t);o.stop(t+1.7);
@@ -293,7 +308,7 @@ function render(t,dt){
 
 function enter(){location.href='./';}     // into the app
 $('snd').addEventListener('click',e=>{e.stopPropagation();
-  sndOn=!sndOn; try{ localStorage.setItem('quizrush-audio',sndOn?'on':'off'); }catch(err){}
+  sndOn=!sndOn; try{ sessionStorage.setItem('quizrush-audio',sndOn?'on':'off'); }catch(err){}
   $('snd').textContent=sndOn?'🔊':'🔇';
   const s=$('song');
   if(!sndOn){ try{s.pause();}catch(err){} if(AC){try{AC.close();}catch(err){} AC=null;} return; }
