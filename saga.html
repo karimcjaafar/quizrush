@@ -185,6 +185,17 @@
     .worldmap-wrap{flex:0 0 auto;width:min(92vw,370px);height:min(54vh,430px);
       overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
       border-radius:16px;border:1px solid var(--line);box-shadow:var(--shadow);background:#05091a}
+    /* the living painting: video breathes under the vector marker layer;
+       the SVG's own still image fades out once the video actually plays */
+    .mapstack{position:relative;width:100%;aspect-ratio:2/3}
+    #mapLive{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+    .mapstack svg{position:absolute;inset:0;width:100%;height:100%}
+    .mapstack.live #worldmap image{opacity:0;transition:opacity 1.2s ease}
+    /* the frost-wipe: white frost on black, screen-blended over everything —
+       black vanishes, only the ice shows */
+    .frostwipe{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;
+      mix-blend-mode:screen;pointer-events:none;z-index:95;opacity:0;transition:opacity .25s}
+    .frostwipe.on{opacity:1}
     #worldmap{display:block;width:100%;height:auto}
     .road{fill:none;stroke:rgba(222,236,255,.72);stroke-width:2.4;stroke-dasharray:.5 6.5;stroke-linecap:round}
     .road.dim{stroke:rgba(215,232,255,.14)}
@@ -350,6 +361,8 @@
   </style>
 </head>
 <body>
+  <video id="frostWipe" class="frostwipe" muted playsinline preload="none"
+    src="media/saga/App%20Videos/frost-wipe.mp4"></video>
   <div class="stage" id="stage">
     <div id="scene">
       <canvas id="frost"></canvas>
@@ -466,6 +479,9 @@
       <div class="ov-title" style="font-size:clamp(22px,6vw,34px)">The Frost-Trail</div>
       <p class="ov-sub" style="opacity:.7;font-size:12.5px;margin-top:-4px">Vyrmouth, First Flame of Malrune, devours the vale's names from beneath. Answer well, and take them back.</p>
       <div class="worldmap-wrap">
+      <div class="mapstack">
+      <video id="mapLive" muted playsinline loop preload="none"
+        src="media/saga/App%20Videos/w1-map-living.mp4"></video>
       <svg id="worldmap" viewBox="0 0 360 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Map of the Frozen Vale">
         <image href="media/saga/App%20Pics/Ice%20World%20-%20World%201.png" x="0" y="0" width="360" height="540" preserveAspectRatio="xMidYMid slice"/>
         <g stroke="#070f20" stroke-width="5" stroke-linecap="round" fill="none" opacity=".45">
@@ -483,6 +499,7 @@
         <text x="200" y="527" text-anchor="middle" font-size="8" letter-spacing="2.5" fill="#dce8fa" opacity=".85" font-family="Cinzel,serif" style="paint-order:stroke" stroke="#070d1d" stroke-width="2.2">THE VALE'S MOUTH</text>
         <g id="mapNodes"></g>
       </svg>
+      </div>
       </div>
       <div class="map-now" id="mapNow"></div>
       <div class="map-you" id="mapYou"></div>
@@ -1081,6 +1098,16 @@
       el("mapHint").innerHTML=`“${valeWhisper()}”`;
       el("mapGo").textContent=pathIdx===0?"Set forth ▸":(n.boss?"Enter the Ice Palace ▸":"Continue ▸");
       const svg=el("worldmap"); svg.classList.remove("dive"); svg.style.transform="";
+      // The living-map video awaits a composition-locked regeneration (the
+      // first pass re-imagined the scene and lost the palace). Flip to true
+      // when an aligned w1-map-living.mp4 lands — wiring is already done.
+      const LIVING_MAP=false;
+      const live=LIVING_MAP?el("mapLive"):null;
+      if(live){ if(!live._wired){ live._wired=true;
+          live.addEventListener("playing",()=>live.closest(".mapstack").classList.add("live"));
+          live.addEventListener("error",()=>{ live.style.display="none"; }); }
+        live.play().catch(()=>{}); }
+      const fw=el("frostWipe"); if(fw && !fw._loaded){ fw._loaded=true; try{ fw.load(); }catch(e){} }
       setScore("map");
       running=false; show("ovMap");
       // The camera: the world is two screens tall — glide the view so your
@@ -1564,11 +1591,23 @@
       svg.classList.add("dive");
       await sleep(980);
     }
+    function playWipe(){
+      const fw=el("frostWipe");
+      if(!fw || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      try{ fw.currentTime=0; }catch(e){}
+      fw.playbackRate=3; // the 10s generation compressed to the ~3s the dive needs
+      fw.classList.add("on");
+      fw.play().catch(()=>{});
+      clearTimeout(playWipe._t);
+      playWipe._t=setTimeout(()=>{ fw.classList.remove("on"); try{ fw.pause(); }catch(e){} }, 3600);
+    }
     el("mapGo").onclick=guard(async()=>{
       const n=PATH[pathIdx];
       setScore("amb");
+      playWipe();
       await diveTo(pathIdx);
       await fadeOutOverlay("ovMap");
+      const live=el("mapLive"); if(live) try{ live.pause(); }catch(e){}
       if(n.t==="battle" && php<=pmax*LOW_HP){ openRest(); return; }
       await runNode(); });
     el("restGo").onclick  =guard(async()=>{ await fadeOutOverlay("ovRest"); await runNode(); });
