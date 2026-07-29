@@ -116,8 +116,40 @@ button, .chip, .mode-card, .daily-card, .theme-swatch {
 @keyframes splashFadeSlow { to { opacity: 0; } }
 @keyframes splashOut { to { opacity: 0; transform: scale(1.12); } }
 
+/* --- Malrune behind the gate: a still face, shimmering, shedding dust.
+       Kept dim + edge-masked so the words above always win. --- */
+.malrune-veil { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.malrune-face {
+  position: absolute; left: 50%; top: -7%;
+  width: 235%; max-width: none; transform: translateX(-50%);
+  opacity: 0.3; filter: brightness(0.85) saturate(0.85);
+  -webkit-mask-image: radial-gradient(ellipse 58% 44% at 50% 20%, #000 34%, transparent 76%);
+  mask-image: radial-gradient(ellipse 58% 44% at 50% 20%, #000 34%, transparent 76%);
+  animation: malruneShimmer 9s ease-in-out infinite;
+}
+@keyframes malruneShimmer {
+  0%, 100% { opacity: 0.24; filter: brightness(0.78) saturate(0.8); }
+  50%      { opacity: 0.36; filter: brightness(1) saturate(0.95); }
+}
+.malrune-dust span {
+  position: absolute; width: 3px; height: 3px; border-radius: 50%;
+  background: rgba(205, 220, 255, 0.85); filter: blur(0.6px); opacity: 0;
+  animation: malDust var(--d, 9s) linear var(--dl, 0s) infinite;
+}
+@keyframes malDust {
+  0%   { transform: translateY(4vh) translateX(0); opacity: 0; }
+  12%  { opacity: var(--o, 0.6); }
+  70%  { opacity: calc(var(--o, 0.6) * 0.6); }
+  100% { transform: translateY(-26vh) translateX(var(--dx, 8px)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .malrune-face { animation: none; }
+  .malrune-dust { display: none; }
+}
 /* --- Phase 0: the tap gate --- */
-.splash-gate { text-align: center; }
+.splash-gate { text-align: center; position: relative; z-index: 2; padding: 0 26px; }
+.gate-fact { margin-top: 14px; font-size: 14.5px; letter-spacing: 0.05em; color: #cfd9ef; opacity: 0.92; }
+.gate-lore { margin-top: 5px; font-size: 12.5px; font-style: italic; color: #b9a8e8; opacity: 0.85; }
 .gate-bolt {
   font-size: 90px; line-height: 1;
   animation: gatePulse 1.6s ease-in-out infinite alternate;

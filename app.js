@@ -3615,6 +3615,19 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
   const splash = $("splash");
   const video = $("splash-video");
   const skip = $("splash-skip");
+  const dust = $("malrune-dust");
+  if (dust && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    for (let i = 0; i < 16; i++) {
+      const d = document.createElement("span");
+      d.style.left = (6 + Math.random() * 88) + "%";
+      d.style.top = (8 + Math.random() * 55) + "%";
+      d.style.setProperty("--d", (7 + Math.random() * 8).toFixed(1) + "s");
+      d.style.setProperty("--dl", (-Math.random() * 9).toFixed(1) + "s");
+      d.style.setProperty("--o", (0.3 + Math.random() * 0.5).toFixed(2));
+      d.style.setProperty("--dx", ((Math.random() - 0.5) * 30).toFixed(0) + "px");
+      dust.appendChild(d);
+    }
+  }
   const mute = $("splash-mute");
   if (mute) {
     // Visible from the very first frame: audio defaults to silent, and this is

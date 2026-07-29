@@ -20,11 +20,16 @@
   <canvas id="ambient-bg" aria-hidden="true"></canvas>
   <!-- Cinematic intro: tap gate (audio unlock) → the dragon film → home -->
   <div class="splash" id="splash">
+    <div class="malrune-veil" aria-hidden="true">
+      <img class="malrune-face" src="media/saga/App%20Pics/a_dramatic_fantasy_character_concept_illustration.png" alt="">
+      <div class="malrune-dust" id="malrune-dust"></div>
+    </div>
     <div class="splash-gate" id="splash-gate">
       <div class="gate-rune">ᛟ</div>
       <h1 class="gate-title"><span class="splash-quiz">Riddle</span> <span class="gate-amp">&amp;</span> <span class="splash-rush">Rune</span></h1>
+      <p class="gate-fact">A fantasy quest, fought with trivia.</p>
+      <p class="gate-lore">Beneath the frozen vale, Malrune the Unanswered stirs.</p>
       <p class="gate-tap">TAP TO BEGIN</p>
-      <p class="gate-hint">silent by default · tap 🔊 for sound</p>
     </div>
     <video class="splash-video" id="splash-video" muted playsinline preload="none" hidden></video>
     <button class="splash-mute" id="splash-mute" aria-label="Sound on/off">🔇</button>
