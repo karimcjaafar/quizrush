@@ -845,7 +845,7 @@
         if(k>=1){ clearInterval(a._fi); if(target===0)a.pause(); } },50); }
     function setScore(which){ if(muted)return;
       if(which==="map"){ ensureMapSong(); mapSong.play().catch(()=>{});
-        fadeAud(mapSong,.45,900);
+        fadeAud(mapSong,.2,900);   // the map's own song stays soft — a murmur under the whispers
         if(ambience && !ambience.paused) fadeAud(ambience,0,900); }
       else { if(mapSong && !mapSong.paused) fadeAud(mapSong,0,900);
         ensureAmb(); ambience.play().catch(()=>{}); fadeAud(ambience,.4,900); } }
