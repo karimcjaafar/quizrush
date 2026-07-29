@@ -4,7 +4,7 @@
 // can sound while the switch is off, so no code path can ever leak audio.
 (function(){
   try{ localStorage.removeItem("quizrush-audio"); }catch(e){} // erase old persisted unmutes
-  const ok=()=>{ try{ return sessionStorage.getItem("quizrush-audio")==="on"; }catch(e){ return false; } };
+  const ok=()=>{ try{ return sessionStorage.getItem("quizrush-audio")!=="off"; }catch(e){ return false; } };
   const origPlay=HTMLMediaElement.prototype.play;
   HTMLMediaElement.prototype.play=function(){
     if(!ok() && !this.muted){ try{ this.pause(); }catch(e){} return Promise.resolve(); }
@@ -23,9 +23,9 @@
 const Sound = (() => {
   let ctx = null;
   // ONE global audio switch shared by every page (index / saga / intro),
-  // and the default is SILENT: nothing plays until the player flips it on.
-  // (Old per-page keys are deliberately ignored — silence wins by default.)
-  let enabled = sessionStorage.getItem("quizrush-audio") === "on";
+  // ON by default (per request 2026-07-29): sound plays unless the player
+  // switches it off. (Old per-page keys are deliberately ignored.)
+  let enabled = sessionStorage.getItem("quizrush-audio") !== "off";
 
   function ac() {
     if (!ctx) {
@@ -206,10 +206,13 @@ const Music = (() => {
     neon:    "music/soft-neon.mp3",
     trance:  "music/trance-overture.mp3",
   };
-  const MENU_TRACK = "ambient"; // calm, for menus / traversing screens
-  const GAME_TRACK = "trance";  // more drive, for an active round
+  // Track split so traditional and saga never share a song: the ambient
+  // overture is saga's ambience, so traditional's menu bed is Soft Neon and
+  // its round bed is Trance — neither of which the saga ever plays.
+  const MENU_TRACK = "neon";   // calm, for menus / traversing screens
+  const GAME_TRACK = "trance"; // more drive, for an active round
 
-  let enabled = sessionStorage.getItem("quizrush-audio") === "on"; // shared global switch — silent by default
+  let enabled = sessionStorage.getItem("quizrush-audio") !== "off"; // shared global switch — on by default
   let audio = null, currentKey = null;
   let fadeTimer = null, swapTimer = null, duckTimer = null;
 
@@ -650,6 +653,10 @@ const player = {
   set gems(v) { safeSetItem("quizrush-gems", String(Math.max(0, v))); },
   get streakFreezes() { return Number(localStorage.getItem("quizrush-freezes") || 0); },
   set streakFreezes(v) { safeSetItem("quizrush-freezes", String(Math.max(0, v))); },
+  // Continue price: starts at 10 Gold, doubles with every continue bought,
+  // and settles back to 10 once 72 quiet hours have passed.
+  get reviveState() { return getJSON("quizrush-revive", { cost: 10, at: 0 }); },
+  set reviveState(v) { setJSON("quizrush-revive", v); },
   get ownedThemes() { return getJSON("quizrush-owned-themes", []); },
   set ownedThemes(v) { setJSON("quizrush-owned-themes", v); },
   get lastLoginBonus() { return localStorage.getItem("quizrush-login-bonus") || ""; },
@@ -1074,6 +1081,11 @@ function showScreen(name) {
   const current = Object.values(screens).find((s) => s.classList.contains("active"));
   if (current === target) return;
   setAmbient(name);
+  // Home is one tap away on every screen that lacks its own navigation:
+  // hidden on the hub + tab screens (they carry the bottom tab bar), on the
+  // live question screens (game/whoami/dingbats), and on the saga hand-off.
+  $("btn-float-home").hidden =
+    ["hub", "home", "progress", "customize", "game", "whoami", "dingbats", "descent"].includes(name);
   // Two-phase transition: outgoing screen glides away, then the new one enters
   if (!current || matchMedia("(prefers-reduced-motion: reduce)").matches) {
     Object.values(screens).forEach((s) => s.classList.remove("active", "screen-exit"));
@@ -1973,17 +1985,29 @@ function onTimeout() {
   updateScoreUI();
 
   if (state.mode === "sudden") {
-    setTimeout(() => (player.tokens >= 3 ? showReviveOffer() : endGame()), 1100);
+    setTimeout(() => (player.tokens >= reviveCost() ? showReviveOffer() : endGame()), 1100);
   } else {
     offerLearnMore();
     state.advanceTimer = setTimeout(nextQuestion, 1000);
   }
 }
 
-// Sudden Death second chance: spend 3 tokens to survive a wrong answer
+// Sudden Death second chance: an escalating price — 10 Gold the first time,
+// doubling with every continue bought, easing back to 10 after 72 quiet hours.
+const REVIVE_BASE_COST = 10;
+const REVIVE_RESET_MS = 72 * 60 * 60 * 1000;
+function reviveCost() {
+  const s = player.reviveState;
+  if ((s.cost || REVIVE_BASE_COST) !== REVIVE_BASE_COST && Date.now() - (s.at || 0) > REVIVE_RESET_MS) {
+    player.reviveState = { cost: REVIVE_BASE_COST, at: 0 };
+    return REVIVE_BASE_COST;
+  }
+  return s.cost || REVIVE_BASE_COST;
+}
 function showReviveOffer() {
   if (!state || state.ended) return; // player quit during the reveal delay
   $("revive-offer").hidden = false;
+  $("btn-revive").textContent = `Continue · ${reviveCost()} Gold`;
   $("revive-balance").textContent = `You have ${player.tokens} Gold`;
   // on small screens the offer can render below the fold — bring it into view
   $("revive-offer").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -3417,7 +3441,10 @@ document.addEventListener("keydown", (e) => {
 });
 
 $("btn-revive").addEventListener("click", () => {
-  player.tokens -= 3;
+  const cost = reviveCost();
+  if (player.tokens < cost) { $("revive-offer").hidden = true; endGame(); return; }
+  player.tokens -= cost;
+  player.reviveState = { cost: cost * 2, at: Date.now() }; // price doubles; 72h quiet resets it
   $("revive-offer").hidden = true;
   Sound.start();
   updateScoreUI();
@@ -3426,6 +3453,21 @@ $("btn-revive").addEventListener("click", () => {
 $("btn-no-revive").addEventListener("click", () => {
   $("revive-offer").hidden = true;
   endGame();
+});
+
+$("btn-float-home").addEventListener("click", () => {
+  Sound.click();
+  // Tear down any run in progress so we never leave a timer ticking behind us.
+  if (typeof state !== "undefined" && state) {
+    flushAnswerStats();
+    clearInterval(state.qTimer);
+    clearInterval(state.blitzTimer);
+    clearTimeout(state.freezeTimer);
+    $("blitz-timer").classList.remove("frozen");
+    state = null;
+  }
+  Music.start("anthem");
+  showScreen("hub");
 });
 
 $("btn-quit-whoami").addEventListener("click", () => { Sound.click(); quitGame(); });

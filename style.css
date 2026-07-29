@@ -722,6 +722,26 @@ body.intro-done #screen-home > :nth-child(n+9) { animation-delay: 0.6s; }
 .btn-sound:hover { border-color: rgba(124, 92, 255, 0.55); }
 .btn-sound:active { transform: scale(0.92); }
 
+/* Return-to-home pill: rides just below the sound toggle on every
+   non-gameplay screen, so home is always one tap away. */
+.btn-float-home {
+  position: fixed;
+  top: calc(66px + env(safe-area-inset-top));
+  right: 16px;
+  z-index: 40;
+  width: 42px; height: 42px;
+  display: grid; place-items: center;
+  font-size: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  backdrop-filter: blur(12px);
+  transition: transform 0.15s, border-color 0.15s;
+}
+.btn-float-home:hover { border-color: rgba(124, 92, 255, 0.55); }
+.btn-float-home:active { transform: scale(0.92); }
+.btn-float-home[hidden] { display: none; }
+
 /* ===== persistent top status bar (level · gold · gems · shop) ===== */
 .topbar {
   position: fixed;

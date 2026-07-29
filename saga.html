@@ -580,7 +580,7 @@
 // can sound while the switch is off, so no code path can ever leak audio.
 (function(){
   try{ localStorage.removeItem("quizrush-audio"); }catch(e){} // erase old persisted unmutes
-  const ok=()=>{ try{ return sessionStorage.getItem("quizrush-audio")==="on"; }catch(e){ return false; } };
+  const ok=()=>{ try{ return sessionStorage.getItem("quizrush-audio")!=="off"; }catch(e){ return false; } };
   const origPlay=HTMLMediaElement.prototype.play;
   HTMLMediaElement.prototype.play=function(){
     if(!ok() && !this.muted){ try{ this.pause(); }catch(e){} return Promise.resolve(); }
@@ -831,9 +831,9 @@
       used.add(q.text); return q; }
 
     // ============ Audio — ambient music only. Animations are always silent. ============
-    // Shared global audio switch (same key as the main app) — silent by default;
-    // sound plays only if the player explicitly enabled it somewhere.
-    let muted=true; try{ muted = sessionStorage.getItem("quizrush-audio")!=="on"; }catch(e){}
+    // Shared global audio switch (same key as the main app) — ON by default;
+    // silent only if the player switched it off somewhere.
+    let muted=false; try{ muted = sessionStorage.getItem("quizrush-audio")==="off"; }catch(e){}
     let ambience=null, mapSong=null;
     // Two scores: the ambience everywhere — and Skyline Drift, the world-map's
     // own song, which ALWAYS hands back to the ambience when you leave the map.
