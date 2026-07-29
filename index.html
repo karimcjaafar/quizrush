@@ -80,12 +80,9 @@
   <button id="btn-sound" class="btn-sound" title="Mute all">🔊</button>
   <button id="btn-float-home" class="btn-float-home" title="Home" hidden>🏠</button>
 
-  <!-- Persistent top status bar (menus): level + gold + gems + shop -->
+  <!-- Persistent top status bar (menus): gold + gems + shop.
+       Player levels/ranks are a saga-only concept; traditional is rounds. -->
   <div class="topbar" id="topbar">
-    <button class="tb-level" id="tb-level" title="Your progress">
-      <span class="tb-lvl" id="tb-lvl">Lv 1</span>
-      <span class="tb-xp"><span class="tb-xp-fill" id="tb-xp-fill"></span></span>
-    </button>
     <div class="tb-right">
       <button class="tb-cur" id="tb-gold" title="Open the Shop — Gold"></button>
       <button class="tb-cur" id="tb-gem" title="Open the Shop — Gems"></button>
@@ -239,14 +236,8 @@
     </header>
 
     <section class="settings-panel">
-      <div class="player-bar">
-        <div class="level-pill">Lv <span id="lvl-num">1</span></div>
-        <div class="xp-track"><div class="xp-fill" id="xp-fill"></div></div>
-        <span class="xp-label" id="xp-label"></span>
-      </div>
       <div class="player-sub">
         <button class="player-name" id="player-name" title="Edit profile"></button>
-        <span class="player-title" id="player-title">Trivia Novice</span>
         <button class="player-tokens" id="player-tokens" title="Open the Shop — Gold">0</button>
         <button class="player-tokens player-gems" id="player-gems" title="Open the Shop — Gems">💎 0</button>
       </div>

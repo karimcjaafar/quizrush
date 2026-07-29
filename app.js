@@ -2639,18 +2639,10 @@ function endGame() {
     })();
   }
 
-  // XP + level
-  const xpGained = Math.round(score / 10) + correct * 2 + dailyBonus;
-  const lvlBefore = levelFromXp(player.xp);
-  player.xp += xpGained;
-  const lvlAfter = levelFromXp(player.xp);
-  if (lvlAfter > lvlBefore) player.tokens += (lvlAfter - lvlBefore) * LEVELUP_TOKENS; // level-up pays tokens
-  const titleChanged = titleForLevel(lvlAfter) !== titleForLevel(lvlBefore);
+  // No player XP/level in traditional — levels live in saga. The results line
+  // just carries the daily-streak note (when relevant); rewards are Gold/gems.
   $("results-xp").innerHTML =
-    `+${xpGained} XP` +
-    (mode === "daily" && dailyWon ? ` · +2 Gold · 🔥 ${liveDailyStreak()}-day daily streak` : "") +
-    (lvlAfter > lvlBefore ? ` <span class="level-up">⬆ Level ${lvlAfter}!</span>` : "") +
-    (titleChanged ? ` <span class="level-up">🎖 ${titleForLevel(lvlAfter)}</span>` : "");
+    (mode === "daily" && dailyWon ? `+2 Gold · 🔥 ${liveDailyStreak()}-day daily streak` : "");
 
   // Badges
   const earned = new Set(player.badges);
@@ -2724,9 +2716,6 @@ function endGame() {
 
   if (mode === "daily" && dailyWon) {
     playCelebration({ big: "DAILY SOLVED!", sub: `🔥 ${liveDailyStreak()}-day streak` }, () => reveal(true));
-  } else if (titleChanged) {
-    // reaching a new rank is a grand, earned moment
-    playMilestone({ kicker: "NEW RANK", title: titleForLevel(lvlAfter).toUpperCase(), sub: `Reached Level ${lvlAfter}` }, () => reveal(true));
   } else {
     reveal(false);
   }
@@ -2968,23 +2957,17 @@ function quitGame() {
 
 // ---------- Home screen rendering ----------
 function paintPlayerBar() {
-  const { lvl, into, needed } = levelProgress(player.xp);
-  $("lvl-num").textContent = String(lvl);
-  $("xp-fill").style.width = `${Math.min((into / needed) * 100, 100)}%`;
-  $("xp-label").textContent = `${into} / ${needed} XP`;
+  // Player level/rank is saga-only now; these elements no longer exist in the
+  // traditional UI, so every lookup is null-guarded.
   const p = player.profile;
-  $("player-name").textContent = p ? `${p.avatar} ${p.name}` : "";
-  $("player-title").textContent = "🎖 " + titleForLevel(lvl);
+  const nameEl = $("player-name"); if (nameEl) nameEl.textContent = p ? `${p.avatar} ${p.name}` : "";
   paintCurrencies();
   paintTopbar();
 }
 
-// Persistent top status bar (level + progress; gold/gems come from paintCurrencies)
-function paintTopbar() {
-  const { lvl, into, needed } = levelProgress(player.xp);
-  const l = $("tb-lvl"); if (l) l.textContent = "Lv " + lvl;
-  const f = $("tb-xp-fill"); if (f) f.style.width = `${Math.min((into / needed) * 100, 100)}%`;
-}
+// Persistent top status bar carries only the currencies now (gold/gems via
+// paintCurrencies) — player level/rank moved out of traditional entirely.
+function paintTopbar() { /* no level in traditional; kept for call sites */ }
 
 function paintCategoryChips() {
   const active = document.querySelector("#chips-category .chip.active")?.dataset.value ?? "";
