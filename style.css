@@ -120,16 +120,16 @@ button, .chip, .mode-card, .daily-card, .theme-swatch {
        Kept dim + edge-masked so the words above always win. --- */
 .malrune-veil { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
 .malrune-face {
-  position: absolute; left: 50%; top: -7%;
-  width: 235%; max-width: none; transform: translateX(-50%);
-  opacity: 0.3; filter: brightness(0.85) saturate(0.85);
-  -webkit-mask-image: radial-gradient(ellipse 58% 44% at 50% 20%, #000 34%, transparent 76%);
-  mask-image: radial-gradient(ellipse 58% 44% at 50% 20%, #000 34%, transparent 76%);
+  position: absolute; left: 50%; top: -17%;
+  width: 152%; max-width: none; transform: translateX(-50%);
+  opacity: 0.44; filter: brightness(1.05) saturate(0.95);
+  -webkit-mask-image: radial-gradient(ellipse 64% 50% at 50% 19%, #000 40%, transparent 80%);
+  mask-image: radial-gradient(ellipse 64% 50% at 50% 19%, #000 40%, transparent 80%);
   animation: malruneShimmer 9s ease-in-out infinite;
 }
 @keyframes malruneShimmer {
-  0%, 100% { opacity: 0.24; filter: brightness(0.78) saturate(0.8); }
-  50%      { opacity: 0.36; filter: brightness(1) saturate(0.95); }
+  0%, 100% { opacity: 0.36; filter: brightness(0.95) saturate(0.85); }
+  50%      { opacity: 0.52; filter: brightness(1.18) saturate(1); }
 }
 .malrune-dust span {
   position: absolute; width: 3px; height: 3px; border-radius: 50%;
