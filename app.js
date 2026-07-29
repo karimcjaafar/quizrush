@@ -1213,12 +1213,15 @@ const GENERATED_EXTRA = (typeof GENERATED_EXTRA_BANK !== "undefined" && Array.is
 const GENERATED_SAGA = (typeof GENERATED_SAGA_BANK !== "undefined" && Array.isArray(GENERATED_SAGA_BANK)) ? GENERATED_SAGA_BANK : [];
 // Karim's authored MCQ bank (bank-user.js), imported from the Google Sheet.
 const USER = (typeof USER_BANK !== "undefined" && Array.isArray(USER_BANK)) ? USER_BANK : [];
-// Per request (2026-07): use Karim's authored bank alongside the app's own
-// originals; the imported OpenTriviaQA bank and the earlier generated/made banks
-// are SET ASIDE for the time being (still loaded, just not drawn from). To bring
-// the full ~35k pool back, restore the extra args in the concat below:
-//   QUIZRUSH_BANK.concat(USER, IMPORTED, GENERATED, GENERATED_SPORT, GENERATED_EXTRA, GENERATED_SAGA)
-const BANK_ALL = QUIZRUSH_BANK.concat(USER);
+// Per request (2026-07-29): traditional trivia draws EXCLUSIVELY from Karim's
+// sheet bank (bank-user.js) in every category the sheet covers — the app's
+// original core-trivia questions are retired. QUIZRUSH_BANK still supplies
+// ONLY what the sheet doesn't have: the picture rounds (flags/shapes/emovies),
+// logic & numbers formats, and specialist packs, so those menus keep working.
+// (The Daily keeps its own picture pools via QUIZRUSH_BANK directly.)
+// To bring the old originals back into a category, remove it from USER_CATS.
+const USER_CATS = new Set(USER.map((q) => q.cat));
+const BANK_ALL = QUIZRUSH_BANK.filter((q) => !USER_CATS.has(q.cat)).concat(USER);
 void [IMPORTED, GENERATED, GENERATED_SPORT, GENERATED_EXTRA, GENERATED_SAGA]; // set aside; keep refs
 
 function fetchFromBank({ amount, catId, difficulty }) {
