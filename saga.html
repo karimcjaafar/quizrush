@@ -114,10 +114,10 @@
     .foe-meta{flex:1 1 auto;min-width:0}
     .foe-name{font-family:"Cinzel";font-weight:700;font-size:clamp(16px,4.4vw,24px);
       letter-spacing:.04em;text-shadow:0 2px 16px rgba(0,0,0,.85);line-height:1.05}
-    .foe-sub{font-size:12px;opacity:.8;margin-top:3px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .foe-sub{font-size:14px;opacity:.8;margin-top:3px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .weak-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;
       background:rgba(10,15,28,.55);border:1px solid var(--glow-soft,rgba(180,156,255,.5));
-      color:var(--glow,#e0d6ff);font-size:11px;letter-spacing:.05em;transition:color .9s ease,border-color .9s ease}
+      color:var(--glow,#e0d6ff);font-size:13px;letter-spacing:.05em;transition:color .9s ease,border-color .9s ease}
     .stage-pips{display:flex;gap:5px}
     .stage-pips i{width:9px;height:9px;border-radius:50%;background:rgba(200,225,255,.22);border:1px solid var(--line)}
     .stage-pips i.done{background:var(--frost);box-shadow:0 0 8px var(--frost)}
@@ -128,7 +128,7 @@
       background:linear-gradient(90deg,#ff5566,#ff8a4d)}
     .hpbar>.ghost{background:rgba(255,255,255,.4);transition:transform 1.1s ease .2s}
     .hpbar>b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-      font-family:"Cinzel";font-size:11px;letter-spacing:.12em;text-shadow:0 1px 3px #000;z-index:2}
+      font-family:"Cinzel";font-size:13px;letter-spacing:.12em;text-shadow:0 1px 3px #000;z-index:2}
 
     .float{position:absolute;z-index:11;font-family:"Cinzel";font-weight:900;pointer-events:none;
       text-shadow:0 3px 12px rgba(0,0,0,.85);will-change:transform,opacity}
@@ -149,7 +149,7 @@
     .hero-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
     /* Player status: hero + level chip, HP bar (persists between battles), thin XP line */
     .pstat{display:flex;align-items:center;gap:8px;flex:1 1 auto;min-width:0}
-    .plvl{font-family:"Cinzel";font-size:12px;letter-spacing:.06em;white-space:nowrap;
+    .plvl{font-family:"Cinzel";font-size:14px;letter-spacing:.06em;white-space:nowrap;
       padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:rgba(10,15,28,.6);color:#eaf3ff}
     .pbars{flex:1 1 auto;min-width:0;max-width:190px}
     .php{height:12px;border-radius:7px;background:rgba(9,14,26,.72);border:1px solid var(--line);
@@ -158,11 +158,11 @@
       background:linear-gradient(90deg,#3ec98c,#8fe3b4)}
     .php.low>i{background:linear-gradient(90deg,#ff5566,#ff8a4d)}
     .php>b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-      font-family:"Cinzel";font-size:9px;letter-spacing:.1em;text-shadow:0 1px 3px #000;z-index:2}
+      font-family:"Cinzel";font-size:11.5px;letter-spacing:.1em;text-shadow:0 1px 3px #000;z-index:2}
     .pxp{height:3px;border-radius:3px;background:rgba(255,255,255,.09);margin-top:3px;overflow:hidden}
     .pxp>i{display:block;height:100%;transform-origin:left;transition:transform .5s ease;
       background:linear-gradient(90deg,#8f7ae8,#c9b6ff);width:100%}
-    .combo{margin-left:auto;font-family:"Cinzel";font-size:13px;letter-spacing:.08em;opacity:0;transition:opacity .3s}
+    .combo{margin-left:auto;font-family:"Cinzel";font-size:15px;letter-spacing:.08em;opacity:0;transition:opacity .3s}
     .combo.on{opacity:1;color:var(--gold);text-shadow:0 0 12px rgba(255,207,107,.65)}
     /* Hero select cards */
     .hero-cards{display:flex;flex-direction:column;gap:10px;width:min(92vw,420px)}
@@ -171,7 +171,7 @@
     .hero-card:active{transform:scale(.98)}
     .hero-card .hicon{font-size:30px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
     .hero-card .hname{font-family:"Cinzel";font-weight:700;font-size:16px}
-    .hero-card .hperk{font-size:12.5px;opacity:.75;margin-top:2px}
+    .hero-card .hperk{font-size:14.5px;opacity:.75;margin-top:2px}
     /* The physical world map: an icy land drawn in SVG, the road winding up
        to the ice palace. Done nodes dim green, the current one pulses gold,
        the road not taken fades once the fork is chosen. */
@@ -211,7 +211,7 @@
     .mnode.secret circle.body{stroke:#e6f0ff;filter:drop-shadow(0 0 8px rgba(207,224,245,.95))}
     .mnode.secret{animation:secretIn 1.4s ease}
     @keyframes secretIn{from{opacity:0}to{opacity:1}}
-    .mnode text{font-size:12px;text-anchor:middle;dominant-baseline:central}
+    .mnode text{font-size:14px;text-anchor:middle;dominant-baseline:central}
     .mnode.done{opacity:.55}
     .mnode.done circle.body{stroke:rgba(159,232,184,.65)}
     .mnode.ahead{opacity:.85}
@@ -221,27 +221,27 @@
     @keyframes mapPulse{0%{r:14;opacity:.9}100%{r:26;opacity:0}}
     @media (prefers-reduced-motion:reduce){.mnode.cur .pulse{animation:none;opacity:.4}}
     .map-now{font-family:"Cinzel";font-size:15px;letter-spacing:.05em;color:var(--gold);text-align:center}
-    .map-now small{display:block;font-family:"Marcellus";font-size:10.5px;letter-spacing:.15em;
+    .map-now small{display:block;font-family:"Marcellus";font-size:12.5px;letter-spacing:.15em;
       text-transform:uppercase;opacity:.65;color:#cfd9ef;margin-top:2px}
-    .map-you{font-size:12.5px;opacity:.75;letter-spacing:.04em}
-    .map-whisper{font-style:italic;font-size:13px;line-height:1.5;opacity:.72;max-width:min(88vw,400px);
+    .map-you{font-size:14.5px;opacity:.75;letter-spacing:.04em}
+    .map-whisper{font-style:italic;font-size:15px;line-height:1.5;opacity:.72;max-width:min(88vw,400px);
       margin:2px 0 0;color:#cfd9ef}
     .map-whisper b{color:var(--gold);font-weight:600}
-    .ch-hint{font-style:italic;font-size:13px;line-height:1.5;opacity:.8;color:#c9b6ff;margin-top:10px;
+    .ch-hint{font-style:italic;font-size:15px;line-height:1.5;opacity:.8;color:#c9b6ff;margin-top:10px;
       max-width:min(86vw,420px)}
     .ch-hint b{color:var(--gold);font-weight:600}
     /* Pack (inventory) + shop rows, shared by the spoils camp and the rest prompt */
     .inv-row{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
     .inv-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;
-      border:1px solid rgba(159,232,184,.4);background:rgba(13,26,20,.7);font-size:13px;color:#dfffeF}
+      border:1px solid rgba(159,232,184,.4);background:rgba(13,26,20,.7);font-size:15px;color:#dfffeF}
     .inv-chip:active{transform:scale(.96)}
     .inv-chip.shop{border-color:rgba(255,207,107,.42);background:rgba(26,21,10,.7);color:#ffedc4}
     .inv-chip[disabled]{opacity:.4;pointer-events:none}
-    .inv-empty{font-size:12.5px;opacity:.55}
+    .inv-empty{font-size:14.5px;opacity:.55}
     /* Relics: battle-usable treasures, shown as a strip above the question */
     .relic-row{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px;min-height:0}
     .relic-chip{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;
-      border:1px solid rgba(180,156,255,.45);background:rgba(20,15,38,.78);font-size:12.5px;color:#e6dcff}
+      border:1px solid rgba(180,156,255,.45);background:rgba(20,15,38,.78);font-size:14.5px;color:#e6dcff}
     .relic-chip b{opacity:.75;font-weight:600}
     .relic-chip:active{transform:scale(.96)}
     .relic-chip[disabled]{opacity:.38;pointer-events:none}
@@ -249,11 +249,11 @@
     .ev-choices{display:flex;flex-direction:column;gap:9px;width:min(88vw,360px)}
     .camp{display:flex;flex-direction:column;gap:9px;align-items:center;width:min(92vw,420px);
       padding:11px 12px;border-radius:14px;border:1px solid var(--line);background:rgba(9,14,26,.5)}
-    .camp .camp-label{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;opacity:.6}
+    .camp .camp-label{font-size:12.5px;letter-spacing:.18em;text-transform:uppercase;opacity:.6}
     .camp .php{width:min(60vw,230px);height:14px}
     .qcard{background:var(--panel);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);border:1px solid var(--line);
       border-radius:16px;padding:14px 16px;box-shadow:var(--shadow)}
-    .qtier{font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.72;margin-bottom:6px;
+    .qtier{font-size:13px;letter-spacing:.2em;text-transform:uppercase;opacity:.72;margin-bottom:6px;
       display:flex;align-items:center;gap:8px}
     .qtier .tag{padding:2px 8px;border-radius:6px;border:1px solid var(--line);background:rgba(255,255,255,.05)}
     .qtext{font-size:clamp(16px,4.6vw,21px);line-height:1.34;margin:0 0 12px;font-family:"Marcellus"}
@@ -264,7 +264,7 @@
       min-height:50px;display:flex;align-items:center;width:100%}
     .opt:active{transform:scale(.98)}
     .opt .k{display:inline-flex;width:22px;height:22px;border-radius:6px;margin-right:10px;flex:0 0 auto;
-      align-items:center;justify-content:center;font-family:"Cinzel";font-size:12px;
+      align-items:center;justify-content:center;font-family:"Cinzel";font-size:14px;
       background:rgba(180,156,255,.18);border:1px solid rgba(180,156,255,.42);color:#e0d6ff}
     .opt.correct{background:rgba(60,200,140,.26);border-color:var(--good);color:#daffe9;box-shadow:0 0 22px rgba(102,240,182,.3)}
     .opt.wrong{background:rgba(255,70,90,.24);border-color:var(--blood)}
@@ -297,7 +297,7 @@
     .overlay.fade{opacity:0;pointer-events:none}
     .ov-rune{font-size:46px;filter:drop-shadow(0 0 22px var(--rune));animation:pulse 3.6s ease-in-out infinite}
     @keyframes pulse{50%{opacity:.62;transform:scale(1.08)}}
-    .ov-kicker{font-family:"Cinzel";letter-spacing:.34em;font-size:12px;opacity:.72;text-transform:uppercase}
+    .ov-kicker{font-family:"Cinzel";letter-spacing:.34em;font-size:14px;opacity:.72;text-transform:uppercase}
     .ov-title{font-family:"Cinzel";font-weight:900;font-size:clamp(28px,8.4vw,52px);letter-spacing:.04em;
       text-shadow:0 4px 34px rgba(140,110,255,.42);line-height:1.04}
     .ov-sub{max-width:35ch;opacity:.9;line-height:1.6;font-size:16px;font-family:"Cormorant Garamond",Georgia,serif}
@@ -313,7 +313,7 @@
 
     .loot{display:flex;gap:20px;justify-content:center;margin:4px 0}
     .loot b{font-family:"Cinzel";font-size:23px;display:block}
-    .loot span{font-size:11px;opacity:.72;letter-spacing:.1em}
+    .loot span{font-size:13px;opacity:.72;letter-spacing:.1em}
 
     /* narration line layer — used for opening, epitaphs, descent, epilogue */
     #cineLine{position:absolute;left:0;right:0;top:41%;transform:translateY(-50%);z-index:22;
@@ -331,7 +331,7 @@
     .ch-num{font-family:"Cinzel";font-weight:900;font-size:clamp(40px,13vw,84px);color:transparent;
       -webkit-text-stroke:1.5px rgba(191,230,255,.5);letter-spacing:.08em;opacity:.9;margin-bottom:2px}
     .ch-name{font-family:"Cinzel";font-weight:700;font-size:clamp(22px,6.6vw,36px);letter-spacing:.03em;text-shadow:0 3px 24px rgba(0,0,0,.85)}
-    .ch-role{font-size:13px;letter-spacing:.26em;text-transform:uppercase;opacity:.7}
+    .ch-role{font-size:15px;letter-spacing:.26em;text-transform:uppercase;opacity:.7}
     .ch-couplet{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:clamp(16px,4.6vw,21px);
       line-height:1.55;opacity:.9;max-width:30ch;margin:10px 0 4px;color:#e7eeff}
     .ch-weak{margin-top:6px}
@@ -343,14 +343,14 @@
       10%{opacity:1;transform:none}82%{opacity:1}100%{opacity:0}}
     #nameplate .np-name{font-family:"Cinzel";font-weight:900;font-size:clamp(26px,8vw,44px);letter-spacing:.05em;
       text-shadow:0 4px 30px rgba(0,0,0,.92),0 0 40px rgba(255,80,90,.35)}
-    #nameplate .np-role{font-size:13px;letter-spacing:.3em;text-transform:uppercase;opacity:.85;margin-top:6px;color:var(--frost)}
+    #nameplate .np-role{font-size:15px;letter-spacing:.3em;text-transform:uppercase;opacity:.85;margin-top:6px;color:var(--frost)}
     #nameplate .np-whisper{font-family:"Cormorant Garamond",serif;font-style:italic;font-size:clamp(15px,4.4vw,20px);
       margin-top:12px;opacity:.9;color:#dfe8ff;text-shadow:0 2px 20px rgba(0,0,0,.9)}
 
     .mute{position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:16px;z-index:40;
       width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:rgba(8,12,24,.62);font-size:16px}
     .skip{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 18px);right:18px;z-index:40;
-      font-family:"Cinzel";letter-spacing:.16em;font-size:13px;opacity:.72;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:rgba(8,12,24,.5)}
+      font-family:"Cinzel";letter-spacing:.16em;font-size:15px;opacity:.72;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:rgba(8,12,24,.5)}
     .toast{position:absolute;left:50%;top:22%;transform:translateX(-50%);z-index:14;
       font-family:"Cinzel";font-size:clamp(20px,7vw,42px);font-weight:900;letter-spacing:.06em;
       opacity:0;pointer-events:none;text-shadow:0 4px 26px rgba(0,0,0,.85)}
@@ -446,7 +446,7 @@
       <div class="ov-kicker">Before the descent</div>
       <div class="ov-title" style="font-size:clamp(24px,7vw,40px)">Choose your seeker</div>
       <div class="hero-cards" id="heroCards"></div>
-      <p class="ov-sub" style="opacity:.6;font-size:12.5px">Level 1 · 25 strength. The vale will test what you know.</p>
+      <p class="ov-sub" style="opacity:.6;font-size:14.5px">Level 1 · 25 strength. The vale will test what you know.</p>
     </div>
 
     <div class="overlay hidden" id="ovSpoils">
@@ -476,7 +476,7 @@
     <div class="overlay hidden" id="ovMap">
       <div class="ov-kicker">World One · The Frozen Vale of Fenrime</div>
       <div class="ov-title" style="font-size:clamp(22px,6vw,34px)">The Frost-Trail</div>
-      <p class="ov-sub" style="opacity:.7;font-size:12.5px;margin-top:-4px">Vyrmouth, First Flame of Malrune, devours the vale's names from beneath. Answer well, and take them back.</p>
+      <p class="ov-sub" style="opacity:.7;font-size:14.5px;margin-top:-4px">Vyrmouth, First Flame of Malrune, devours the vale's names from beneath. Answer well, and take them back.</p>
       <div class="worldmap-wrap">
       <div class="mapstack">
       <video id="mapLive" muted playsinline loop preload="none"
