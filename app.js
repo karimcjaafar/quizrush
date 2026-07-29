@@ -1086,6 +1086,8 @@ function showScreen(name) {
   // live question screens (game/whoami/dingbats), and on the saga hand-off.
   $("btn-float-home").hidden =
     ["hub", "home", "progress", "customize", "game", "whoami", "dingbats", "descent"].includes(name);
+  // Opening Progress pulls fresh global-leaderboard standings.
+  if (name === "progress") renderLeaderboard();
   // Two-phase transition: outgoing screen glides away, then the new one enters
   if (!current || matchMedia("(prefers-reduced-motion: reduce)").matches) {
     Object.values(screens).forEach((s) => s.classList.remove("active", "screen-exit"));
@@ -2595,6 +2597,7 @@ function endGame() {
   // Daily is once per day, so a cross-day "best" doesn't apply
   const isBest = mode !== "daily" && headline > getBest(mode);
   if (isBest) setBest(mode, headline);
+  submitScore(mode, headline); // global leaderboard (no-op off-board / zero)
 
   // Daily outcome: streak, bonus XP, and theme unlocks
   let dailyWon = false;
@@ -3224,6 +3227,62 @@ function paintMastery() {
     : `<p class="settings-note">Play some rounds and your per-category accuracy will build here.</p>`;
 }
 
+// Lifetime headline stats — the profile numbers that replaced the old level bar.
+function paintLifetime() {
+  const el = $("lifetime-grid"); if (!el) return;
+  const cats = Object.values(player.catStats || {});
+  const answered = cats.reduce((n, s) => n + (s.answered || 0), 0);
+  const correct = cats.reduce((n, s) => n + (s.correct || 0), 0);
+  const acc = answered ? Math.round((correct / answered) * 100) : 0;
+  const cells = [
+    [player.bestClassicLevel || 1, "Best Classic level"],
+    [player.bestDailyStreak || 0, "Best daily streak"],
+    [answered.toLocaleString(), "Questions answered"],
+    [answered ? acc + "%" : "—", "Lifetime accuracy"],
+  ];
+  el.innerHTML = cells.map(([n, l]) =>
+    `<div class="lifetime-cell"><span class="lifetime-num">${n}</span><span class="lifetime-lbl">${l}</span></div>`).join("");
+}
+
+// ---------- Global leaderboard (per mode, via the backend) ----------
+const LB_MODES = ["classic", "blitz", "sudden", "whoami", "dingbats"];
+let lbMode = "classic";
+
+// Send a finished run's headline number to the global board (best-per-device
+// is kept server-side). No-ops for non-leaderboard modes and empty scores.
+function submitScore(mode, score) {
+  if (!LB_MODES.includes(mode) || !(score > 0)) return;
+  const prof = player.profile || { name: "Player", avatar: "😀" };
+  Net.post("/score", { mode, id: Net.deviceId(), name: prof.name, avatar: prof.avatar, score: Math.round(score) });
+}
+
+function paintLeaderboardTabs() {
+  const el = $("lb-tabs"); if (!el) return;
+  el.innerHTML = LB_MODES.map((m) =>
+    `<button class="lb-tab ${m === lbMode ? "active" : ""}" data-lbmode="${m}">${MODES[m].emoji} ${MODES[m].label}</button>`).join("");
+}
+
+async function renderLeaderboard(mode = lbMode) {
+  lbMode = LB_MODES.includes(mode) ? mode : "classic";
+  paintLeaderboardTabs();
+  const list = $("lb-list"); if (!list) return;
+  list.innerHTML = `<p class="lb-loading">Loading…</p>`;
+  const board = await Net.get(`/scores?mode=${lbMode}`);
+  if (!list.isConnected) return; // navigated away mid-fetch
+  if (!board?.top?.length) {
+    list.innerHTML = `<p class="lb-empty">No scores yet — be the first to set one!</p>`;
+    return;
+  }
+  const prof = player.profile || {};
+  list.innerHTML = board.top.slice(0, 10).map((r, i) => {
+    const rank = ["🥇", "🥈", "🥉"][i] || `${i + 1}`;
+    const me = (r.name === prof.name && r.avatar === prof.avatar) ? " me" : "";
+    return `<div class="lb-row${me}"><span class="lb-rank">${rank}</span>` +
+      `<span class="lb-who">${escapeHtml(r.avatar)} ${escapeHtml(r.name)}</span>` +
+      `<span class="lb-score">${Number(r.score).toLocaleString()}</span></div>`;
+  }).join("");
+}
+
 function renderHome() {
   renderBests();
   paintPlayerBar();
@@ -3235,6 +3294,8 @@ function renderHome() {
   paintMusicTracks();
   paintAppIcons();
   paintStreakLine();
+  paintLifetime();
+  paintLeaderboardTabs();
   paintMastery();
 }
 
@@ -3436,6 +3497,13 @@ $("btn-revive").addEventListener("click", () => {
 $("btn-no-revive").addEventListener("click", () => {
   $("revive-offer").hidden = true;
   endGame();
+});
+
+$("lb-tabs")?.addEventListener("click", (e) => {
+  const t = e.target.closest(".lb-tab");
+  if (!t) return;
+  Sound.click();
+  renderLeaderboard(t.dataset.lbmode);
 });
 
 $("btn-float-home").addEventListener("click", () => {

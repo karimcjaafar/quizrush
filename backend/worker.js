@@ -4,6 +4,12 @@
 //   GET  /stats?k=     → {right, wrong}         — global stats for one question
 //   POST /daily        {date,id,name,avatar,score,time,won} — daily result (one per device/day)
 //   GET  /leaderboard?date= → {top,players,solved}
+//   POST /score        {mode,id,name,avatar,score} — best per device per mode
+//   GET  /scores?mode= → {top,players}
+
+// The modes that carry a global leaderboard (Your Rules is self-configured, so
+// it isn't globally comparable and is deliberately excluded).
+const SCORE_MODES = ["classic", "sudden", "blitz", "whoami", "dingbats"];
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -75,6 +81,40 @@ export default {
           "SELECT COUNT(*) AS n, COALESCE(SUM(won), 0) AS solved FROM daily WHERE date = ?1"
         ).bind(date).first();
         return json({ top: rows.results, players: totals.n, solved: totals.solved });
+      }
+
+      if (url.pathname === "/score" && req.method === "POST") {
+        const b = await req.json();
+        const mode = String(b.mode || "");
+        const device = String(b.id || "").slice(0, 40);
+        if (!SCORE_MODES.includes(mode) || !device) return json({ error: "bad request" }, 400);
+        await env.DB.prepare(
+          `INSERT INTO scores (mode, device, name, avatar, score, at)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+           ON CONFLICT(mode, device) DO UPDATE SET
+             name = ?3, avatar = ?4, at = ?6, score = MAX(score, ?5)`
+        ).bind(
+          mode,
+          device,
+          String(b.name || "Player").slice(0, 16),
+          String(b.avatar || "😀").slice(0, 8),
+          Math.max(0, Math.min(10000000, Math.round(Number(b.score) || 0))),
+          Date.now()
+        ).run();
+        return json({ ok: true });
+      }
+
+      if (url.pathname === "/scores" && req.method === "GET") {
+        const mode = url.searchParams.get("mode") || "";
+        if (!SCORE_MODES.includes(mode)) return json({ error: "bad request" }, 400);
+        const rows = await env.DB.prepare(
+          `SELECT name, avatar, score FROM scores
+           WHERE mode = ?1 ORDER BY score DESC, at ASC LIMIT 20`
+        ).bind(mode).all();
+        const totals = await env.DB.prepare(
+          "SELECT COUNT(*) AS n FROM scores WHERE mode = ?1"
+        ).bind(mode).first();
+        return json({ top: rows.results, players: totals.n });
       }
 
       return json({ error: "not found" }, 404);
