@@ -2334,6 +2334,7 @@ function endParty() {
   countUp($("results-score"), ranked[0].score);
   $("results-score-label").textContent = tie ? "top score" : `${ranked[0].name}'s score`;
   $("results-xp").innerHTML = "";
+  $("results-rank").hidden = true;
   $("results-badges").hidden = true;
   $("btn-share").hidden = true;
   const medals = ["🥇", "🥈", "🥉", "4️⃣"];
@@ -2582,6 +2583,7 @@ function endGame() {
   state.awaitingContinue = false;
   state.maxLevelCorrect = Math.max(state.maxLevelCorrect || 0, state.levelCorrect || 0);
   // restore results-screen chrome the level interstitial or a party may have changed
+  $("results-rank").hidden = true; // reset; submitScore reveals it if ranked
   $("btn-again").textContent = "Play again";
   $("btn-home").textContent = "Home";
   $("results-score-label").textContent = state.mode === "blitz" ? "correct" : "points";
@@ -3249,11 +3251,27 @@ const LB_MODES = ["classic", "blitz", "sudden", "whoami", "dingbats"];
 let lbMode = "classic";
 
 // Send a finished run's headline number to the global board (best-per-device
-// is kept server-side). No-ops for non-leaderboard modes and empty scores.
+// is kept server-side), then surface the player's standing on the results
+// screen. No-ops for non-leaderboard modes and empty scores. A sequence token
+// ensures only the latest run's rank is shown — a late-resolving earlier fetch
+// can never overwrite a newer run (endGame re-hides the line each round).
+let scoreSeq = 0;
 function submitScore(mode, score) {
   if (!LB_MODES.includes(mode) || !(score > 0)) return;
+  const seq = ++scoreSeq;
   const prof = player.profile || { name: "Player", avatar: "😀" };
-  Net.post("/score", { mode, id: Net.deviceId(), name: prof.name, avatar: prof.avatar, score: Math.round(score) });
+  (async () => {
+    await Net.post("/score", { mode, id: Net.deviceId(), name: prof.name, avatar: prof.avatar, score: Math.round(score) });
+    const r = await Net.get(`/rank?mode=${mode}&id=${encodeURIComponent(Net.deviceId())}`);
+    if (seq !== scoreSeq) return; // superseded by a newer run
+    const el = $("results-rank");
+    if (!el || !r || !r.rank || !r.players) return;
+    const label = MODES[mode]?.label || mode;
+    el.innerHTML = r.rank === 1
+      ? `🥇 <span class="rank-best">World #1</span> in ${label}!`
+      : `🌍 #${r.rank} of ${r.players.toLocaleString()} in ${label}`;
+    el.hidden = false;
+  })();
 }
 
 function paintLeaderboardTabs() {

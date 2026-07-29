@@ -6,6 +6,7 @@
 //   GET  /leaderboard?date= → {top,players,solved}
 //   POST /score        {mode,id,name,avatar,score} — best per device per mode
 //   GET  /scores?mode= → {top,players}
+//   GET  /rank?mode=&id= → {rank,players,score}  — one device's standing
 
 // The modes that carry a global leaderboard (Your Rules is self-configured, so
 // it isn't globally comparable and is deliberately excluded).
@@ -115,6 +116,23 @@ export default {
           "SELECT COUNT(*) AS n FROM scores WHERE mode = ?1"
         ).bind(mode).first();
         return json({ top: rows.results, players: totals.n });
+      }
+
+      if (url.pathname === "/rank" && req.method === "GET") {
+        const mode = url.searchParams.get("mode") || "";
+        const device = (url.searchParams.get("id") || "").slice(0, 40);
+        if (!SCORE_MODES.includes(mode) || !device) return json({ error: "bad request" }, 400);
+        const players = (await env.DB.prepare(
+          "SELECT COUNT(*) AS n FROM scores WHERE mode = ?1"
+        ).bind(mode).first()).n;
+        const mine = await env.DB.prepare(
+          "SELECT score FROM scores WHERE mode = ?1 AND device = ?2"
+        ).bind(mode, device).first();
+        if (!mine) return json({ rank: null, players, score: 0 });
+        const higher = (await env.DB.prepare(
+          "SELECT COUNT(*) AS n FROM scores WHERE mode = ?1 AND score > ?2"
+        ).bind(mode, mine.score).first()).n;
+        return json({ rank: higher + 1, players, score: mine.score });
       }
 
       return json({ error: "not found" }, 404);
