@@ -1097,10 +1097,8 @@
       el("mapHint").innerHTML=`“${valeWhisper()}”`;
       el("mapGo").textContent=pathIdx===0?"Set forth ▸":(n.boss?"Enter the Ice Palace ▸":"Continue ▸");
       const svg=el("worldmap"); svg.classList.remove("dive"); svg.style.transform="";
-      // The living-map video awaits a composition-locked regeneration (the
-      // first pass re-imagined the scene and lost the palace). Flip to true
-      // when an aligned w1-map-living.mp4 lands — wiring is already done.
-      const LIVING_MAP=false;
+      // Karim's composition-locked take: the painting itself, breathing.
+      const LIVING_MAP=true;
       const live=LIVING_MAP?el("mapLive"):null;
       if(live){ if(!live._wired){ live._wired=true;
           live.addEventListener("playing",()=>live.closest(".mapstack").classList.add("live"));
