@@ -3609,11 +3609,22 @@ document.addEventListener("pointerdown", () => Sound.unlock(), { once: true });
 // Offline + instant loads
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => { /* optional */ });
 
-// Intro: tap gate (also the browser's audio unlock) → 10-second show with the
-// intro score → whiteout → home, where the anthem loops. Tap again to skip.
+// Intro: tap gate (also the browser's audio unlock) → the four-shot Malrune
+// film. Two players alternate so each cut is gapless: while one shot plays,
+// the next is already loaded in the hidden twin. The clips carry their own
+// sound (tolls, wind, choir), so the anthem waits until the title card.
+// Shot 4 whites out; the title lands on the white; slow fade to home.
 {
   const splash = $("splash");
-  const video = $("splash-video");
+  const players = [$("splash-video"), $("splash-video-b")];
+  const titleReveal = $("splash-title-reveal");
+  const FILM = [
+    "media/malrune-intro-shot1.mp4", // the approach — eyes ignite over the valley
+    "media/malrune-intro-shot2.mp4", // he materialises out of frost and particles
+    "media/malrune-intro-shot3.mp4", // the lean-in — ember cracks at full blaze
+    "media/malrune-intro-shot4.mp4", // eye-flare → whiteout (the title lands here)
+  ];
+  const filmMuted = () => !(Sound.enabled || Music.enabled); // one global switch governs the film too
   const skip = $("splash-skip");
   const dust = $("malrune-dust");
   if (dust && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -3641,19 +3652,22 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
       if (Music.enabled !== on) Music.toggle();
       mute.textContent = on ? "🔊" : "🔇";
       paintSoundButton();
-      if (on && phase !== "gate") Music.start("anthem"); // unmuted mid-film → bed in
+      players.forEach((v) => { v.muted = filmMuted(); }); // the film's own sound follows the switch
+      if (on && phase === "title") Music.start("anthem"); // unmuted on the title card → bed in
     };
   }
-  let phase = "gate"; // gate → show → done
+  let phase = "gate"; // gate → show → title → done
   let showTimer = null;
-  const INTRO_KEY = "rr-intro-seen-v2";
+  let current = 0; // which player is on screen
+  let shot = 0;    // which shot of the film it is playing
+  const INTRO_KEY = "rr-intro-seen-v3"; // v3: everyone sees the Malrune film once
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let seen = false; try { seen = localStorage.getItem(INTRO_KEY) === "1"; } catch { /* private mode */ }
   const finish = (slow) => {
     if (phase === "done") return;
     phase = "done";
     clearTimeout(showTimer);
-    try { video.pause(); } catch { /* ignore */ }
+    players.forEach((v) => { try { v.pause(); } catch { /* ignore */ } });
     Music.start("anthem"); // menu bed once the film is done
     // the film ends on black, so a long slow fade reveals the menu gently
     splash.classList.add(slow ? "out-slow" : "out");
@@ -3665,22 +3679,55 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
       else if (window.__loginBonus) { toast(`📅 Daily login bonus: +${window.__loginBonus} Gold`); window.__loginBonus = 0; }
     }, slow ? 3400 : 900);
   };
+  // Load shot n into a given player slot so it is ready the moment its cue comes.
+  const preload = (slot, n) => {
+    if (n >= FILM.length) return;
+    const v = players[slot];
+    v.src = FILM[n];
+    v.muted = filmMuted();
+    v.preload = "auto";
+    try { v.load(); } catch { /* ignore */ }
+  };
+  // Shot 4's last frame is pure white — the title lands on it, the anthem
+  // rises underneath, and then the splash fades out slowly over the menu.
+  const rollTitle = () => {
+    if (phase !== "show") return;
+    phase = "title";
+    titleReveal.hidden = false;
+    Music.start("anthem");
+    setTimeout(() => finish(true), 2600);
+  };
+  const advance = () => {
+    if (phase !== "show") return;
+    shot += 1;
+    if (shot >= FILM.length) return rollTitle();
+    const next = players[1 - current];
+    next.hidden = false;
+    next.play().catch(rollTitle); // a shot that won't start must not strand the film
+    players[current].hidden = true;
+    current = 1 - current;
+    preload(1 - current, shot + 1);
+  };
+  players.forEach((v) => {
+    v.addEventListener("ended", advance);
+    // Only a failure on the VISIBLE player should cut forward — a bad preload
+    // in the hidden twin will surface (and be skipped) when its cue comes.
+    v.addEventListener("error", () => { if (phase === "show" && !v.hidden) advance(); });
+  });
   splash.addEventListener("click", () => {
     if (phase === "gate") {
       Sound.unlock(); // the gate tap is the browser's audio-unlock gesture
-      Music.start("anthem"); // one continuous bed, from here through the intro into the menus
-      if (reduced) return finish(false); // reduced-motion users skip straight to the hub
+      if (reduced) { Music.start("anthem"); return finish(false); } // reduced-motion users skip straight to the hub
       phase = "show";
       $("splash-gate").hidden = true;
-      video.hidden = false;
       skip.hidden = false;
       if (mute) mute.textContent = (Sound.enabled || Music.enabled) ? "🔊" : "🔇";
       try { localStorage.setItem(INTRO_KEY, "1"); } catch { /* private mode */ }
-      video.src = "media/riddle-rune-intro.mp4"; // load only when we actually play it
-      video.onended = () => finish(true);  // film ended on black → slow, smooth reveal
-      video.onerror = () => finish(false); // offline / decode failure → just enter
-      video.play().catch(() => finish(false)); // autoplay blocked → skip to home
-      showTimer = setTimeout(() => finish(false), 42000); // safety net if the film stalls
+      preload(0, 0);
+      preload(1, 1);
+      players[0].hidden = false;
+      players[0].play().catch(() => finish(false)); // autoplay blocked → just enter
+      showTimer = setTimeout(() => finish(false), 50000); // safety net: the full film + title, generously
     } else {
       finish(false); // tap / Skip during the film → quicker
     }
