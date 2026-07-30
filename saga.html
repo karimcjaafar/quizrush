@@ -176,15 +176,26 @@
        to the ice palace. Done nodes dim green, the current one pulses gold,
        the road not taken fades once the fork is chosen. */
     #ovMap .ov-kicker{padding:0 56px}  /* clear the corner mute button */
-    /* the painted world must never be flex-crushed: the overlay scrolls
-       instead (flex-start + auto — no flex-end clip traps) */
-    #ovMap{justify-content:flex-start;overflow-y:auto;
-      padding-top:calc(env(safe-area-inset-top) + 14px);gap:11px}
-    /* a window onto a two-screen-tall world: the camera glides as you climb,
-       and you can drag ahead to scout the road */
-    .worldmap-wrap{flex:0 0 auto;width:min(92vw,370px);height:min(54vh,430px);
+    /* No page scroll: the painting is the flexible absorber and the control
+       panel (counter + location name + Enter) is pinned in view, so you can
+       always see where you are and enter it — never scroll to reach a button. */
+    #ovMap{justify-content:flex-start;overflow:hidden;
+      padding-top:calc(env(safe-area-inset-top) + 12px);padding-bottom:0;gap:7px}
+    #ovMap .ov-sub{font-size:13.5px;max-width:34ch;margin-top:-2px;line-height:1.4;
+      display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    /* a window onto a two-screen-tall world: the painting scrolls INTERNALLY
+       (drag to scout the road ahead) while the wrap flexes into the room left */
+    .worldmap-wrap{flex:1 1 0;width:min(92vw,370px);min-height:110px;max-height:min(50vh,420px);
       overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;
       border-radius:16px;border:1px solid var(--line);box-shadow:var(--shadow);background:#05091a}
+    /* the always-visible control panel at the foot of the map */
+    .map-foot{flex:0 0 auto;width:min(92vw,400px);display:flex;flex-direction:column;
+      align-items:center;gap:6px;padding:9px 0 calc(env(safe-area-inset-bottom) + 12px)}
+    .map-step{font-family:"Marcellus";font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
+      color:#cfd9ef;background:rgba(255,255,255,.06);border:1px solid var(--line);
+      border-radius:999px;padding:4px 12px;white-space:nowrap}
+    .map-foot .map-whisper{margin:0;display:-webkit-box;-webkit-line-clamp:2;
+      -webkit-box-orient:vertical;overflow:hidden}
     /* the living painting: video breathes under the vector marker layer;
        the SVG's own still image fades out once the video actually plays */
     .mapstack{position:relative;width:100%;aspect-ratio:2/3}
@@ -500,12 +511,15 @@
       </svg>
       </div>
       </div>
-      <div class="map-now" id="mapNow"></div>
-      <div class="map-you" id="mapYou"></div>
-      <p class="map-whisper" id="mapHint"></p>
-      <div class="btnrow">
-        <button class="cta ghost" id="mapPack">🎒 Pack</button>
-        <button class="cta" id="mapGo">Set forth ▸</button>
+      <div class="map-foot">
+        <div class="map-step" id="mapStep"></div>
+        <div class="map-now" id="mapNow"></div>
+        <div class="map-you" id="mapYou"></div>
+        <p class="map-whisper" id="mapHint"></p>
+        <div class="btnrow">
+          <button class="cta ghost" id="mapPack">🎒 Pack</button>
+          <button class="cta" id="mapGo">Set forth ▸</button>
+        </div>
       </div>
     </div>
 
@@ -1091,11 +1105,20 @@
       const rm=el("roadM"); rm.classList.toggle("revealed", hasLetter||route==="moon");
       rm.classList.toggle("dim", !!route && route!=="moon");
       const n=PATH[pathIdx];
+      // Counter — where you are along your road (excludes the road not taken and
+      // unopened secrets, so it matches exactly the markers drawn on the map).
+      const onRoad=[]; PATH.forEach((nd,i)=>{
+        if(nd.hidden && !hiddenOpen(nd)) return;
+        if(nd.branch==="moon" && !hasLetter && route!=="moon") return;
+        if(nd.branch && route && nd.branch!==route) return;
+        onRoad.push(i); });
+      const step=onRoad.indexOf(pathIdx);
+      el("mapStep").textContent=`Stop ${step<0?1:step+1} of ${onRoad.length}`;
       el("mapNow").innerHTML=`${n.icon} ${n.loc}<small>${n.boss?"Final guardian · the ice palace":(n.kind||KIND_LABEL[n.t])}</small>`;
       const rel=relics.map(id=>RELICS[id].icon).join("");
       el("mapYou").textContent=`${hero.icon} Lv ${plevel} · ${php}/${pmax} strength · ${gold} gold${rel?` · ${rel}`:""}${hasLetter?" · ✉":""}${wearing("cloak")?" · 🧥":""}`;
       el("mapHint").innerHTML=`“${valeWhisper()}”`;
-      el("mapGo").textContent=pathIdx===0?"Set forth ▸":(n.boss?"Enter the Ice Palace ▸":"Continue ▸");
+      el("mapGo").textContent=pathIdx===0?"Set forth ▸":(n.boss?"Enter the Ice Palace ▸":"Enter ▸");
       const svg=el("worldmap"); svg.classList.remove("dive"); svg.style.transform="";
       // Karim's composition-locked take: the painting itself, breathing.
       const LIVING_MAP=true;
