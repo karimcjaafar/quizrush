@@ -3745,15 +3745,15 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
     { img: P + "intro-2.png", fb: P + "Ice%20World%20-%20World%201.png",
       text: `But plenty made them proud. Pride made them certain. And the certain stop asking <em>why</em>.` },
     { img: P + "intro-3.png", fb: P + "malrune-wide.png",
-      text: `In that unasking silence, something stirred — <em>Malrune, the Unanswered</em> — who feeds on ignorance, naivety, and arrogance.` },
+      text: `In that unasking silence, something stirred: <em>Malrune, the Unanswered</em>, who feeds on the ignorant, the arrogant and the unread.` },
     { img: P + "intro-4.png", fb: P + "malrune-face.png",
-      text: `He grew vast on their certainty. One by one, the seven kingdoms fell — their names forgotten, their people with them.` },
+      text: `He grew vast on their certainty. One by one, the seven kingdoms fell, their names forgotten, their people with them.` },
     { img: P + "intro-5.png", fb: P + "w1-boss-true.png",
       text: `Over each fallen crown he set his most loyal servants: <em>wardens</em>, to keep the cold and guard the silence.` },
     { img: P + "intro-6.png", fb: P + "evt-shrine.png",
-      text: `Steel cannot take back what was lost to forgetting. Only one blade can — the blade of <em>what you know</em>.` },
+      text: `Steel cannot take back what was lost to forgetting. Only one blade can: the blade of <em>what you know</em>.` },
     { img: P + "intro-7.png", fb: P + "hero-runeblade.png",
-      text: `Rise, riddle-solver. Your knowledge is your weapon — take back the seven kingdoms.` },
+      text: `Rise, riddle-solver. Your knowledge is your weapon. Take back the seven kingdoms.` },
   ];
   const HOLD = 5300; // ms each scene holds (text fades in/out within this window)
 
