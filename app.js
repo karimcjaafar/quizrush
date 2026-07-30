@@ -3725,20 +3725,37 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
 
 // Intro: tap gate (also the browser's audio unlock) → the four-shot Malrune
 // film. Two players alternate so each cut is gapless: while one shot plays,
-// the next is already loaded in the hidden twin. The clips carry their own
-// sound (tolls, wind, choir), so the anthem waits until the title card.
-// Shot 4 whites out; the title lands on the white; slow fade to home.
+// the next is already loaded in the hidden twin. The clips are ALWAYS silent —
+// their own tolls/wind/choir are never heard; only the music bed plays under
+// the whole opening. One story line rides each shot (introducing Malrune),
+// then the film fades to black and the last words land on the dark before the
+// menu is revealed.
 {
   const splash = $("splash");
   const players = [$("splash-video"), $("splash-video-b")];
-  const titleReveal = $("splash-title-reveal");
+  const titleReveal = $("splash-title-reveal"); // repurposed: the fade-to-black end card
+  const lineEl = $("splash-line");
   const FILM = [
     "media/malrune-intro-shot1.mp4", // the approach — eyes ignite over the valley
     "media/malrune-intro-shot2.mp4", // he materialises out of frost and particles
     "media/malrune-intro-shot3.mp4", // the lean-in — ember cracks at full blaze
-    "media/malrune-intro-shot4.mp4", // eye-flare → whiteout (the title lands here)
+    "media/malrune-intro-shot4.mp4", // eye-flare → whiteout, then to black
   ];
-  const filmMuted = () => !(Sound.enabled || Music.enabled); // one global switch governs the film too
+  // One narration line per shot — introduces Malrune the Unanswered (kept from
+  // the flagship intro). Ember-red <em> for the words that burn.
+  const LINES = [
+    "Beneath the frozen vale burns <em>Malrune</em> — the Unanswered.",
+    "The ice above him is a seal — and it is failing.",
+    "His first flame slips free now, to devour the <em>unknowing</em>.",
+    "You carry no blade — only <em>what you know</em>.",
+  ];
+  const showLine = (i) => {
+    if (!lineEl) return;
+    lineEl.classList.remove("show");
+    if (i >= LINES.length) return;
+    // brief gap so a change reads as a fresh fade-in, not a jump-cut
+    setTimeout(() => { lineEl.innerHTML = LINES[i]; lineEl.classList.add("show"); }, 220);
+  };
   const skip = $("splash-skip");
   const dust = $("malrune-dust");
   if (dust && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -3766,8 +3783,8 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
       if (Music.enabled !== on) Music.toggle();
       mute.textContent = on ? "🔊" : "🔇";
       paintSoundButton();
-      players.forEach((v) => { v.muted = filmMuted(); }); // the film's own sound follows the switch
-      if (on && phase === "title") Music.start("anthem"); // unmuted on the title card → bed in
+      // the clips stay silent no matter what; unmuting only brings the bed back
+      if (on && (phase === "show" || phase === "title")) Music.play("ambient");
     };
   }
   let phase = "gate"; // gate → show → title → done
@@ -3798,28 +3815,31 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
     if (n >= FILM.length) return;
     const v = players[slot];
     v.src = FILM[n];
-    v.muted = filmMuted();
+    v.muted = true; // the film is always silent — the music bed carries the opening
     v.preload = "auto";
     try { v.load(); } catch { /* ignore */ }
   };
-  // Shot 4's last frame is pure white — the title lands on it, the anthem
-  // rises underneath, and then the splash fades out slowly over the menu.
-  const rollTitle = () => {
+  // After the last shot the film fades to black; once the dark has settled the
+  // final words drift in, hold to be read, then the splash fades to the menu.
+  const rollEnd = () => {
     if (phase !== "show") return;
     phase = "title";
+    if (lineEl) lineEl.classList.remove("show");
     titleReveal.hidden = false;
-    Music.start("anthem");
-    setTimeout(() => finish(true), 2600);
+    requestAnimationFrame(() => titleReveal.classList.add("in")); // fade to black (1.2s)
+    setTimeout(() => titleReveal.classList.add("lit"), 1300);      // words land on the black
+    setTimeout(() => finish(true), 4800);                          // read them, then slow reveal
   };
   const advance = () => {
     if (phase !== "show") return;
     shot += 1;
-    if (shot >= FILM.length) return rollTitle();
+    if (shot >= FILM.length) return rollEnd();
     const next = players[1 - current];
     next.hidden = false;
-    next.play().catch(rollTitle); // a shot that won't start must not strand the film
+    next.play().catch(rollEnd); // a shot that won't start must not strand the film
     players[current].hidden = true;
     current = 1 - current;
+    showLine(shot); // the next story line rides this shot
     preload(1 - current, shot + 1);
   };
   players.forEach((v) => {
@@ -3831,6 +3851,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
   splash.addEventListener("click", () => {
     if (phase === "gate") {
       Sound.unlock(); // the gate tap is the browser's audio-unlock gesture
+      Music.play("ambient"); // the music bed comes in under the whole opening
       if (reduced) { Music.start("anthem"); return finish(false); } // reduced-motion users skip straight to the hub
       phase = "show";
       $("splash-gate").hidden = true;
@@ -3841,6 +3862,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
       preload(1, 1);
       players[0].hidden = false;
       players[0].play().catch(() => finish(false)); // autoplay blocked → just enter
+      showLine(0); // first story line rides shot 1 — introduces Malrune
       showTimer = setTimeout(() => finish(false), 50000); // safety net: the full film + title, generously
     } else {
       finish(false); // tap / Skip during the film → quicker

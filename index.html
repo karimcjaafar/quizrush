@@ -18,7 +18,8 @@
 </head>
 <body>
   <canvas id="ambient-bg" aria-hidden="true"></canvas>
-  <!-- Cinematic intro: tap gate (audio unlock) → the four-shot Malrune film → home -->
+  <!-- Cinematic intro: tap gate (audio unlock + music bed) → the four-shot
+       Malrune film with narration → fade to black → final line → home -->
   <div class="splash" id="splash">
     <div class="malrune-veil" aria-hidden="true">
       <img class="malrune-face" src="media/saga/App%20Pics/malrune-face.png" alt="">
@@ -33,8 +34,9 @@
     </div>
     <video class="splash-video" id="splash-video" muted playsinline preload="none" hidden></video>
     <video class="splash-video" id="splash-video-b" muted playsinline preload="none" hidden></video>
+    <div class="splash-line" id="splash-line" aria-hidden="true"></div>
     <div class="splash-title-reveal" id="splash-title-reveal" hidden>
-      <h1 class="gate-title"><span class="splash-quiz">Riddle</span> <span class="gate-amp">&amp;</span> <span class="splash-rush">Rune</span></h1>
+      <p class="end-line">Rise, riddle-solver. <span>Your quest begins.</span></p>
     </div>
     <button class="splash-mute" id="splash-mute" aria-label="Sound on/off">🔇</button>
     <div class="splash-skip" id="splash-skip" hidden>Skip&nbsp;▸</div>

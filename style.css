@@ -197,19 +197,40 @@ button, .chip, .mode-card, .daily-card, .theme-swatch {
 .gate-hint { margin-top: 12px; font-size: 13px; letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; opacity: 0.7; }
 .splash-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
 .splash-video[hidden] { display: none; }
-/* Shot 4 of the Malrune film ends on pure white — the title lands on that
-   white, holds, then the whole splash fades to the menu. Dark ink here
-   because for once the ground is light. */
-.splash-title-reveal {
-  position: absolute; inset: 0; z-index: 2;
-  display: flex; align-items: center; justify-content: center;
-  background: #f4f7ff;
+/* Malrune narration — one story line per shot, lower third, over the footage.
+   Serif + heavy shadow so it reads on frost and on fire alike. */
+.splash-line {
+  position: absolute; left: 0; right: 0; bottom: 15%; z-index: 3;
+  padding: 0 30px; text-align: center; pointer-events: none;
+  font-family: "Cinzel", "Marcellus", serif; font-size: 22px; line-height: 1.55;
+  letter-spacing: 0.01em; color: #f3eeff;
+  opacity: 0; transform: translateY(10px);
+  transition: opacity 1.1s ease, transform 1.1s ease;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.98), 0 0 30px rgba(0, 0, 0, 0.85);
 }
+.splash-line.show { opacity: 1; transform: none; }
+.splash-line em { font-style: normal; color: #ffb0aa; text-shadow: 0 0 20px rgba(255, 84, 60, 0.6), 0 2px 16px rgba(0, 0, 0, 0.9); }
+
+/* The film fades to black, then the last words drift in on the dark before the
+   menu is revealed. This whole card IS the fade-to-black. */
+.splash-title-reveal {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 32px; text-align: center;
+  background: #05070f;
+  opacity: 0; transition: opacity 1.2s ease;
+}
+.splash-title-reveal.in { opacity: 1; }
 .splash-title-reveal[hidden] { display: none; }
-.splash-title-reveal .gate-title { color: #10142a; animation: titleReveal 1.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.splash-title-reveal .splash-rush { background: linear-gradient(180deg, #4a3fa0, #7c5cff); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.splash-title-reveal .gate-amp { background: linear-gradient(180deg, #8a6a13, #c99a1e); -webkit-background-clip: text; background-clip: text; color: transparent; }
-@keyframes titleReveal { from { opacity: 0; transform: scale(0.94); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+.end-line {
+  font-family: "Cinzel", "Marcellus", serif; font-size: 25px; line-height: 1.5;
+  letter-spacing: 0.02em; color: #ece6ff;
+  opacity: 0; transform: translateY(8px);
+  transition: opacity 1.5s ease, transform 1.5s ease;
+  text-shadow: 0 0 26px rgba(124, 92, 255, 0.4);
+}
+.splash-title-reveal.lit .end-line { opacity: 1; transform: none; }
+.end-line span { display: block; margin-top: 8px; color: #c8a6ff; }
 .splash-skip {
   position: absolute; right: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
   z-index: 3; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; color: #cfd2ee;
