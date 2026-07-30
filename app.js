@@ -3723,40 +3723,40 @@ document.addEventListener("pointerdown", () => Sound.unlock(), { once: true });
 // Offline + instant loads
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => { /* optional */ });
 
-// Intro: tap gate (also the browser's audio unlock) → the four-shot Malrune
-// film. Two players alternate so each cut is gapless: while one shot plays,
-// the next is already loaded in the hidden twin. The clips are ALWAYS silent —
-// their own tolls/wind/choir are never heard; only the music bed plays under
-// the whole opening. One story line rides each shot (introducing Malrune),
-// then the film fades to black and the last words land on the dark before the
-// menu is revealed.
+// Intro: tap gate (also the browser's audio unlock + music bed) → a 7-scene
+// still slideshow telling the saga's backstory (the fall of the seven kingdoms
+// of Vaelmyr and the rise of Malrune). Two <img> layers cross-fade with a slow
+// Ken-Burns drift; one narration line rides each scene; then it fades to black
+// and ends on "Your quest begins." before the menu is revealed. Skippable.
+// The real art drops in as intro-1..7.png; until then each scene falls back to
+// an existing painting (onerror swap), so the intro works before the art lands.
 {
   const splash = $("splash");
-  const players = [$("splash-video"), $("splash-video-b")];
-  const titleReveal = $("splash-title-reveal"); // repurposed: the fade-to-black end card
+  const stills = [$("splash-still-a"), $("splash-still-b")];
+  const scrim = $("splash-scrim");
   const lineEl = $("splash-line");
-  const FILM = [
-    "media/malrune-intro-shot1.mp4", // the approach — eyes ignite over the valley
-    "media/malrune-intro-shot2.mp4", // he materialises out of frost and particles
-    "media/malrune-intro-shot3.mp4", // the lean-in — ember cracks at full blaze
-    "media/malrune-intro-shot4.mp4", // eye-flare → whiteout, then to black
-  ];
-  // One narration line per shot — introduces Malrune the Unanswered (kept from
-  // the flagship intro). Ember-red <em> for the words that burn.
-  const LINES = [
-    "Beneath the frozen vale burns <em>Malrune</em> — the Unanswered.",
-    "The ice above him is a seal — and it is failing.",
-    "His first flame slips free now, to devour the <em>unknowing</em>.",
-    "You carry no blade — only <em>what you know</em>.",
-  ];
-  const showLine = (i) => {
-    if (!lineEl) return;
-    lineEl.classList.remove("show");
-    if (i >= LINES.length) return;
-    // brief gap so a change reads as a fresh fade-in, not a jump-cut
-    setTimeout(() => { lineEl.innerHTML = LINES[i]; lineEl.classList.add("show"); }, 220);
-  };
+  const titleReveal = $("splash-title-reveal"); // the fade-to-black end card
   const skip = $("splash-skip");
+  const REALM = "Vaelmyr";
+  const P = "media/saga/App%20Pics/";
+  const SCENES = [
+    { img: P + "intro-1.png", fb: P + "loc-palace.png",
+      text: `Once, the seven kingdoms of <em>${REALM}</em> knew nothing but peace. Their people prospered, and their halls were full.` },
+    { img: P + "intro-2.png", fb: P + "Ice%20World%20-%20World%201.png",
+      text: `But plenty made them proud. Pride made them certain. And the certain stop asking <em>why</em>.` },
+    { img: P + "intro-3.png", fb: P + "malrune-wide.png",
+      text: `In that unasking silence, something stirred — <em>Malrune, the Unanswered</em> — who feeds on ignorance, naivety, and arrogance.` },
+    { img: P + "intro-4.png", fb: P + "malrune-face.png",
+      text: `He grew vast on their certainty. One by one, the seven kingdoms fell — their names forgotten, their people with them.` },
+    { img: P + "intro-5.png", fb: P + "w1-boss-true.png",
+      text: `Over each fallen crown he set his most loyal servants: <em>wardens</em>, to keep the cold and guard the silence.` },
+    { img: P + "intro-6.png", fb: P + "evt-shrine.png",
+      text: `Steel cannot take back what was lost to forgetting. Only one blade can — the blade of <em>what you know</em>.` },
+    { img: P + "intro-7.png", fb: P + "hero-runeblade.png",
+      text: `Rise, riddle-solver. Your knowledge is your weapon — take back the seven kingdoms.` },
+  ];
+  const HOLD = 5300; // ms each scene holds (text fades in/out within this window)
+
   const dust = $("malrune-dust");
   if (dust && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
     for (let i = 0; i < 16; i++) {
@@ -3770,10 +3770,13 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
       dust.appendChild(d);
     }
   }
+  let phase = "gate"; // gate → show → end → done
+  let idx = 0, layer = 0, timer = null;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const INTRO_KEY = "rr-intro-seen-v4"; // v4: the new still-story intro
+
   const mute = $("splash-mute");
   if (mute) {
-    // Visible from the very first frame: audio defaults to silent, and this is
-    // the one switch (it drives the same global state as the in-app button).
     mute.hidden = false;
     mute.textContent = (Sound.enabled || Music.enabled) ? "🔊" : "🔇";
     mute.onclick = (e) => {
@@ -3783,89 +3786,73 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
       if (Music.enabled !== on) Music.toggle();
       mute.textContent = on ? "🔊" : "🔇";
       paintSoundButton();
-      // the clips stay silent no matter what; unmuting only brings the bed back
-      if (on && (phase === "show" || phase === "title")) Music.play("ambient");
+      if (on && (phase === "show" || phase === "end")) Music.play("ambient"); // bring the bed back
     };
   }
-  let phase = "gate"; // gate → show → title → done
-  let showTimer = null;
-  let current = 0; // which player is on screen
-  let shot = 0;    // which shot of the film it is playing
-  const INTRO_KEY = "rr-intro-seen-v3"; // v3: everyone sees the Malrune film once
-  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let seen = false; try { seen = localStorage.getItem(INTRO_KEY) === "1"; } catch { /* private mode */ }
   const finish = (slow) => {
     if (phase === "done") return;
     phase = "done";
-    clearTimeout(showTimer);
-    players.forEach((v) => { try { v.pause(); } catch { /* ignore */ } });
-    Music.start("anthem"); // menu bed once the film is done
-    // the film ends on black, so a long slow fade reveals the menu gently
+    clearTimeout(timer);
+    Music.start("anthem"); // menu bed once the story is done
     splash.classList.add(slow ? "out-slow" : "out");
     setTimeout(() => splash.remove(), slow ? 3200 : 700);
     document.body.classList.add("intro-done");
-    // economy notices, once the stage is clear
     setTimeout(() => {
       if (window.__freezeUsed) { toast("🧊 Streak freeze used — your streak is safe!"); window.__freezeUsed = false; }
       else if (window.__loginBonus) { toast(`📅 Daily login bonus: +${window.__loginBonus} Gold`); window.__loginBonus = 0; }
     }, slow ? 3400 : 900);
   };
-  // Load shot n into a given player slot so it is ready the moment its cue comes.
-  const preload = (slot, n) => {
-    if (n >= FILM.length) return;
-    const v = players[slot];
-    v.src = FILM[n];
-    v.muted = true; // the film is always silent — the music bed carries the opening
-    v.preload = "auto";
-    try { v.load(); } catch { /* ignore */ }
+  const showLine = (html) => {
+    lineEl.classList.remove("show");
+    setTimeout(() => { lineEl.innerHTML = html; lineEl.classList.add("show"); }, 260);
   };
-  // After the last shot the film fades to black; once the dark has settled the
-  // final words drift in, hold to be read, then the splash fades to the menu.
+  // Point an <img> at a scene, falling back to existing art if the drop-in
+  // isn't there yet (so the intro never shows a broken frame).
+  const setStill = (im, sc) => {
+    im.onerror = () => { if (im.getAttribute("src") !== sc.fb) im.src = sc.fb; };
+    im.src = sc.img;
+  };
+  const preload = (sc) => { const im = new Image(); im.onerror = () => { im.src = sc.fb; }; im.src = sc.img; };
+  // After the last scene: fade to black, land the final words, then reveal menu.
   const rollEnd = () => {
     if (phase !== "show") return;
-    phase = "title";
-    if (lineEl) lineEl.classList.remove("show");
+    phase = "end";
+    lineEl.classList.remove("show");
+    stills.forEach((s) => s.classList.remove("show")); // images dissolve into the black card
     titleReveal.hidden = false;
     requestAnimationFrame(() => titleReveal.classList.add("in")); // fade to black (1.2s)
-    setTimeout(() => titleReveal.classList.add("lit"), 1300);      // words land on the black
-    setTimeout(() => finish(true), 4800);                          // read them, then slow reveal
+    setTimeout(() => titleReveal.classList.add("lit"), 1300);      // "Your quest begins."
+    setTimeout(() => finish(true), 4400);                          // read it, then slow reveal
   };
-  const advance = () => {
+  const playScene = (i) => {
     if (phase !== "show") return;
-    shot += 1;
-    if (shot >= FILM.length) return rollEnd();
-    const next = players[1 - current];
-    next.hidden = false;
-    next.play().catch(rollEnd); // a shot that won't start must not strand the film
-    players[current].hidden = true;
-    current = 1 - current;
-    showLine(shot); // the next story line rides this shot
-    preload(1 - current, shot + 1);
+    if (i >= SCENES.length) return rollEnd();
+    idx = i;
+    const sc = SCENES[i];
+    const cur = stills[layer], nxt = stills[1 - layer];
+    setStill(nxt, sc);
+    nxt.hidden = false;
+    nxt.classList.remove("kb"); void nxt.offsetWidth; nxt.classList.add("kb"); // restart the drift
+    requestAnimationFrame(() => { nxt.classList.add("show"); cur.classList.remove("show"); });
+    layer = 1 - layer;
+    showLine(sc.text);
+    if (SCENES[i + 1]) preload(SCENES[i + 1]);
+    timer = setTimeout(() => playScene(i + 1), HOLD);
   };
-  players.forEach((v) => {
-    v.addEventListener("ended", advance);
-    // Only a failure on the VISIBLE player should cut forward — a bad preload
-    // in the hidden twin will surface (and be skipped) when its cue comes.
-    v.addEventListener("error", () => { if (phase === "show" && !v.hidden) advance(); });
-  });
   splash.addEventListener("click", () => {
     if (phase === "gate") {
       Sound.unlock(); // the gate tap is the browser's audio-unlock gesture
-      Music.play("ambient"); // the music bed comes in under the whole opening
-      if (reduced) { Music.start("anthem"); return finish(false); } // reduced-motion users skip straight to the hub
+      Music.play("ambient"); // the music bed comes in under the whole story
+      if (reduced) { Music.start("anthem"); return finish(false); } // reduced-motion → straight to the hub
       phase = "show";
       $("splash-gate").hidden = true;
+      if (scrim) scrim.hidden = false;
       skip.hidden = false;
       if (mute) mute.textContent = (Sound.enabled || Music.enabled) ? "🔊" : "🔇";
       try { localStorage.setItem(INTRO_KEY, "1"); } catch { /* private mode */ }
-      preload(0, 0);
-      preload(1, 1);
-      players[0].hidden = false;
-      players[0].play().catch(() => finish(false)); // autoplay blocked → just enter
-      showLine(0); // first story line rides shot 1 — introduces Malrune
-      showTimer = setTimeout(() => finish(false), 50000); // safety net: the full film + title, generously
+      playScene(0);
     } else {
-      finish(false); // tap / Skip during the film → quicker
+      finish(false); // tap / Skip during the story → straight in
     }
   });
 }
