@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1280" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="33%" r="62%">
+      <stop offset="0%" stop-color="#26262f"/>
+      <stop offset="52%" stop-color="#0d0d13"/>
+      <stop offset="100%" stop-color="#050508"/>
+    </radialGradient>
+    <linearGradient id="hood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#15151d"/>
+      <stop offset="100%" stop-color="#050507"/>
+    </linearGradient>
+    <radialGradient id="void" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#d6dae8" stop-opacity="0.42"/>
+      <stop offset="55%" stop-color="#7c8090" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#7c8090" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="vig" cx="50%" cy="44%" r="78%">
+      <stop offset="0%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="68%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.92"/>
+    </radialGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="13"/></filter>
+    <filter id="soft2"><feGaussianBlur stdDeviation="34"/></filter>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.05"/></feComponentTransfer>
+    </filter>
+  </defs>
+
+  <!-- the grey nothing -->
+  <rect width="720" height="1280" fill="url(#glow)"/>
+
+  <!-- drifting colourless mist (the world going grey around him) -->
+  <g filter="url(#soft2)" opacity="0.5">
+    <ellipse cx="360" cy="640" rx="250" ry="300" fill="#3a3a45"/>
+    <ellipse cx="360" cy="860" rx="330" ry="170" fill="#242430"/>
+    <ellipse cx="250" cy="520" rx="120" ry="150" fill="#2c2c37"/>
+    <ellipse cx="470" cy="520" rx="120" ry="150" fill="#2c2c37"/>
+  </g>
+
+  <!-- the Unanswered: a hooded silhouette of absence -->
+  <g filter="url(#soft)">
+    <path fill="url(#hood)" d="M360,248
+      C296,254 253,330 249,420
+      C211,470 152,560 150,720
+      C132,900 121,1082 112,1280
+      L608,1280
+      C599,1082 588,900 570,720
+      C568,560 509,470 471,420
+      C467,330 424,254 360,248 Z"/>
+  </g>
+
+  <!-- the faceless void within the hood -->
+  <ellipse cx="360" cy="418" rx="62" ry="86" fill="url(#void)" filter="url(#soft)"/>
+
+  <!-- a crown of dead, unlit runes above the hood -->
+  <g stroke="#71768a" stroke-width="3" fill="none" opacity="0.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M250,214 L250,180 M250,196 L268,180"/>
+    <path d="M300,204 L300,168 M300,168 L316,186 M316,186 L300,204"/>
+    <path d="M360,198 L360,160 M348,172 L372,172"/>
+    <path d="M420,204 L420,168 M420,168 L404,186 M404,186 L420,204"/>
+    <path d="M470,214 L470,180 M470,196 L452,180"/>
+  </g>
+
+  <!-- faint ash, colour drained from the world -->
+  <g fill="#8a8e9c">
+    <circle cx="180" cy="360" r="2.4" opacity="0.30"/>
+    <circle cx="560" cy="410" r="2.0" opacity="0.26"/>
+    <circle cx="150" cy="620" r="2.6" opacity="0.22"/>
+    <circle cx="600" cy="700" r="2.2" opacity="0.24"/>
+    <circle cx="250" cy="900" r="2.0" opacity="0.20"/>
+    <circle cx="480" cy="960" r="2.6" opacity="0.22"/>
+    <circle cx="360" cy="300" r="1.8" opacity="0.28"/>
+    <circle cx="420" cy="560" r="1.8" opacity="0.18"/>
+    <circle cx="300" cy="700" r="1.8" opacity="0.18"/>
+  </g>
+
+  <rect width="720" height="1280" fill="url(#vig)"/>
+  <rect width="720" height="1280" filter="url(#grain)" opacity="0.6"/>
+</svg>

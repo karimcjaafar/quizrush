@@ -3741,9 +3741,9 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
   // Two Malrune stills, then the hero clip. img = the real art; fb = a stand-in
   // until it lands (onerror swap) so the intro never shows a broken frame.
   const MALRUNE = [
-    { img: "media/malrune-1.png", fb: "media/saga/App%20Pics/malrune-wide.png",
+    { img: "media/malrune-1.png", fb: "media/malrune-placeholder.svg",
       text: `Every people that stops asking <em>why</em> begins, quietly, to die.` },
-    { img: "media/malrune-2.png", fb: "media/saga/App%20Pics/malrune-face.png",
+    { img: "media/malrune-2.png", fb: "media/malrune-placeholder.svg",
       text: `From that silence rose <em>Malrune, the Unanswered</em>, who feeds on the ignorant, the arrogant and the unread. Where he passes, wonder fades and the world forgets.` },
   ];
   const HERO = {
