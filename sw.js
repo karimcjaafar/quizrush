@@ -1,7 +1,7 @@
 // QuizRush service worker: network-first with cache fallback, so updates land
 // immediately when online while the whole app keeps working offline.
 // Bump the version on breaking cache changes.
-const CACHE = "quizrush-v63";
+const CACHE = "quizrush-v71";
 const SHELL = [
   "./", "./index.html", "./style.css", "./app.js", "./bank.js", "./bank-imported.js",
   "./bank-generated.js", "./bank-generated-sport.js", "./bank-generated-extra.js", "./shapes.js",
@@ -9,6 +9,9 @@ const SHELL = [
   "./music/skyline-drift.mp3", "./media/saga/App Pics/Ice World - World 1.png",
   "./manifest.json", "./icon-bolt.svg", "./icon-bolt.png",
   "./music/ambient-synth-overture.mp3", "./music/soft-neon.mp3", "./music/trance-overture.mp3",
+  // Main Intro (Malrune stills + hero-gauntlet clip)
+  "./media/malrune-1.png", "./media/malrune-2.png", "./media/malrune-2-lit.png",
+  "./media/hero-gauntlet.png", "./media/hero-gauntlet.mp4", "./media/malrune-placeholder.svg",
 ];
 
 self.addEventListener("install", (e) => {

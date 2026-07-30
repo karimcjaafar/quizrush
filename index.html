@@ -13,7 +13,7 @@
   <link rel="icon" id="favicon-link" href="icon-bolt.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Marcellus&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Marcellus&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -22,7 +22,7 @@
        Malrune film with narration → fade to black → final line → home -->
   <div class="splash" id="splash">
     <div class="malrune-veil" aria-hidden="true">
-      <img class="malrune-face" src="media/saga/App%20Pics/malrune-face.png" alt="">
+      <img class="malrune-face" src="media/malrune-2.png" alt="">
       <div class="malrune-dust" id="malrune-dust"></div>
     </div>
     <div class="splash-gate" id="splash-gate">
@@ -35,14 +35,21 @@
     <img class="splash-still" id="splash-still-a" alt="" hidden>
     <img class="splash-still" id="splash-still-b" alt="" hidden>
     <video class="splash-hero" id="splash-hero" muted playsinline preload="none" hidden></video>
+    <!-- Malrune's eyes: two glows that ignite on the second still's final beat -->
+    <div class="malrune-eyes" id="malrune-eyes" aria-hidden="true"><span class="eye eye-l"></span><span class="eye eye-r"></span></div>
     <div class="splash-scrim" id="splash-scrim" aria-hidden="true" hidden></div>
     <div class="splash-line" id="splash-line" aria-hidden="true"></div>
+    <!-- the lone "YOU" that rises on black after "And it turned towards you" -->
+    <div class="splash-you" id="splash-you" aria-hidden="true">YOU</div>
     <div class="splash-title-reveal" id="splash-title-reveal" hidden>
       <p class="end-line">Your quest begins.</p>
     </div>
     <button class="splash-mute" id="splash-mute" aria-label="Sound on/off">🔇</button>
     <div class="splash-skip" id="splash-skip" hidden>Skip&nbsp;▸</div>
   </div>
+  <!-- The fist-punch light bloom: whites out from the hero clip and hands off to
+       the menu. A body-level sibling so it survives the splash being removed. -->
+  <div class="splash-flash" id="splash-flash" aria-hidden="true" hidden></div>
 
   <!-- Celebration overlay (daily solved, big wins) -->
   <div class="levelup-overlay celebrate-overlay" id="celebrate-overlay" hidden>

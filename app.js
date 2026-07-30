@@ -3738,22 +3738,41 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
   const scrim = $("splash-scrim");
   const lineEl = $("splash-line");
   const skip = $("splash-skip");
-  // Two Malrune stills, then the hero clip. img = the real art; fb = a stand-in
-  // until it lands (onerror swap) so the intro never shows a broken frame.
-  const MALRUNE = [
-    { img: "media/malrune-1.png", fb: "media/malrune-placeholder.svg",
-      text: `Every people that stops asking <em>why</em> begins, quietly, to die.` },
-    { img: "media/malrune-2.png", fb: "media/malrune-placeholder.svg",
-      text: `From that silence rose <em>Malrune, the Unanswered</em>, who feeds on the ignorant, the arrogant and the unread. Where he passes, wonder fades and the world forgets.` },
+  const eyes = $("malrune-eyes");
+  const flash = $("splash-flash");
+  const youEl = $("splash-you");
+  // Three narration scenes, then the hero clip as a wordless final shot.
+  // img:null → the lines play on pure black (centred). <em> glows cold
+  // (Malrune, why); <em class="warm"> glows gold (ANSWER, YOU, Riddle-Solver).
+  const SCENES = [
+    { img: "media/malrune-1.png", fb: "media/malrune-placeholder.svg", lines: [
+      `Every age that stops asking <em>why</em>… forgets what it once knew and slips quietly into… <em class="strong">Oblivion</em>.`,
+      `From the silence rose <em class="strong">Malrune, the Unanswered</em>, who feeds on the ignorant and the unknowing.`,
+    ] },
+    { img: "media/malrune-2.png", fb: "media/malrune-placeholder.svg", litImg: "media/malrune-2-lit.png", lines: [
+      `The world began to toil, and it seemed like all hope was lost. However, knowledge is not so easily silenced.`,
+      { html: `A power awoke, and bequeathed its gift to all who still question and <em class="warm">ANSWER</em>.`, holdBonus: 5000 },
+      { html: `<span class="pre">And it turned towards </span><em class="warm">YOU</em>`, holdBonus: 2000, youSolo: 4000 },
+    ] },
+    { img: null, lines: [
+      { html: `Rise, <em class="warm">Riddle-Solver</em>.`, holdBonus: 2600 },
+      `Your knowledge is your blade.`,
+      `An epic saga awaits.`,
+    ] },
   ];
   const HERO = {
     clip: "media/hero-gauntlet.mp4",
     still: "media/hero-gauntlet.png",
     fb: "media/saga/App%20Pics/hero-runeblade.png",
-    text: `But one mind still asks. Rise, <em>riddle-solver</em>. Your knowledge is your blade.`,
   };
-  const HOLD = 5600;      // ms each Malrune still holds
   const HERO_MAX = 11000; // ms safety cap for the hero clip if "ended" never fires
+  // Slow, deliberate pacing (ms). The fade lengths themselves live in the CSS.
+  const T = { gateOut: 1800, imgIn: 1800, imgSolo: 700, lineIn: 1500, lineOut: 1400, lineGap: 450, imgOut: 1800, blackSettle: 800 };
+  const holdFor = (html) => {
+    const len = html.replace(/<[^>]+>/g, "").length; // read time scales with length
+    return Math.max(3600, Math.min(5800, Math.round(len * 46)));
+  };
+  const normLine = (L) => (typeof L === "string" ? { html: L } : L);
 
   const dust = $("malrune-dust");
   if (dust && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -3769,7 +3788,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
     }
   }
   let phase = "gate"; // gate → malrune → hero → done
-  let layer = 0, timer = null;
+  let layer = 0, timer = null, eyeTimer = null, cancelled = false;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const INTRO_KEY = "rr-intro-seen-v5"; // v5: Malrune stills + hero gauntlet clip
 
@@ -3787,50 +3806,88 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
       if (on && phase !== "gate" && phase !== "done") Music.play("ambient"); // bring the bed back
     };
   }
+  const bonusToasts = () => {
+    if (window.__freezeUsed) { toast("🧊 Streak freeze used — your streak is safe!"); window.__freezeUsed = false; }
+    else if (window.__loginBonus) { toast(`📅 Daily login bonus: +${window.__loginBonus} Gold`); window.__loginBonus = 0; }
+  };
   const finish = (slow) => {
     if (phase === "done") return;
-    phase = "done";
-    clearTimeout(timer);
+    phase = "done"; cancelled = true;
+    clearTimeout(timer); clearTimeout(eyeTimer);
+    if (eyes) eyes.classList.remove("lit");
+    if (flash) { flash.hidden = true; flash.classList.remove("fade"); flash.style.opacity = "0"; }
     try { heroVid.pause(); } catch { /* ignore */ }
     Music.start("anthem"); // menu bed once the intro is done
     splash.classList.add(slow ? "out-slow" : "out");
     setTimeout(() => splash.remove(), slow ? 3200 : 700);
     document.body.classList.add("intro-done");
-    setTimeout(() => {
-      if (window.__freezeUsed) { toast("🧊 Streak freeze used — your streak is safe!"); window.__freezeUsed = false; }
-      else if (window.__loginBonus) { toast(`📅 Daily login bonus: +${window.__loginBonus} Gold`); window.__loginBonus = 0; }
-    }, slow ? 3400 : 900);
+    setTimeout(bonusToasts, slow ? 3400 : 900);
   };
-  const showLine = (html) => {
-    lineEl.classList.remove("show");
-    setTimeout(() => { lineEl.innerHTML = html; lineEl.classList.add("show"); }, 260);
+  // The hero clip ends on a burst of light and the flash layer has bloomed to
+  // white under it. Lock full white, reveal the menu behind, then fade the white
+  // away so the home screen emerges from the light.
+  const finishWhite = () => {
+    if (phase === "done") return;
+    phase = "done"; cancelled = true;
+    clearTimeout(timer); clearTimeout(eyeTimer);
+    try { heroVid.pause(); } catch { /* ignore */ }
+    Music.start("anthem");
+    if (flash) { flash.hidden = false; flash.style.transition = "opacity 0.2s linear"; flash.style.opacity = "1"; }
+    document.body.classList.add("intro-done");
+    splash.remove();
+    requestAnimationFrame(() => {
+      if (!flash) return;
+      flash.style.transition = "opacity 1.5s ease";
+      requestAnimationFrame(() => { flash.style.opacity = "0"; });
+      setTimeout(() => { flash.hidden = true; }, 1650);
+    });
+    setTimeout(bonusToasts, 1200);
   };
+  const wait = (ms) => new Promise((res) => { timer = setTimeout(res, ms); });
   // Point an <img> at a scene, falling back to existing art if the drop-in
   // isn't there yet (so the intro never shows a broken frame).
   const setStill = (im, sc) => {
     im.onerror = () => { if (im.getAttribute("src") !== sc.fb) im.src = sc.fb; };
     im.src = sc.img;
   };
-  const preload = (sc) => { const im = new Image(); im.onerror = () => { im.src = sc.fb; }; im.src = sc.img; };
-  // The hero clip: seated, he locks on his final gauntlet, rises, and strikes
-  // fist to palm — calm, composed, unafraid. Silent (the music carries it). If
-  // the clip can't play, fall back to the hero still so the beat still lands.
+  const preload = (sc) => { if (!sc || !sc.img) return; const im = new Image(); im.onerror = () => { im.src = sc.fb; }; im.src = sc.img; };
+  // The hero clip: a wordless final shot. It fades in from the black finale,
+  // plays, and ends on a burst of light that blooms to white and hands off to
+  // the menu. If it can't play, the hero still holds and we bloom anyway.
   const playHero = () => {
     if (phase !== "malrune") return;
     phase = "hero";
-    const cur = stills[layer];
-    // Always lay the hero still down as the base first, so there is a visible
-    // frame no matter what the clip does; the clip fades in ON TOP only if it
-    // actually plays (otherwise the still stays).
-    const base = stills[1 - layer];
+    clearTimeout(eyeTimer);
+    if (eyes) eyes.classList.remove("lit");
+    lineEl.classList.remove("show", "center"); // no text over the final shot
+    const base = stills[0], other = stills[1];
+    other.classList.remove("show");
     setStill(base, { img: HERO.still, fb: HERO.fb });
     base.hidden = false;
     base.classList.remove("kb"); void base.offsetWidth; base.classList.add("kb");
-    requestAnimationFrame(() => { base.classList.add("show"); cur.classList.remove("show"); });
-    layer = 1 - layer;
-    showLine(HERO.text);
+    requestAnimationFrame(() => base.classList.add("show"));
     let ended = false;
-    const done = () => { if (ended) return; ended = true; finish(true); };
+    // The clip ends with the knight's newly-drawn blade ablaze. That fire
+    // blooms into a fast bright flash (the almighty hit), which then SLOWLY
+    // fades to reveal the home screen beneath.
+    const done = () => {
+      if (ended || phase === "done") return; ended = true;
+      clearTimeout(timer); clearTimeout(eyeTimer);
+      phase = "done"; cancelled = true;
+      Music.start("anthem");
+      document.body.classList.add("intro-done");
+      if (flash) { flash.hidden = false; flash.style.transition = "opacity 0.1s ease"; flash.style.opacity = "1"; }
+      setTimeout(() => {
+        try { heroVid.pause(); } catch { /* ignore */ }
+        splash.remove();
+        if (flash) {
+          flash.style.transition = "opacity 2.8s ease"; // slow resolve into the menu
+          requestAnimationFrame(() => { flash.style.opacity = "0"; });
+          setTimeout(() => { flash.hidden = true; }, 2900);
+        }
+      }, 300); // hold on the hit a beat, then the slow transition
+      setTimeout(bonusToasts, 2600);
+    };
     const hideVid = () => { heroVid.classList.remove("show"); heroVid.hidden = true; };
     heroVid.muted = true; // clips are always silent — the music bed carries it
     heroVid.onended = done;
@@ -3841,34 +3898,86 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
     const p = heroVid.play();
     if (p && p.then) p.then(() => heroVid.classList.add("show")).catch(hideVid); // plays → reveal; else the still stays
     else heroVid.classList.add("show");
-    timer = setTimeout(done, HERO_MAX); // finish on clip end, or this cap if "ended" never fires
+    timer = setTimeout(done, HERO_MAX); // cap: fade out even if "ended" never fires
   };
-  const playMalrune = (i) => {
-    if (phase !== "malrune") return;
-    if (i >= MALRUNE.length) return playHero();
-    const sc = MALRUNE[i];
-    const cur = stills[layer], nxt = stills[1 - layer];
-    setStill(nxt, sc);
-    nxt.hidden = false;
-    nxt.classList.remove("kb"); void nxt.offsetWidth; nxt.classList.add("kb"); // restart the drift
-    requestAnimationFrame(() => { nxt.classList.add("show"); cur.classList.remove("show"); });
-    layer = 1 - layer;
-    showLine(sc.text);
-    if (MALRUNE[i + 1]) preload(MALRUNE[i + 1]);
-    timer = setTimeout(() => playMalrune(i + 1), HOLD);
+  // Walk the scenes. The scene image sits on the base layer (stills[0]); the
+  // overlay layer (stills[1], above it) cross-fades in the fiery-eyed Malrune so
+  // his OWN eyes ignite in place. Each line fades in, holds to be read, and fades
+  // out; the image fades to black between scenes. Unhurried.
+  const base = stills[0], overlay = stills[1];
+  const showStill = (el, sc, kb) => {
+    setStill(el, sc);
+    el.hidden = false;
+    el.classList.remove("kb"); void el.offsetWidth; if (kb) el.classList.add("kb");
+    requestAnimationFrame(() => el.classList.add("show"));
+  };
+  const runIntro = async () => {
+    for (let s = 0; s < SCENES.length; s++) {
+      if (cancelled) return;
+      const scene = SCENES[s];
+      overlay.classList.remove("show"); // clear any lit overlay from a prior scene
+      if (scene.img) {
+        showStill(base, scene, !scene.litImg); // no ken-burns on the eyes scene so the glow stays aligned
+        preload(SCENES[s + 1]);
+        await wait(T.imgIn + T.imgSolo);        // image appears, then text comes up
+      } else {
+        base.classList.remove("show");
+        await wait(T.blackSettle);              // settle on pure black
+      }
+      if (cancelled) return;
+      for (let li = 0; li < scene.lines.length; li++) {
+        if (cancelled) return;
+        const L = normLine(scene.lines[li]);
+        // his eyes ignite fiery a moment into the eyes scene's first line
+        if (scene.litImg && li === 0) {
+          clearTimeout(eyeTimer);
+          eyeTimer = setTimeout(() => { if (!cancelled) showStill(overlay, { img: scene.litImg, fb: scene.litImg }, false); }, 2200);
+        }
+        lineEl.classList.toggle("center", !scene.img); // centred on the black finale
+        lineEl.innerHTML = L.html;
+        requestAnimationFrame(() => lineEl.classList.add("show"));
+        await wait(T.lineIn + holdFor(L.html) + (L.holdBonus || 0));
+        if (cancelled) return;
+        if (L.youSolo) {
+          lineEl.classList.add("you-solo");     // the sentence fades, YOU stays exactly where it was
+          base.classList.remove("show");        // the portrait fades to black behind it
+          overlay.classList.remove("show");
+          await wait(1400 + L.youSolo);
+          if (cancelled) return;
+          lineEl.classList.remove("show");       // then YOU fades too
+          await wait(T.lineOut + T.lineGap);
+          lineEl.classList.remove("you-solo");
+        } else {
+          lineEl.classList.remove("show");
+          await wait(T.lineOut + T.lineGap);    // slow fade out, brief gap
+        }
+      }
+      if (cancelled) return;
+      if (scene.img) {
+        base.classList.remove("show");
+        overlay.classList.remove("show");
+        await wait(T.imgOut);                   // image fades to black
+      }
+    }
+    if (!cancelled) playHero();
   };
   splash.addEventListener("click", () => {
     if (phase === "gate") {
       Sound.unlock(); // the gate tap is the browser's audio-unlock gesture
       Music.play("ambient"); // the music bed comes in under the whole intro
-      if (reduced) { Music.start("anthem"); return finish(false); } // reduced-motion → straight to the hub
+      if (reduced) { Music.start("anthem"); return finish(false); } // reduced-motion → straight in
       phase = "malrune";
-      $("splash-gate").hidden = true;
+      const gate = $("splash-gate");
+      gate.style.transition = "opacity 1.8s ease";
+      gate.style.opacity = "0"; // slow-fade the whole gate down to black
+      const veil = document.querySelector(".malrune-veil");
+      if (veil) { veil.style.transition = "opacity 1.8s ease"; veil.style.opacity = "0"; }
+      splash.style.background = "#000"; // pure-black bed for the scenes and finale
       if (scrim) scrim.hidden = false;
       skip.hidden = false;
       if (mute) mute.textContent = (Sound.enabled || Music.enabled) ? "🔊" : "🔇";
       try { localStorage.setItem(INTRO_KEY, "1"); } catch { /* private mode */ }
-      playMalrune(0);
+      timer = setTimeout(() => { gate.hidden = true; runIntro(); }, T.gateOut);
     } else {
       finish(false); // tap / Skip during the intro → straight in
     }
