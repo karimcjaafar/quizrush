@@ -3723,39 +3723,37 @@ document.addEventListener("pointerdown", () => Sound.unlock(), { once: true });
 // Offline + instant loads
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => { /* optional */ });
 
-// Intro: tap gate (also the browser's audio unlock + music bed) → a 7-scene
-// still slideshow telling the saga's backstory (the fall of the seven kingdoms
-// of Vaelmyr and the rise of Malrune). Two <img> layers cross-fade with a slow
-// Ken-Burns drift; one narration line rides each scene; then it fades to black
-// and ends on "Your quest begins." before the menu is revealed. Skippable.
-// The real art drops in as intro-1..7.png; until then each scene falls back to
-// an existing painting (onerror swap), so the intro works before the art lands.
+// Intro (app splash): tap gate (audio unlock + music bed) → two menacing stills
+// of Malrune, the Unanswered (a NON-elemental force of forgetting, not icy) with
+// a narration beat each → a ~10s muted clip of the hero locking on his final
+// gauntlet and rising, calm and unafraid, while the final line hovers → fade to
+// the menu. The music bed carries it; the clip is silent. Skippable. Real art
+// drops in as media/malrune-1.png / malrune-2.png / hero-gauntlet.mp4; until
+// then each falls back to existing art (onerror swap) so the intro works now.
+// (The full seven-kingdoms story moved to the saga-mode opening.)
 {
   const splash = $("splash");
   const stills = [$("splash-still-a"), $("splash-still-b")];
+  const heroVid = $("splash-hero");
   const scrim = $("splash-scrim");
   const lineEl = $("splash-line");
-  const titleReveal = $("splash-title-reveal"); // the fade-to-black end card
   const skip = $("splash-skip");
-  const REALM = "Vaelmyr";
-  const P = "media/saga/App%20Pics/";
-  const SCENES = [
-    { img: P + "intro-1.png", fb: P + "loc-palace.png",
-      text: `Once, the seven kingdoms of <em>${REALM}</em> knew nothing but peace. Their people prospered, and their halls were full.` },
-    { img: P + "intro-2.png", fb: P + "Ice%20World%20-%20World%201.png",
-      text: `But plenty made them proud. Pride made them certain. And the certain stop asking <em>why</em>.` },
-    { img: P + "intro-3.png", fb: P + "malrune-wide.png",
-      text: `In that unasking silence, something stirred: <em>Malrune, the Unanswered</em>, who feeds on the ignorant, the arrogant and the unread.` },
-    { img: P + "intro-4.png", fb: P + "malrune-face.png",
-      text: `He grew vast on their certainty. One by one, the seven kingdoms fell, their names forgotten, their people with them.` },
-    { img: P + "intro-5.png", fb: P + "w1-boss-true.png",
-      text: `Over each fallen crown he set his most loyal servants: <em>wardens</em>, to keep the cold and guard the silence.` },
-    { img: P + "intro-6.png", fb: P + "evt-shrine.png",
-      text: `Steel cannot take back what was lost to forgetting. Only one blade can: the blade of <em>what you know</em>.` },
-    { img: P + "intro-7.png", fb: P + "hero-runeblade.png",
-      text: `Rise, riddle-solver. Your knowledge is your weapon. Take back the seven kingdoms.` },
+  // Two Malrune stills, then the hero clip. img = the real art; fb = a stand-in
+  // until it lands (onerror swap) so the intro never shows a broken frame.
+  const MALRUNE = [
+    { img: "media/malrune-1.png", fb: "media/saga/App%20Pics/malrune-wide.png",
+      text: `Every people that stops asking <em>why</em> begins, quietly, to die.` },
+    { img: "media/malrune-2.png", fb: "media/saga/App%20Pics/malrune-face.png",
+      text: `From that silence rose <em>Malrune, the Unanswered</em>, who feeds on the ignorant, the arrogant and the unread. Where he passes, wonder fades and the world forgets.` },
   ];
-  const HOLD = 5300; // ms each scene holds (text fades in/out within this window)
+  const HERO = {
+    clip: "media/hero-gauntlet.mp4",
+    still: "media/hero-gauntlet.png",
+    fb: "media/saga/App%20Pics/hero-runeblade.png",
+    text: `But one mind still asks. Rise, <em>riddle-solver</em>. Your knowledge is your blade.`,
+  };
+  const HOLD = 5600;      // ms each Malrune still holds
+  const HERO_MAX = 11000; // ms safety cap for the hero clip if "ended" never fires
 
   const dust = $("malrune-dust");
   if (dust && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -3770,10 +3768,10 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
       dust.appendChild(d);
     }
   }
-  let phase = "gate"; // gate → show → end → done
-  let idx = 0, layer = 0, timer = null;
+  let phase = "gate"; // gate → malrune → hero → done
+  let layer = 0, timer = null;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const INTRO_KEY = "rr-intro-seen-v4"; // v4: the new still-story intro
+  const INTRO_KEY = "rr-intro-seen-v5"; // v5: Malrune stills + hero gauntlet clip
 
   const mute = $("splash-mute");
   if (mute) {
@@ -3786,14 +3784,15 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
       if (Music.enabled !== on) Music.toggle();
       mute.textContent = on ? "🔊" : "🔇";
       paintSoundButton();
-      if (on && (phase === "show" || phase === "end")) Music.play("ambient"); // bring the bed back
+      if (on && phase !== "gate" && phase !== "done") Music.play("ambient"); // bring the bed back
     };
   }
   const finish = (slow) => {
     if (phase === "done") return;
     phase = "done";
     clearTimeout(timer);
-    Music.start("anthem"); // menu bed once the story is done
+    try { heroVid.pause(); } catch { /* ignore */ }
+    Music.start("anthem"); // menu bed once the intro is done
     splash.classList.add(slow ? "out-slow" : "out");
     setTimeout(() => splash.remove(), slow ? 3200 : 700);
     document.body.classList.add("intro-done");
@@ -3813,22 +3812,41 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
     im.src = sc.img;
   };
   const preload = (sc) => { const im = new Image(); im.onerror = () => { im.src = sc.fb; }; im.src = sc.img; };
-  // After the last scene: fade to black, land the final words, then reveal menu.
-  const rollEnd = () => {
-    if (phase !== "show") return;
-    phase = "end";
-    lineEl.classList.remove("show");
-    stills.forEach((s) => s.classList.remove("show")); // images dissolve into the black card
-    titleReveal.hidden = false;
-    requestAnimationFrame(() => titleReveal.classList.add("in")); // fade to black (1.2s)
-    setTimeout(() => titleReveal.classList.add("lit"), 1300);      // "Your quest begins."
-    setTimeout(() => finish(true), 4400);                          // read it, then slow reveal
+  // The hero clip: seated, he locks on his final gauntlet, rises, and strikes
+  // fist to palm — calm, composed, unafraid. Silent (the music carries it). If
+  // the clip can't play, fall back to the hero still so the beat still lands.
+  const playHero = () => {
+    if (phase !== "malrune") return;
+    phase = "hero";
+    const cur = stills[layer];
+    // Always lay the hero still down as the base first, so there is a visible
+    // frame no matter what the clip does; the clip fades in ON TOP only if it
+    // actually plays (otherwise the still stays).
+    const base = stills[1 - layer];
+    setStill(base, { img: HERO.still, fb: HERO.fb });
+    base.hidden = false;
+    base.classList.remove("kb"); void base.offsetWidth; base.classList.add("kb");
+    requestAnimationFrame(() => { base.classList.add("show"); cur.classList.remove("show"); });
+    layer = 1 - layer;
+    showLine(HERO.text);
+    let ended = false;
+    const done = () => { if (ended) return; ended = true; finish(true); };
+    const hideVid = () => { heroVid.classList.remove("show"); heroVid.hidden = true; };
+    heroVid.muted = true; // clips are always silent — the music bed carries it
+    heroVid.onended = done;
+    heroVid.onerror = hideVid;
+    heroVid.src = HERO.clip;
+    heroVid.hidden = false;
+    try { heroVid.load(); } catch { /* ignore */ }
+    const p = heroVid.play();
+    if (p && p.then) p.then(() => heroVid.classList.add("show")).catch(hideVid); // plays → reveal; else the still stays
+    else heroVid.classList.add("show");
+    timer = setTimeout(done, HERO_MAX); // finish on clip end, or this cap if "ended" never fires
   };
-  const playScene = (i) => {
-    if (phase !== "show") return;
-    if (i >= SCENES.length) return rollEnd();
-    idx = i;
-    const sc = SCENES[i];
+  const playMalrune = (i) => {
+    if (phase !== "malrune") return;
+    if (i >= MALRUNE.length) return playHero();
+    const sc = MALRUNE[i];
     const cur = stills[layer], nxt = stills[1 - layer];
     setStill(nxt, sc);
     nxt.hidden = false;
@@ -3836,23 +3854,23 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
     requestAnimationFrame(() => { nxt.classList.add("show"); cur.classList.remove("show"); });
     layer = 1 - layer;
     showLine(sc.text);
-    if (SCENES[i + 1]) preload(SCENES[i + 1]);
-    timer = setTimeout(() => playScene(i + 1), HOLD);
+    if (MALRUNE[i + 1]) preload(MALRUNE[i + 1]);
+    timer = setTimeout(() => playMalrune(i + 1), HOLD);
   };
   splash.addEventListener("click", () => {
     if (phase === "gate") {
       Sound.unlock(); // the gate tap is the browser's audio-unlock gesture
-      Music.play("ambient"); // the music bed comes in under the whole story
+      Music.play("ambient"); // the music bed comes in under the whole intro
       if (reduced) { Music.start("anthem"); return finish(false); } // reduced-motion → straight to the hub
-      phase = "show";
+      phase = "malrune";
       $("splash-gate").hidden = true;
       if (scrim) scrim.hidden = false;
       skip.hidden = false;
       if (mute) mute.textContent = (Sound.enabled || Music.enabled) ? "🔊" : "🔇";
       try { localStorage.setItem(INTRO_KEY, "1"); } catch { /* private mode */ }
-      playScene(0);
+      playMalrune(0);
     } else {
-      finish(false); // tap / Skip during the story → straight in
+      finish(false); // tap / Skip during the intro → straight in
     }
   });
 }
