@@ -398,29 +398,23 @@ const DINGBAT_FLOOR = 100;    // a solve is never worth less than this
 const WHOAMI_ROUND = 5;                    // characters per round
 const WHOAMI_POINTS = [400, 300, 200, 100]; // payout by clue stage when solved
 
-// Classic ladder: every level is a 10-question blend that tilts harder as you
-// climb — mostly easy at L1, nearly all hard at L10, all hard beyond. The
-// clock stays constant; the pass bar rises near the top.
-// Gentle early game — Level 1 is all-easy from common topics, ramping to
-// all-hard (expert) by Level 10. Easy really means easy so nobody bounces off.
-const LEVEL_MIXES = [
-  { easy: 10, medium: 0, hard: 0 },  // L1
-  { easy: 9,  medium: 1, hard: 0 },  // L2
-  { easy: 7,  medium: 3, hard: 0 },  // L3
-  { easy: 5,  medium: 4, hard: 1 },  // L4
-  { easy: 3,  medium: 5, hard: 2 },  // L5
-  { easy: 2,  medium: 5, hard: 3 },  // L6
-  { easy: 1,  medium: 4, hard: 5 },  // L7
-  { easy: 0,  medium: 3, hard: 7 },  // L8
-  { easy: 0,  medium: 1, hard: 9 },  // L9
-  { easy: 0,  medium: 0, hard: 10 }, // L10
+// Classic "rounds": 5 questions per round from Karim's sheet, difficulty rising
+// each round. Counts are per TIER (VE/E/M/H/VH): first Medium in R2, first Hard
+// in R3, first Very Hard in R5. The M/H/VH share grows then plateaus (R8+) so the
+// finite Very-Hard pool isn't over-drawn. Endless: you play rounds until you run
+// out of lives (one mistake allowed per round).
+const ROUND_SIZE = 5;
+const ROUND_TIERS = [
+  { VE: 3, E: 2 },                   // R1
+  { VE: 2, E: 2, M: 1 },             // R2
+  { VE: 1, E: 2, M: 1, H: 1 },       // R3
+  { E: 2, M: 2, H: 1 },              // R4
+  { E: 1, M: 2, H: 1, VH: 1 },       // R5
+  { E: 1, M: 1, H: 2, VH: 1 },       // R6
+  { M: 2, H: 1, VH: 2 },             // R7
+  { M: 1, H: 2, VH: 2 },             // R8+ (plateau)
 ];
-const levelMix = (lvl) => (lvl <= 10 ? LEVEL_MIXES[lvl - 1] : { easy: 0, medium: 0, hard: 10 });
-const LEVEL_RULES = (lvl) => ({ mix: levelMix(lvl), need: lvl <= 6 ? 7 : lvl <= 8 ? 8 : 9 });
-const mixLabel = (m) =>
-  ["easy", "medium", "hard"].filter((d) => m[d]).map((d) => `${m[d]} ${d}`).join(" · ");
-// Early levels draw from the most universally-known topics; later levels widen
-const levelScope = (lvl) => (lvl <= 3 ? "common" : "core");
+const roundTiers = (r) => ROUND_TIERS[Math.min(Math.max(r, 1), ROUND_TIERS.length) - 1];
 
 // ---------- Core vs niche categories for mixed rounds ----------
 // Classic / Sudden / Blitz stick to core trivia; niche topics (celebrities,
@@ -477,29 +471,34 @@ function topicKey(q) {
 const TIER_LABEL = { easy: "Easy", medium: "Medium", hard: "Hard" };
 const capDiff = (d) => TIER_LABEL[d] || d;
 
-// Sudden Death difficulty ramp by served position: gentle start, brutal tail
-const SUDDEN_RAMP = [
-  ["easy", "Very Easy"], ["easy", "Very Easy"], ["easy", "Very Easy"],
-  ["easy", "Easy"], ["easy", "Easy"], ["easy", "Easy"],
-  ["medium", "Medium"], ["medium", "Medium"], ["medium", "Medium"],
-  ["hard", "Hard"], ["hard", "Hard"], ["hard", "Hard"], ["hard", "Hard"],
-];
-const suddenTier = (i) => SUDDEN_RAMP[i] || ["hard", "Expert"]; // beyond the ramp: Expert forever
+// ---- 5-tier difficulty from Karim's sheet (bank-user.js `tier`) ----
+// Every traditional question carries a tier code; where a legacy question has no
+// tier we fall back from its 3-level difficulty. The label is what the UI shows.
+const TIER_CODES = ["VE", "E", "M", "H", "VH"];
+const TIER_CODE_LABEL = { VE: "Very Easy", E: "Easy", M: "Medium", H: "Hard", VH: "Very Hard" };
+const DIFF_TO_TIER = { easy: "E", medium: "M", hard: "H" };
+const tierOf = (q) => q.utier || DIFF_TO_TIER[q.difficulty] || "M";
+const tierMixLabel = (m) => TIER_CODES.filter((t) => m[t]).map((t) => `${m[t]} ${TIER_CODE_LABEL[t]}`).join(" · ");
+
+// Sudden Death: a fixed tier per question position (never shuffled). Gentle open,
+// mediums seeded in Q6-10, hards in Q11-15, then a Very Hard every 5 from Q16.
+const SUDDEN_SEQ = ["VE", "VE", "E", "E", "E", "E", "M", "E", "M", "E", "M", "H", "M", "H", "M"];
+const suddenTierAt = (n) => (n <= 15 ? SUDDEN_SEQ[n - 1] : ((n - 16) % 5 === 0 ? "VH" : "H")); // n is 1-based
 
 const BADGES = [
   { id: "first",      emoji: "🎬", name: "Opening Night",   desc: "Play your first game" },
   { id: "streak5",    emoji: "🔥", name: "On Fire",         desc: "Reach a 5-answer streak" },
   { id: "streak10",   emoji: "🌋", name: "Unstoppable",     desc: "Reach a 10-answer streak" },
-  { id: "perfect",    emoji: "💯", name: "Perfectionist",   desc: "Score 10/10 in a Classic round" },
+  { id: "perfect",    emoji: "💯", name: "Perfectionist",   desc: "Ace a full Classic round" },
   { id: "survivor10", emoji: "🛡️", name: "Survivor",        desc: "Clear 10 questions in Sudden Death" },
   { id: "blitz15",    emoji: "⚡", name: "Lightning Round", desc: "15 correct in one Blitz" },
   { id: "sharp",      emoji: "🎯", name: "Sharpshooter",    desc: "100% accuracy, 5+ questions" },
   { id: "owl",        emoji: "🦉", name: "Night Owl",       desc: "Finish a game after midnight" },
   { id: "allmodes",   emoji: "🎮", name: "Triple Threat",   desc: "Play all three trivia modes" },
-  { id: "hardcore",   emoji: "🧠", name: "Hard Boiled",     desc: "Score 9/10 or better on a Classic level" },
-  { id: "climber",    emoji: "🪜", name: "Climber",         desc: "Reach Level 3 in Classic" },
-  { id: "summit",     emoji: "🏔️", name: "Summit",          desc: "Reach Level 6 in Classic" },
-  { id: "ten",        emoji: "🔟", name: "Perfect Ten",     desc: "Reach Level 10 in Classic" },
+  { id: "hardcore",   emoji: "🧠", name: "Hard Boiled",     desc: "Ace a Classic round at Round 4 or later" },
+  { id: "climber",    emoji: "🪜", name: "Climber",         desc: "Reach Round 3 in Classic" },
+  { id: "summit",     emoji: "🏔️", name: "Summit",          desc: "Reach Round 6 in Classic" },
+  { id: "ten",        emoji: "🔟", name: "Perfect Ten",     desc: "Reach Round 10 in Classic" },
   { id: "daily",      emoji: "📅", name: "Daily Devotee",   desc: "Solve a Daily Challenge" },
 ];
 
@@ -693,8 +692,8 @@ function medalFor(catId) {
 
 // ---------- Token economy ----------
 // Free to play forever; tokens are earned through play and spent on comforts
-// (lifeline refills, Sudden Death revives, streak freezes) and optional
-// cosmetics. Real-money token packs are SIMULATED until launch (DEMO_STORE).
+// (streak freezes) and optional cosmetics. Real-money token packs are
+// SIMULATED until launch (DEMO_STORE).
 const START_TOKENS = 25;      // one-time welcome grant
 const LOGIN_BONUS = 5;        // first open of the day
 const LEVELUP_TOKENS = 5;     // per XP level gained in a game
@@ -1124,7 +1123,7 @@ function renderBests() {
     const best = getBest(mode);
     let text = best > 0 ? `★ ${best.toLocaleString()}` : "";
     if (mode === "classic" && player.bestClassicLevel > 1) {
-      text = `Lv ${player.bestClassicLevel}${text ? " · " + text : ""}`;
+      text = `Round ${player.bestClassicLevel}${text ? " · " + text : ""}`;
     }
     $("best-" + mode).textContent = text;
   }
@@ -1246,6 +1245,7 @@ function fetchFromBank({ amount, catId, difficulty }) {
     category: CATEGORIES.find((c) => c.id === q.cat)?.name || "QuizRush",
     catId: q.cat,
     difficulty: q.difficulty,
+    utier: q.tier || DIFF_TO_TIER[q.difficulty] || "M", // 5-tier code
     text: q.text,
     big: q.big || "",
     svgPath: q.svgPath || "",
@@ -1253,6 +1253,78 @@ function fetchFromBank({ amount, catId, difficulty }) {
     correct: q.correct,
     answers: shuffle([q.correct, ...q.wrong]),
   }));
+}
+
+// ---- Sheet-only draw engine (Classic / Sudden / Blitz) ----
+// Traditional trivia is served EXCLUSIVELY from Karim's sheet (bank-user.js),
+// grouped by tier. A per-tier shuffle-bag guarantees every question in a tier is
+// used before any repeat: we deal from the bag and only reshuffle a fresh bag
+// once it's empty.
+function shapeUserQ(q) {
+  return {
+    category: CATEGORIES.find((c) => c.id === q.cat)?.name || "QuizRush",
+    catId: q.cat || "general",
+    difficulty: q.difficulty || "medium",
+    utier: q.tier || DIFF_TO_TIER[q.difficulty] || "M",
+    text: q.text,
+    correct: q.correct,
+    wrong: q.wrong,
+  };
+}
+const SHEET_BY_TIER = { VE: [], E: [], M: [], H: [], VH: [] };
+USER.forEach((q) => { const s = shapeUserQ(q); (SHEET_BY_TIER[s.utier] || SHEET_BY_TIER.M).push(s); });
+const _tierBag = {};
+function drawFromTier(t, avoidTexts, avoidCats) {
+  let src = SHEET_BY_TIER[t];
+  if (!src || !src.length) { // tier empty in the sheet: borrow the nearest tier
+    const order = { VE: ["VE", "E", "M"], E: ["E", "VE", "M"], M: ["M", "E", "H"], H: ["H", "M", "VH"], VH: ["VH", "H", "M"] }[t] || TIER_CODES;
+    t = order.find((x) => (SHEET_BY_TIER[x] || []).length) || null;
+    src = t ? SHEET_BY_TIER[t] : null;
+    if (!src) return null;
+  }
+  if (!_tierBag[t] || !_tierBag[t].length) _tierBag[t] = shuffle([...src]); // fresh bag once exhausted
+  const bag = _tierBag[t];
+  // prefer a question whose text hasn't been served this round and whose category
+  // isn't already over-represented, but never repeat within the bag cycle
+  let idx = bag.findIndex((q) => !avoidTexts.has(q.text) && !avoidCats.has(q.catId));
+  if (idx < 0) idx = bag.findIndex((q) => !avoidTexts.has(q.text));
+  if (idx < 0) idx = 0;
+  const q = bag.splice(idx, 1)[0];
+  return { ...q, tier: TIER_CODE_LABEL[q.utier] || "Medium", answers: shuffle([q.correct, ...q.wrong]) };
+}
+// Draw `seq` (an array of tier codes, in order) from the sheet, spreading topics.
+function drawTierSequence(seq) {
+  const avoidTexts = new Set(), out = [];
+  const recentCats = []; // last two categories, to avoid three-in-a-row of a topic
+  for (const t of seq) {
+    const avoidCats = new Set(recentCats);
+    const q = drawFromTier(t, avoidTexts, avoidCats);
+    if (!q) continue;
+    avoidTexts.add(q.text);
+    recentCats.push(q.catId); if (recentCats.length > 2) recentCats.shift();
+    out.push(q);
+  }
+  return out;
+}
+// Classic round: expand a {tier: count} mix into a shuffled 5-question round.
+function drawClassicRound(round) {
+  const mix = roundTiers(round), seq = [];
+  TIER_CODES.forEach((t) => { for (let i = 0; i < (mix[t] || 0); i++) seq.push(t); });
+  return drawTierSequence(shuffle(seq));
+}
+// Sudden Death: a long fixed-order run following the tier ramp.
+function drawSuddenRun(count) {
+  const seq = [];
+  for (let n = 1; n <= count; n++) seq.push(suddenTierAt(n));
+  return drawTierSequence(seq);
+}
+// Blitz: a fast, rising rotation, mostly easy/medium with the odd hard/very-hard,
+// fixed order (never shuffled) so pace and difficulty feel deliberate.
+const BLITZ_ROTATION = ["VE", "E", "E", "M", "E", "M", "H", "E", "M", "VH", "M", "H"];
+function drawBlitzRun(count) {
+  const seq = [];
+  for (let n = 0; n < count; n++) seq.push(BLITZ_ROTATION[n % BLITZ_ROTATION.length]);
+  return drawTierSequence(seq);
 }
 
 // Weighted local pool for mixed Classic / Sudden / Blitz rounds. Universal topics
@@ -1442,10 +1514,13 @@ async function getQuestions({ catId = "", difficulty = "", amount = 10, mix = nu
     merged = await fetchCoreMix({ scope, amount: 60 });
     otdbRejected = merged.length === 0;
   } else {
-    const useOtdb = !cat || cat.otdb.length > 0;
-    const useTta = INCLUDE_NC_SOURCES && (!cat || cat.tta.length > 0 || cat.ttaTags?.length > 0);
+    // Traditional trivia is sheet-only now, with no external APIs. The whole round
+    // comes from the bundled bank: Karim's sheet for text categories, and the
+    // QUIZRUSH picture/logic packs for the formats the sheet doesn't cover yet.
+    const useOtdb = false;
+    const useTta = false;
     const srcAmount = amount;
-    const bankAmount = cat?.bank ? amount : cat ? 0 : Math.ceil(amount * 0.15);
+    const bankAmount = amount;
 
     const [otdb, tta] = await Promise.allSettled([
       useOtdb ? fetchFromOTDB({ amount: srcAmount, otdbCats: cat?.otdb, difficulty }) : Promise.resolve([]),
@@ -1521,13 +1596,7 @@ async function startGame(mode, overrides = {}) {
     opts.difficulty = dq.difficulty;
     player.daily = { date: todayKey(), status: "pending", score: 0 };
   } else {
-    if (mode === "classic") {
-      // The ladder sets its own rules: mixed categories (unless a themed card
-      // like Riddles or Flags locked one) and a per-level difficulty blend.
-      opts.catId = overrides.catId ?? "";
-      opts.mix = levelMix(1);
-      opts.scope = overrides.catId ? "core" : levelScope(1);
-    } else if (mode === "custom") {
+    if (mode === "custom") {
       // Your Rules: the player picks both knobs
       opts.catId = document.querySelector("#chips-category .chip.active").dataset.value;
       opts.difficulty = document.querySelector("#chips-difficulty .chip.active").dataset.value;
@@ -1535,14 +1604,15 @@ async function startGame(mode, overrides = {}) {
 
     setLoading(true, "Fetching questions…");
     try {
+      // Classic / Sudden / Blitz draw EXCLUSIVELY from Karim's sheet, by tier.
       if (mode === "sudden") {
-        const pool = await fetchCoreMix({ scope: "core", amount: 60 });
-        questions = applySuddenRamp(pool, 50);
+        questions = drawSuddenRun(60);
       } else if (mode === "blitz") {
-        const pool = await fetchCoreMix({ scope: "core", amount: 60 });
-        questions = applyBlitzTiers(pool, 50);
+        questions = drawBlitzRun(120);
+      } else if (mode === "classic") {
+        questions = drawClassicRound(1); // round 1
       } else {
-        questions = await getQuestions(opts);
+        questions = await getQuestions(opts); // custom / daily-cat
       }
       if (!questions.length) throw new Error("no-questions");
     } catch (err) {
@@ -1568,10 +1638,11 @@ async function startGame(mode, overrides = {}) {
     bestStreak: 0,
     difficulty: opts.difficulty || "",
     catId: opts.catId || "",
-    level: 1,
+    level: 1, // "round" in the UI, same counter
     usedQKeys: new Set(questions.map((q) => nemesisKey(q))), // run-scoped no-repeat memory
     levelCorrect: 0,
     maxLevelCorrect: 0,
+    roundMistakes: 0, // classic: one mistake per round is forgiven; the second ends the run
     awaitingContinue: false,
     questionTime: mode === "daily" ? DAILY_TIME[opts.difficulty] : QUESTION_TIME,
     // The third lifeline is Freeze in Blitz (pause the clock), +time everywhere else.
@@ -1631,8 +1702,8 @@ function renderQuestion() {
 
   state.locked = false;
 
-  // Every 5th Blitz question is a Golden Question — worth +15s if you nail it.
-  state.golden = state.mode === "blitz" && (state.index + 1) % 5 === 0;
+  // Golden Question: a random 1-in-10 chance on any Blitz question, worth +15s if you nail it.
+  state.golden = state.mode === "blitz" && Math.random() < 0.10;
 
   document.activeElement?.blur?.(); // no leftover focus highlight on a fresh question
   const card = $("question-card");
@@ -1645,9 +1716,7 @@ function renderQuestion() {
   Sound.reveal();
 
   $("q-category").textContent = (q.nemesis ? "😈 Revenge · " : "") + q.category;
-  const diff = $("q-difficulty");
-  diff.textContent = q.tier || q.difficulty; // tier label (Very Easy…Expert) when set
-  diff.className = "q-difficulty " + q.difficulty;
+  $("q-difficulty").hidden = true; // show the category name, never the difficulty (per request)
 
   $("question-text").textContent = q.text;
   const vis = $("q-visual");
@@ -1661,7 +1730,7 @@ function renderQuestion() {
   }
 
   if (state.mode === "classic" || state.mode === "custom" || state.mode === "daily") {
-    const prefix = state.mode === "classic" ? `Lv ${state.level} · ` : "";
+    const prefix = state.mode === "classic" ? `Round ${state.level} · ` : "";
     $("progress-label").textContent = `${prefix}${state.index + 1} / ${state.questions.length}`;
     $("progress-fill").style.width = `${(state.index / state.questions.length) * 100}%`;
   } else {
@@ -1785,7 +1854,7 @@ function loseBlitzLife() {
   return state.lives <= 0;
 }
 
-// ---------- Lifelines (one use of each per game) ----------
+// ---------- Lifelines (one use of each per game, no buy-backs) ----------
 function paintLifelines() {
   if (!state?.lifelines) return;
   // The third slot (button #lf-time) is Freeze in Blitz, +time elsewhere.
@@ -1793,27 +1862,18 @@ function paintLifelines() {
   for (const [kind, id] of slots) {
     const btn = $(id);
     const avail = state.lifelines[kind];
-    const refillable = !avail && state.mode !== "daily" && player.tokens >= 2;
     const lockedNow = state.locked && !(kind === "time" && state.mode === "blitz");
-    btn.disabled = lockedNow || (!avail && !refillable);
-    btn.classList.toggle("used", !avail && !refillable);
-    btn.classList.toggle("refill", refillable);
-    if (refillable) btn.title = "Used — tap to refill for 2 Gold";
+    btn.disabled = lockedNow || !avail;
+    btn.classList.toggle("used", !avail); // once spent it stays greyed out for the rest of the game
+    btn.classList.remove("refill");
+    if (!avail) btn.title = "Used"; else btn.removeAttribute("title");
   }
 }
 
-// Tapping a spent lifeline with enough tokens buys it back (2 🪙), then a
-// second tap uses it as normal.
+// Each lifeline is a single use per game. A spent one is greyed out and can't
+// be bought back or reused.
 function lifelineClick(kind, useFn) {
   if (!state?.lifelines) return;
-  if (!state.lifelines[kind] && state.mode !== "daily" && player.tokens >= 2) {
-    player.tokens -= 2;
-    state.lifelines[kind] = true;
-    Sound.click();
-    updateScoreUI();
-    paintLifelines();
-    return;
-  }
   useFn();
 }
 
@@ -1918,12 +1978,27 @@ function selectAnswer(btn, answer) {
     state.bestStreak = Math.max(state.bestStreak, state.streak);
     const points = scoreFor(q);
     state.score += points;
-    if (state.mode === "blitz" && state.golden) {
-      state.blitzTimeLeft += 15; // nailing a Golden Question buys 15 more seconds
-      paintBlitz();
-      popPoints("✨ +15s");
-    } else if (state.mode === "blitz") {
-      popPoints("+1"); // Blitz is scored in correct answers, not points
+    if (state.mode === "blitz") {
+      // Five correct in a row wins back one life, capped at the maximum of three.
+      let lifeBack = false;
+      if (state.streak > 0 && state.streak % 5 === 0 && state.lives < BLITZ_LIVES) {
+        state.lives++;
+        paintBlitzLives();
+        // Pulse the heart that just came back: the filled hearts lead, so the
+        // regained one is the last non-lost span (:last-of-type would wrongly
+        // anchor to the final span, which is still a lost heart below full).
+        const filled = $("blitz-lives")?.querySelectorAll(".life:not(.lost)");
+        const heart = filled && filled[filled.length - 1];
+        if (heart) { heart.classList.remove("pop"); void heart.offsetWidth; heart.classList.add("pop"); }
+        lifeBack = true;
+      }
+      if (state.golden) {
+        state.blitzTimeLeft += 15; // nailing a Golden Question buys 15 more seconds
+        paintBlitz();
+        popPoints(lifeBack ? "✨ +15s · ❤️ +1 life" : "✨ +15s");
+      } else {
+        popPoints(lifeBack ? "❤️ +1 life" : "+1"); // Blitz is scored in correct answers, not points
+      }
     } else {
       popPoints("+" + points.toLocaleString());
     }
@@ -1935,9 +2010,19 @@ function selectAnswer(btn, answer) {
     $("question-card").classList.add("shake");
     flash("red");
     if (state.mode === "sudden") {
+      // Sudden Death: one miss ends the run. No currency, no second chance.
       updateScoreUI();
-      setTimeout(() => (player.tokens >= 3 ? showReviveOffer() : endGame()), 1100);
+      setTimeout(endGame, 1100);
       return;
+    }
+    if (state.mode === "classic") {
+      // One mistake per round is forgiven; the second ends the run.
+      state.roundMistakes++;
+      if (state.roundMistakes >= 2) {
+        updateScoreUI();
+        setTimeout(endGame, 1100);
+        return;
+      }
     }
     if (state.mode === "blitz" && loseBlitzLife()) {
       updateScoreUI();
@@ -1987,11 +2072,23 @@ function onTimeout() {
   updateScoreUI();
 
   if (state.mode === "sudden") {
-    setTimeout(() => (player.tokens >= reviveCost() ? showReviveOffer() : endGame()), 1100);
-  } else {
-    offerLearnMore();
-    state.advanceTimer = setTimeout(nextQuestion, 1000);
+    setTimeout(endGame, 1100); // one miss ends Sudden Death
+    return;
   }
+  if (state.mode === "classic") {
+    state.roundMistakes++; // a timeout spends the round's forgiven mistake too
+    if (state.roundMistakes >= 2) {
+      setTimeout(endGame, 1100);
+      return;
+    }
+  }
+  if (state.mode === "blitz" && loseBlitzLife()) {
+    clearInterval(state.blitzTimer);
+    setTimeout(endGame, 1100);
+    return;
+  }
+  offerLearnMore();
+  state.advanceTimer = setTimeout(nextQuestion, 1000);
 }
 
 // Sudden Death second chance: an escalating price — 10 Gold the first time,
@@ -2354,64 +2451,48 @@ function endParty() {
 function levelComplete() {
   clearInterval(state.qTimer);
   state.maxLevelCorrect = Math.max(state.maxLevelCorrect, state.levelCorrect);
-  // pass bar scales with round length so thin bank categories stay fair
-  const needed = Math.ceil(state.questions.length * LEVEL_RULES(state.level).need / 10);
-  if (state.levelCorrect < needed) return endGame(); // run over
-
-  const nextLevel = state.level + 1;
-  const prevBest = player.bestClassicLevel;
-  if (nextLevel > player.bestClassicLevel) player.bestClassicLevel = nextLevel;
-  player.gold += 1; // clearing a level pays a Gold
-  // Gems are rare: only a milestone level reached for the FIRST time, plus any
-  // flawless (10/10) level — both real achievements, so a gem always feels earned.
-  if (GEM_MILESTONE[nextLevel] && nextLevel > prevBest) awardGems(GEM_MILESTONE[nextLevel], `Level ${nextLevel} milestone`);
-  if (state.levelCorrect === state.questions.length && state.questions.length >= 10) awardGems(GEM_PERFECT, "flawless level");
+  // Classic is endless: a round is always "cleared", and the run only ends when the
+  // second mistake of a round is made. No pass bar, no currency (traditional mode).
+  const nextRound = state.level + 1;
+  if (nextRound > player.bestClassicLevel) player.bestClassicLevel = nextRound;
 
   state.awaitingContinue = true;
   $("btn-share").hidden = true;
   $("results-emoji").textContent = "🚀";
-  $("results-title").textContent = `Level ${state.level} cleared!`;
+  $("results-title").textContent = `Round ${state.level} cleared!`;
   $("new-best").hidden = true;
   $("results-score").textContent = state.score.toLocaleString();
   $("results-score-label").textContent = "points so far";
-  const nr = LEVEL_RULES(nextLevel);
   $("results-xp").innerHTML =
-    `${state.levelCorrect} / ${state.questions.length} correct · +1 Gold — ` +
-    `next: Level ${nextLevel} · ${mixLabel(nr.mix)} · ${nr.need}/10 to pass`;
+    `${state.levelCorrect} / ${state.questions.length} correct. ` +
+    `Next: Round ${nextRound} · ${tierMixLabel(roundTiers(nextRound))}`;
   $("results-badges").hidden = true;
   $("stat-correct").textContent = String(state.correct);
   $("stat-accuracy").textContent = (state.answered ? Math.round((state.correct / state.answered) * 100) : 0) + "%";
   $("stat-streak").textContent = String(state.bestStreak);
-  $("btn-again").textContent = `Continue to Level ${nextLevel}`;
+  $("btn-again").textContent = `Continue to Round ${nextRound}`;
   $("btn-home").textContent = "End run";
-  playLevelUpCinematic(nextLevel, () => showScreen("results"));
+  playLevelUpCinematic(nextRound, () => showScreen("results"));
 }
 
-async function continueClassicRun() {
+function continueClassicRun() {
   if (!startGuard()) return;
-  const nextLevel = state.level + 1;
-  setLoading(true, `Loading Level ${nextLevel}…`);
-  let questions;
-  try {
-    questions = await getQuestions({ catId: state.catId, mix: levelMix(nextLevel), amount: 10, exclude: state.usedQKeys, scope: state.catId ? "core" : levelScope(nextLevel) });
-  } catch {
-    setLoading(false);
-    alert("Couldn't load the next level — ending the run here so your score counts.");
-    return endGame();
-  }
-  setLoading(false);
+  const nextRound = state.level + 1;
+  const questions = drawClassicRound(nextRound); // sheet-only, tier-shaped
+  if (!questions.length) return endGame();
 
   questions.forEach((q) => state.usedQKeys?.add(nemesisKey(q)));
   Object.assign(state, {
     questions,
     index: 0,
-    level: nextLevel,
+    level: nextRound,
     levelCorrect: 0,
+    roundMistakes: 0, // the forgiven mistake refreshes each round
     difficulty: "",
-    questionTime: QUESTION_TIME, // constant clock — the blend does the escalating
+    questionTime: QUESTION_TIME, // constant clock; the tier blend does the escalating
     awaitingContinue: false,
     locked: false,
-    lifelines: { fifty: true, skip: true, time: true }, // fresh set each level
+    lifelines: { fifty: true, skip: true, time: true }, // fresh set each round
   });
   showScreen("game");
   Sound.start();
@@ -2665,7 +2746,7 @@ function endGame() {
     sharp: answered >= 5 && correct === answered,
     owl: new Date().getHours() < 5,
     allmodes: modes.size >= 3,
-    hardcore: mode === "classic" && state.maxLevelCorrect >= 9,
+    hardcore: mode === "classic" && state.level >= 4 && state.maxLevelCorrect >= state.questions.length,
     climber: mode === "classic" && player.bestClassicLevel >= 3,
     summit: mode === "classic" && player.bestClassicLevel >= 6,
     ten: mode === "classic" && player.bestClassicLevel >= 10,
@@ -2686,7 +2767,7 @@ function endGame() {
     mode === "daily" ? (dailyWon ? "🗓️" : "😔")
     : isBest ? "🏆" : accuracy >= 70 ? "🎉" : accuracy >= 40 ? "💪" : "😅";
   $("results-title").textContent = {
-    classic: `Run ended at Level ${state.level}`,
+    classic: `Run ended at Round ${state.level}`,
     custom: "Round complete!",
     daily: dailyWon ? "Daily solved!" : "Not today…",
     sudden: `Survived ${correct} question${correct === 1 ? "" : "s"}!`,
@@ -2705,7 +2786,8 @@ function endGame() {
   // slower, desaturated — rather than with celebration. A personal best is
   // never sombre, even on low accuracy.
   const somber = !isBest && ((mode === "daily" && !dailyWon) || (answered >= 4 && accuracy < 35));
-  const perfect = (mode === "classic" || mode === "custom") && state.maxLevelCorrect >= 10;
+  const perfect = (mode === "classic" && state.maxLevelCorrect >= state.questions.length) ||
+                  (mode === "custom" && state.maxLevelCorrect >= 10);
   $("screen-results").classList.toggle("somber", somber);
 
   const reveal = (quiet) => {
@@ -2803,7 +2885,7 @@ function stageResultsReveal(score, somber) {
 // Rare, grand moments (reaching Level 5 or the Level 10 summit) get the full
 // ~14s cinematic; ordinary level clears get the shorter beat.
 const MILESTONE_LEVELS = { 5: { kicker: "MILESTONE REACHED", sub: "The climb is well underway" },
-                           10: { kicker: "THE SUMMIT", sub: "Level 10 — few make it this far" } };
+                           10: { kicker: "THE SUMMIT", sub: "Round 10, and few make it this far" } };
 
 function playMilestone({ kicker = "MILESTONE", title, sub = "" }, then) {
   const ov = $("cinema");
@@ -2846,7 +2928,7 @@ function playMilestone({ kicker = "MILESTONE", title, sub = "" }, then) {
 
 function playLevelUpCinematic(nextLevel, then) {
   const milestone = MILESTONE_LEVELS[nextLevel];
-  if (milestone) return playMilestone({ kicker: milestone.kicker, title: `LEVEL ${nextLevel}`, sub: milestone.sub }, then);
+  if (milestone) return playMilestone({ kicker: milestone.kicker, title: `ROUND ${nextLevel}`, sub: milestone.sub }, then);
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) { Sound.levelUp(); return then(); }
   const ov = $("levelup-overlay");
   $("lu-num").textContent = String(nextLevel);
@@ -3237,7 +3319,7 @@ function paintLifetime() {
   const correct = cats.reduce((n, s) => n + (s.correct || 0), 0);
   const acc = answered ? Math.round((correct / answered) * 100) : 0;
   const cells = [
-    [player.bestClassicLevel || 1, "Best Classic level"],
+    [player.bestClassicLevel || 1, "Best Classic round"],
     [player.bestDailyStreak || 0, "Best daily streak"],
     [answered.toLocaleString(), "Questions answered"],
     [answered ? acc + "%" : "—", "Lifetime accuracy"],
@@ -3752,7 +3834,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
     { img: "media/malrune-2.png", fb: "media/malrune-placeholder.svg", litImg: "media/malrune-2-lit.png", lines: [
       `The world began to toil, and it seemed like all hope was lost. However, knowledge is not so easily silenced.`,
       { html: `A power awoke, and bequeathed its gift to all who still question and <em class="warm">ANSWER</em>.`, holdBonus: 5000 },
-      { html: `<span class="pre">And it turned towards </span><em class="warm">YOU</em>`, holdBonus: 2000, youSolo: 4000 },
+      { html: `<span class="pre">And it turned towards </span><em class="warm">YOU</em>`, holdBonus: 2000, youSolo: 1300 },
     ] },
     { img: null, lines: [
       { html: `Rise, <em class="warm">Riddle-Solver</em>.`, holdBonus: 2600 },
@@ -3862,31 +3944,32 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
     lineEl.classList.remove("show", "center"); // no text over the final shot
     const base = stills[0], other = stills[1];
     other.classList.remove("show");
-    setStill(base, { img: HERO.still, fb: HERO.fb });
-    base.hidden = false;
-    base.classList.remove("kb"); void base.offsetWidth; base.classList.add("kb");
-    requestAnimationFrame(() => base.classList.add("show"));
+    showStill(base, { img: HERO.still, fb: HERO.fb }, false); // decode the poster before it shows (no stale-image flash)
     let ended = false;
-    // The clip ends with the knight's newly-drawn blade ablaze. That fire
-    // blooms into a fast bright flash (the almighty hit), which then SLOWLY
-    // fades to reveal the home screen beneath.
+    // The clip ends with the knight risen, a cold blue shimmer over his armour.
+    // It gently fades to black, holds a couple of seconds on black, then reveals
+    // the player-name / home screen beneath (whichever the app is showing).
     const done = () => {
       if (ended || phase === "done") return; ended = true;
       clearTimeout(timer); clearTimeout(eyeTimer);
       phase = "done"; cancelled = true;
       Music.start("anthem");
       document.body.classList.add("intro-done");
-      if (flash) { flash.hidden = false; flash.style.transition = "opacity 0.1s ease"; flash.style.opacity = "1"; }
+      const HOLD = 2000, FADE = 2400, BLACK = 2000, REVEAL = 1800;
+      // Let the completed dab sit for a beat, THEN gently fade the knight to black.
       setTimeout(() => {
-        try { heroVid.pause(); } catch { /* ignore */ }
-        splash.remove();
-        if (flash) {
-          flash.style.transition = "opacity 2.8s ease"; // slow resolve into the menu
-          requestAnimationFrame(() => { flash.style.opacity = "0"; });
-          setTimeout(() => { flash.hidden = true; }, 2900);
-        }
-      }, 300); // hold on the hit a beat, then the slow transition
-      setTimeout(bonusToasts, 2600);
+        heroVid.style.transition = `opacity ${FADE}ms ease`;
+        base.style.transition = `opacity ${FADE}ms ease`;
+        requestAnimationFrame(() => { heroVid.classList.remove("show"); base.classList.remove("show"); });
+        // hold on pure black, then SLOWLY let the screen beneath emerge
+        setTimeout(() => {
+          try { heroVid.pause(); } catch { /* ignore */ }
+          splash.style.transition = `opacity ${REVEAL}ms ease`;
+          requestAnimationFrame(() => { splash.style.opacity = "0"; });
+          setTimeout(() => splash.remove(), REVEAL + 100);
+        }, FADE + BLACK);
+      }, HOLD); // hold the dab ~2s before the fade begins
+      setTimeout(bonusToasts, HOLD + FADE + BLACK + REVEAL + 300);
     };
     const hideVid = () => { heroVid.classList.remove("show"); heroVid.hidden = true; };
     heroVid.muted = true; // clips are always silent — the music bed carries it
@@ -3905,8 +3988,14 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
   // his OWN eyes ignite in place. Each line fades in, holds to be read, and fades
   // out; the image fades to black between scenes. Unhurried.
   const base = stills[0], overlay = stills[1];
-  const showStill = (el, sc, kb) => {
+  // Swap the source while the layer is hidden and WAIT for the new frame to
+  // decode before fading it in — otherwise the layer briefly shows the previous
+  // (stale) image before the right one paints. Async; callers await it.
+  const showStill = async (el, sc, kb) => {
+    el.classList.remove("show");
     setStill(el, sc);
+    try { await el.decode(); } catch { /* fallback art still loads via onerror */ }
+    if (cancelled) return;
     el.hidden = false;
     el.classList.remove("kb"); void el.offsetWidth; if (kb) el.classList.add("kb");
     requestAnimationFrame(() => el.classList.add("show"));
@@ -3917,7 +4006,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
       const scene = SCENES[s];
       overlay.classList.remove("show"); // clear any lit overlay from a prior scene
       if (scene.img) {
-        showStill(base, scene, !scene.litImg); // no ken-burns on the eyes scene so the glow stays aligned
+        await showStill(base, scene, !scene.litImg); // decode then fade in; no ken-burns on the eyes scene so the glow stays aligned
         preload(SCENES[s + 1]);
         await wait(T.imgIn + T.imgSolo);        // image appears, then text comes up
       } else {
@@ -3928,15 +4017,19 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
       for (let li = 0; li < scene.lines.length; li++) {
         if (cancelled) return;
         const L = normLine(scene.lines[li]);
-        // his eyes ignite fiery a moment into the eyes scene's first line
-        if (scene.litImg && li === 0) {
-          clearTimeout(eyeTimer);
-          eyeTimer = setTimeout(() => { if (!cancelled) showStill(overlay, { img: scene.litImg, fb: scene.litImg }, false); }, 2200);
-        }
         lineEl.classList.toggle("center", !scene.img); // centred on the black finale
         lineEl.innerHTML = L.html;
         requestAnimationFrame(() => lineEl.classList.add("show"));
-        await wait(T.lineIn + holdFor(L.html) + (L.holdBonus || 0));
+        // Story stills hold full; the black-backdrop finale lines read at half dwell.
+        const dwell = holdFor(L.html) + (L.holdBonus || 0);
+        const holdMs = T.lineIn + (scene.img ? dwell : Math.round(dwell * 0.5));
+        // Malrune's eyes ignite only ~2s before the portrait fades. The portrait
+        // fades at the YOU beat (the youSolo line), so light them 2s before that.
+        if (scene.litImg && L.youSolo) {
+          clearTimeout(eyeTimer);
+          eyeTimer = setTimeout(() => { if (!cancelled) showStill(overlay, { img: scene.litImg, fb: scene.litImg }, false); }, Math.max(0, holdMs - 2000));
+        }
+        await wait(holdMs);
         if (cancelled) return;
         if (L.youSolo) {
           lineEl.classList.add("you-solo");     // the sentence fades, YOU stays exactly where it was
@@ -3949,7 +4042,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catc
           lineEl.classList.remove("you-solo");
         } else {
           lineEl.classList.remove("show");
-          await wait(T.lineOut + T.lineGap);    // slow fade out, brief gap
+          await wait(T.lineOut + (scene.img ? T.lineGap : Math.round(T.lineGap * 0.5))); // slow fade out, brief gap (tighter on black)
         }
       }
       if (cancelled) return;

@@ -360,6 +360,11 @@ button, .chip, .mode-card, .daily-card, .theme-swatch {
 .hub-descent { background: radial-gradient(120% 120% at 20% 0%, rgba(124, 58, 255, 0.3), rgba(255, 90, 40, 0.15) 55%, rgba(20, 12, 34, 0.6) 100%); border-color: rgba(124, 92, 255, 0.42); }
 .hub-quick { background: radial-gradient(120% 120% at 20% 0%, rgba(124, 224, 255, 0.16), rgba(20, 20, 40, 0.6) 70%); border-color: rgba(124, 224, 255, 0.28); }
 .hub-badge { position: absolute; top: 18px; right: 18px; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; font-weight: 800; color: #ffdf9b; background: rgba(255, 198, 75, 0.16); border: 1px solid rgba(255, 198, 75, 0.45); padding: 6px 13px; border-radius: 999px; }
+/* Coming-soon (locked) hub card: dimmed, inert, no hover lift or shine sweep */
+.hub-card.hub-locked { cursor: default; opacity: 0.6; filter: saturate(0.65); }
+.hub-card.hub-locked:hover { transform: none; }
+.hub-card.hub-locked::after { display: none; }
+.hub-badge-soon { color: #d6d8ee; background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.28); }
 @media (hover: hover) { .hub-card:hover { transform: translateY(-3px); } }
 
 /* The Descent teaser */
@@ -1286,6 +1291,7 @@ select {
 }
 
 /* Blitz lives — three hearts, dimmed as they're spent */
+.blitz-lives[hidden] { display: none; } /* respect the hidden attribute; flex would otherwise override it and leak hearts into other modes */
 .blitz-lives {
   display: flex; justify-content: center; gap: 10px;
   margin-bottom: 16px;

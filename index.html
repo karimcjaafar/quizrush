@@ -69,7 +69,7 @@
   <!-- Level-up cinematic -->
   <div class="levelup-overlay" id="levelup-overlay" hidden>
     <div class="lu-rings"><i></i><i></i><i></i></div>
-    <div class="lu-big">LEVEL&nbsp;UP!</div>
+    <div class="lu-big">ROUND&nbsp;UP!</div>
     <div class="lu-num" id="lu-num">2</div>
   </div>
 
@@ -81,7 +81,7 @@
     <div class="cinema-dust" id="cinema-dust"></div>
     <div class="cinema-stage">
       <div class="cinema-kicker" id="cinema-kicker">MILESTONE</div>
-      <div class="cinema-title" id="cinema-title">LEVEL 10</div>
+      <div class="cinema-title" id="cinema-title">ROUND 10</div>
       <div class="cinema-sub" id="cinema-sub"></div>
       <div class="cinema-sweep"></div>
     </div>
@@ -117,16 +117,16 @@
         <p class="hub-tag">Trivia &amp; Tribulations</p>
       </header>
       <div class="hub-paths">
-        <button class="hub-card hub-descent" onclick="location.href='saga.html'">
-          <span class="hub-badge">The Saga · Playable demo</span>
+        <button class="hub-card hub-descent hub-locked" disabled aria-disabled="true">
+          <span class="hub-badge hub-badge-soon">Coming Soon</span>
           <span class="hub-card-icon">🐉</span>
           <h2>The Reckoning</h2>
-          <p>Battle down through the frozen vale — answer to strike, or be devoured — to face Vyrmouth, the Frostwyrm.</p>
+          <p>The saga descends soon. Battle down through the frozen vale to face Vyrmouth, the Frostwyrm.</p>
         </button>
         <button class="hub-card hub-quick" data-action="quickplay">
           <span class="hub-card-icon">🎯</span>
           <h2>Traditional Trivia</h2>
-          <p>Straight into the classic quiz — Daily, the Classic ladder, Blitz, Brain Games and more.</p>
+          <p>Straight into the classic quiz. Daily, Classic rounds, Blitz, Brain Games and more.</p>
         </button>
       </div>
     </div>
@@ -176,7 +176,7 @@
         <div class="mode-icon">🎯</div>
         <div class="mode-info">
           <h2>Classic</h2>
-          <p>Climb ten levels of rising difficulty — then see how far past the summit you can go.</p>
+          <p>Endless rounds of rising difficulty. One slip a round is forgiven; the second ends your run.</p>
         </div>
         <div class="mode-best" id="best-classic"></div>
       </button>
@@ -203,7 +203,7 @@
         <div class="mode-icon">⏱️</div>
         <div class="mode-info">
           <h2>Blitz</h2>
-          <p>60 seconds on the clock. Answer as many as you can.</p>
+          <p>Three minutes, three lives. Answer as many as you can.</p>
         </div>
         <div class="mode-best" id="best-blitz"></div>
       </button>
@@ -363,10 +363,7 @@
       <ul class="earn-list">
         <li><span>📅</span> Open the app each day <b>+5 Gold</b></li>
         <li><span>🗓️</span> Solve the Daily Challenge <b>+2 Gold</b></li>
-        <li><span>🎯</span> Clear a Classic level <b>+1 Gold</b></li>
         <li><span>🏆</span> Earn a badge <b>+10 Gold</b></li>
-        <li><span>💯</span> A flawless 10/10 level <b>+1 💎</b></li>
-        <li><span>🧗</span> Reach Level 5 / Level 10 <b>+2 / +5 💎</b></li>
         <li><span>🔥</span> Daily streak 3 / 7 / 14 days <b>+1 / +3 / +5 💎</b></li>
       </ul>
     </section>
@@ -730,7 +727,7 @@
         <h2 class="wiz-title">🐉 Welcome to Riddle &amp; Rune!</h2>
         <ul>
           <li><span>📅</span><div><b>The Daily</b> — one question, one shot, every day. Streaks unlock new looks.</div></li>
-          <li><span><svg class="cur-ico" viewBox="0 0 30 20" aria-hidden="true"><path d="M6 4h18l4 13H2z" fill="#f4b52e" stroke="#9c6a15" stroke-width="1.4"/><path d="M6.4 4.3h17.2l1.3 4.6H4.7z" fill="#ffe491"/></svg></span><div><b>Gold</b> — earned from every game. Spend it on lifeline refills, revives and streak freezes.</div></li>
+          <li><span><svg class="cur-ico" viewBox="0 0 30 20" aria-hidden="true"><path d="M6 4h18l4 13H2z" fill="#f4b52e" stroke="#9c6a15" stroke-width="1.4"/><path d="M6.4 4.3h17.2l1.3 4.6H4.7z" fill="#ffe491"/></svg></span><div><b>Gold</b> is earned from the Daily, badges and daily logins, and spent on streak freezes.</div></li>
           <li><span>💎</span><div><b>Gems</b> — rare &amp; precious, earned only at big moments. They unlock the exclusive stuff.</div></li>
           <li><span>🧠</span><div><b>Brain Games</b> — riddles, emoji puzzles and Who Am I?, for when trivia isn't enough.</div></li>
         </ul>
