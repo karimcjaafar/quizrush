@@ -1242,7 +1242,7 @@ function fetchFromBank({ amount, catId, difficulty }) {
     (q) => (!catId || q.cat === catId) && (!difficulty || q.difficulty === difficulty)
   );
   return shuffle(pool).slice(0, amount).map((q) => ({
-    category: CATEGORIES.find((c) => c.id === q.cat)?.name || "QuizRush",
+    category: q.catName || CATEGORIES.find((c) => c.id === q.cat)?.name || "QuizRush",
     catId: q.cat,
     difficulty: q.difficulty,
     utier: q.tier || DIFF_TO_TIER[q.difficulty] || "M", // 5-tier code
@@ -1262,7 +1262,7 @@ function fetchFromBank({ amount, catId, difficulty }) {
 // once it's empty.
 function shapeUserQ(q) {
   return {
-    category: CATEGORIES.find((c) => c.id === q.cat)?.name || "QuizRush",
+    category: q.catName || CATEGORIES.find((c) => c.id === q.cat)?.name || "QuizRush",
     catId: q.cat || "general",
     difficulty: q.difficulty || "medium",
     utier: q.tier || DIFF_TO_TIER[q.difficulty] || "M",
